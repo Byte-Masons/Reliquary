@@ -104,7 +104,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     /// @param _rewarder Address of the rewarder delegate.
     function add(uint256 allocPoint, IERC20 _lpToken, IRewarder _rewarder) public onlyOwner {
         uint256 lastRewardBlock = block.number;
-        totalAllocPoint = totalAllocPoint.add(allocPoint);
+        totalAllocPoint = (totalAllocPoint + allocPoint);
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
 
@@ -113,7 +113,7 @@ contract Reliquary is Memento, Ownable, Multicall {
             lastRewardBlock: lastRewardBlock.to64(),
             accRelicPerShare: 0
         }));
-        emit LogPoolAddition(lpToken.length.sub(1), allocPoint, _lpToken, _rewarder);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder);
     }
 
     /// @notice Update the given pool's RELIC allocation point and `IRewarder` contract. Can only be called by the owner.
@@ -122,7 +122,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     /// @param _rewarder Address of the rewarder delegate.
     /// @param overwrite True if _rewarder should be `set`. Otherwise `_rewarder` is ignored.
     function set(uint256 _pid, uint256 _allocPoint, IRewarder _rewarder, bool overwrite) public onlyOwner {
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = (totalAllocPoint - poolInfo[_pid].allocPoint) + _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint.to64();
         if (overwrite) { rewarder[_pid] = _rewarder; }
         emit LogSetPool(_pid, _allocPoint, overwrite ? _rewarder : rewarder[_pid], overwrite);
@@ -138,11 +138,11 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint256 accRelicPerShare = pool.accRelicPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 blocks = block.number.sub(pool.lastRewardBlock);
-            uint256 relicReward = blocks.mul(BASE_RELIC_PER_BLOCK).mul(pool.allocPoint) / totalAllocPoint;
-            accRelicPerShare = accRelicPerShare.add(relicReward.mul(ACC_RELIC_PRECISION) / lpSupply);
+            uint256 blocks = block.number - pool.lastRewardBlock;
+            uint256 relicReward = ((blocks * BASE_RELIC_PER_BLOCK) * pool.allocPoint) / totalAllocPoint;
+            accRelicPerShare = ((accRelicPerShare + relicReward) * ACC_RELIC_PRECISION) / lpSupply;
         }
-        uint256 rawPending = int256(position.amount.mul(accRelicPerShare) / ACC_RELIC_PRECISION).sub(position.rewardDebt).toUInt256();
+        uint256 rawPending = ((int256(position.amount * accRelicPerShare) / ACC_RELIC_PRECISION) - position.rewardDebt).toUInt256();
         pending = modifyEmissions(rawPending, msg.sender, _pid);
     }
 
@@ -167,9 +167,9 @@ contract Reliquary is Memento, Ownable, Multicall {
         if (block.number > pool.lastRewardBlock) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
             if (lpSupply > 0) {
-                uint256 blocks = block.number.sub(pool.lastRewardBlock);
-                uint256 relicReward = blocks.mul(relicPerBlock()).mul(pool.allocPoint) / totalAllocPoint;
-                pool.accRelicPerShare = pool.accRelicPerShare.add((relicReward.mul(ACC_RELIC_PRECISION) / lpSupply).to128());
+                uint256 blocks = block.number - pool.lastRewardBlock;
+                uint256 relicReward = blocks * relicPerBlock() * pool.allocPoint / totalAllocPoint;
+                pool.accRelicPerShare = (pool.accRelicPerShare + (relicReward * ACC_RELIC_PRECISION) / lpSupply).to128());
             }
             pool.lastRewardBlock = block.number.to64();
             poolInfo[pid] = pool;
@@ -187,8 +187,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         address to = get(_tokenOwners, positionId);
 
         // Effects
-        position.amount = position.amount.add(amount);
-        position.rewardDebt = position.rewardDebt.add(int256(amount.mul(pool.accRelicPerShare) / ACC_RELIC_PRECISION));
+        position.amount = position.amount + amount;
+        position.rewardDebt = position.rewardDebt + (int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION));
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
@@ -212,8 +212,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         address to = get(_tokenOwners, positionId);
 
         // Effects
-        position.rewardDebt = position.rewardDebt.sub(int256(amount.mul(pool.accRelicPerShare) / ACC_RELIC_PRECISION));
-        position.amount = position.amount.sub(amount);
+        position.rewardDebt = position.rewardDebt - (int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION));
+        position.amount = position.amount - amount;
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
@@ -234,8 +234,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = get(_tokenOwners, positionId);
-        int256 accumulatedRelic = int256(position.amount.mul(pool.accRelicPerShare) / ACC_RELIC_PRECISION);
-        uint256 _pendingRelic = accumulatedRelic.sub(position.rewardDebt).toUInt256();
+        int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
+        uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
         uint256 _curvedRelic = modifyEmissions(_pendingRelic, msg.sender, pid);
 
         // Effects
@@ -262,13 +262,13 @@ contract Reliquary is Memento, Ownable, Multicall {
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = get(_tokenOwners, positionId);
-        int256 accumulatedRelic = int256(position.amount.mul(pool.accRelicPerShare) / ACC_RELIC_PRECISION);
-        uint256 _pendingRelic = accumulatedRelic.sub(position.rewardDebt).toUInt256();
+        int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
+        uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
         uint256 _curvedRelic = modifyEmissions(_pendingRelic, msg.sender, pid);
 
         // Effects
-        position.rewardDebt = accumulatedRelic.sub(int256(amount.mul(pool.accRelicPerShare) / ACC_RELIC_PRECISION));
-        position.amount = position.amount.sub(amount);
+        position.rewardDebt = accumulatedRelic - int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
+        position.amount = position.amount - amount;
 
         // Interactions
         RELIC.safeTransfer(to, _curvedRelic);
@@ -312,7 +312,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      +
     */
 
-    function _curve(uint userAddress, uint pid) internal view returns (uint) {
+    function curved(uint userAddress, uint pid) public view returns (uint) {
       UserInfo memory user = userInfo[pid][msg.sender];
 
       uint maturity = block.timestamp - user.entryTime;
@@ -345,7 +345,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
 
     function _calculateDistanceFromMean(address user, uint8 pid) internal view returns (Position memory) {
-      uint position = _curve(user, pid);
+      uint position = curved(user, pid);
       uint mean = _calculateMean(pid);
 
       if (position < mean) {
@@ -386,7 +386,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
 
     function _calculateDistanceFromMean(address user, uint8 pid) internal view returns (uint) {
-      uint position = _curve(user, pid)
+      uint position = curved(user, pid)
     }
 
     /*
