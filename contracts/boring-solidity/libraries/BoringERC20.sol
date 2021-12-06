@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.0;
 import "../interfaces/IERC20.sol";
 
 // solhint-disable avoid-low-level-calls
@@ -53,7 +53,7 @@ library BoringERC20 {
         (bool success, bytes memory data) = address(token).staticcall(abi.encodeWithSelector(SIG_DECIMALS));
         return success && data.length == 32 ? abi.decode(data, (uint8)) : 18;
     }
-    
+
     /// @notice Provides a gas-optimized balance check to avoid a redundant extcodesize check in addition to the returndatasize check.
     /// @param token The address of the ERC-20 token.
     /// @param to The address of the user to check.
@@ -62,7 +62,7 @@ library BoringERC20 {
         (bool success, bytes memory data) = address(token).staticcall(abi.encodeWithSelector(SIG_BALANCE_OF, to));
         require(success && data.length >= 32, "BoringERC20: BalanceOf failed");
         amount = abi.decode(data, (uint256));
-    } 
+    }
 
     /// @notice Provides a safe ERC20.transfer version for different ERC-20 implementations.
     /// Reverts on a failed transfer.
