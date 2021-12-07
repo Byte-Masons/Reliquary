@@ -10,25 +10,40 @@ import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
 import "./Memento.sol";
 
-/// @notice The (older) MasterChef contract gives out a constant number of RELIC tokens per block.
-/// It is the only address with minting rights for RELIC.
-/// The idea for this MasterChef V2 (MCV2) contract is therefore to be the owner of a dummy token
-/// that is deposited into the MasterChef V1 (MCV1) contract.
-/// The allocation point for this pool on MCV1 is the total allocation point for all pools that receive double incentives.
+/*
+ + @title Reliquary
+ + @author Justin Bebis & the Byte Masons team
+ + @notice Built on the MasterChefV2 system authored by Sushi's team
+ +
+ + @notice This system is designed to modify Masterchef accounting logic such that
+ + behaviors can be programmed per-pool using a curve library, which modifies emissions
+ + based on position maturity and binds it to the base rate using a per-token aggregated
+ + average
+ +
+ + @notice Deposits are tracked by position instead of by user, and mapped to an individual
+ + NFT as opposed to an EOA. This allows for increased composability without affecting
+ + accounting logic too much, and users can exit their position without withdrawing
+ + their liquidity or sacrificing their position's maturity.
+*/
 contract Reliquary is Memento, Ownable, Multicall {
     using BoringMath for uint256;
     using BoringMath128 for uint128;
     using BoringERC20 for IERC20;
     using SignedSafeMath for int256;
 
-    /// @notice Info of each MCV2 user.
-    /// `amount` LP token amount the user has provided.
-    /// `rewardDebt` The amount of RELIC entitled to the user.
+    /*
+     + @notice Info for each Reliquary position.
+     + `amount` LP token amount the user has provided.
+     + `rewardDebt` The amount of RELIC entitled to the user.
+     + `relativeEntry` Used to determine the entry of the position
+     +
+     +
+    */
     struct PositionInfo {
         uint256 amount;
         int256 rewardDebt;
-        uint256 entryAmount; // user's initial deposit.
-        uint40 entryTime; // user's entry into the pool.
+
+        uint40 entry; // user's entry into the pool.
         bool exempt; // exemption from vesting cliff.
     }
 
@@ -40,8 +55,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint64 lastRewardBlock;
         uint64 allocPoint;
 
-        uint256 curveAddress;
-        uint256 averageEntry;
+        uint96 averageEntry;
+        address curveAddress;
     }
 
     /*
@@ -57,6 +72,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
     // @notice used to determine whether a user is above or below the average curve
     enum Placement { ABOVE, BELOW }
+    enum Kind { Deposit, Withdraw }
 
     /// @notice Address of RELIC contract.
     IERC20 public immutable RELIC;
@@ -102,7 +118,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     /// @param allocPoint AP of the new pool.
     /// @param _lpToken Address of the LP ERC-20 token.
     /// @param _rewarder Address of the rewarder delegate.
-    function add(uint256 allocPoint, IERC20 _lpToken, IRewarder _rewarder) public onlyOwner {
+    function add(uint256 allocPoint, IERC20 _lpToken, IRewarder _rewarder, ICurve _curve) public onlyOwner {
         uint256 lastRewardBlock = block.number;
         totalAllocPoint = (totalAllocPoint + allocPoint);
         lpToken.push(_lpToken);
@@ -111,9 +127,11 @@ contract Reliquary is Memento, Ownable, Multicall {
         poolInfo.push(PoolInfo({
             allocPoint: allocPoint.to64(),
             lastRewardBlock: lastRewardBlock.to64(),
-            accRelicPerShare: 0
+            accRelicPerShare: 0,
+            averageEntry: 0,
+            curveAddress: _curve
         }));
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, totalAmount, averageEntry, curveAddress);
     }
 
     /// @notice Update the given pool's RELIC allocation point and `IRewarder` contract. Can only be called by the owner.
@@ -169,7 +187,7 @@ contract Reliquary is Memento, Ownable, Multicall {
             if (lpSupply > 0) {
                 uint256 blocks = block.number - pool.lastRewardBlock;
                 uint256 relicReward = blocks * relicPerBlock() * pool.allocPoint / totalAllocPoint;
-                pool.accRelicPerShare = (pool.accRelicPerShare + (relicReward * ACC_RELIC_PRECISION) / lpSupply).to128());
+                pool.accRelicPerShare = (pool.accRelicPerShare + (relicReward * ACC_RELIC_PRECISION) / lpSupply).to128();
             }
             pool.lastRewardBlock = block.number.to64();
             poolInfo[pid] = pool;
@@ -315,7 +333,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     function curved(uint userAddress, uint pid) public view returns (uint) {
       UserInfo memory user = userInfo[pid][msg.sender];
 
-      uint maturity = block.timestamp - user.entryTime;
+      uint maturity = block.timestamp - user.entry;
 
       return ICurve(poolInfo[pid].curveAddress).curve(maturity);
     }
@@ -365,7 +383,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
     function calculateMean(uint pid) internal view returns (uint) {
       PoolInfo memory pool = poolInfo[pid];
-      uint protocolMaturity = block.timestamp - averageEntry;
+      uint protocolMaturity = block.timestamp - pool.averageEntry;
       return ICurve(poolInfo[pid].curveAddress).curve(maturity);
     }
 
@@ -386,7 +404,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
 
     function _calculateDistanceFromMean(address user, uint8 pid) internal view returns (uint) {
-      uint position = curved(user, pid)
+      uint position = curved(user, pid);
     }
 
     /*
@@ -395,19 +413,25 @@ contract Reliquary is Memento, Ownable, Multicall {
      +
     */
 
-    function _updateAverageEntry(uint pid, uint weight) internal returns (bool) {
-      uint avgTimestamp = poolInfo[pid].averageEntry;
-      uint diff = block.timestamp - avgTimestamp;
-      uint weightedDiff = diff * weight / 1e18;
-      poolInfo[pid].averageEntry += weightedDiff;
+
+    function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
+      PoolInfo storage pool = poolInfo[pid];
+      uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+      uint weight = pool.averageEntry * BASIS_POINTS / lpSupply;
+      uint maturity = block.timestamp - pool.averageEntry;
+      if (kind == Kind.Deposit) {
+        position.averageEntry += (maturity * weight / BASIS_POINTS);
+      } else {
+        position.averageEntry -= (maturity * weight / BASIS_POINTS);
+      }
       return true;
     }
 
-    function _updateEntryTime(uint _amount, uint positionId) internal returns (bool) {
+    function _updateEntry(uint _amount, uint positionId) internal returns (bool) {
       PositionInfo storage position = positionInfo[pid][positionId];
-      uint amountPercent = amount * BASIS_POINTS / position.amount;
-      uint maturity = block.timestamp - position.entryTime;
-      position.entryTime += (maturity * amountPercent / BASIS_POINTS);
+      uint weight = amount * BASIS_POINTS / position.amount;
+      uint maturity = block.timestamp - position.relativeEntry;
+      position.entry += (maturity * weight / BASIS_POINTS);
       return true;
     }
 
