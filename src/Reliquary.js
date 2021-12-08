@@ -21,7 +21,7 @@ async function deployChef(relicAddress) {
 async function returnChef(chefAddress) {
   debugSwitch ? debug(arguments) : false;
   let Reliquary = await ethers.getContractFactory("Reliquary");
-  let chef = await Chef2.attach(chefAddress);
+  let chef = await Reliquary.attach(chefAddress);
   return chef;
 }
 
