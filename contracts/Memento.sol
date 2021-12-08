@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "./OZ/Token/ERC721/ERC721.sol";
+import "./OZ/token/ERC721/ERC721.sol";
 
 contract Memento is ERC721 {
 
@@ -12,7 +12,7 @@ contract Memento is ERC721 {
     return id;
   }
 
-  function mint(to, uint pid) internal returns (bool) {
+  function mint(address to, uint pid) internal returns (bool) {
     uint id = createId(pid);
     _safeMint(to, id);
   }
