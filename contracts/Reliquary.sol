@@ -406,9 +406,9 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     /*
-     + @notice
-     +
-     +
+     + @notice calculates how far the user's position maturity is from the average
+     + @param positionId NFT ID of the position being assessed
+     + @param pid The index of the pool. See `poolInfo`.
     */
 
     function _calculateDistanceFromMean(uint positionId, uint8 pid) internal view returns (Position memory) {
@@ -425,9 +425,9 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     /*
-     +
-     +
-     +
+     + @notice calculates the average position of every token on the curve
+     + @pid pid The index of the pool. See `poolInfo`.
+     + @return the Y value based on X maturity in the context of the curve
     */
 
     function _calculateMean(uint pid) internal view returns (uint) {
@@ -437,19 +437,19 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     /*
-     +
-     +
-     +
+     + @notice calculates the weight of a withdraw/deposit compared to the system total
+     + @param pid The index of the pool. See `poolInfo`.
+     + @param amount the number being weighted
     */
 
-    function _calculateWeight(uint pid, uint depositAmount) internal view returns (uint) {
-      return depositAmount * CURVE_PRECISION / _totalDeposits(pid);
+    function _calculateWeight(uint pid, uint amount) internal view returns (uint) {
+      return amount * CURVE_PRECISION / _totalDeposits(pid);
     }
 
     /*
-     +
-     +
-     +
+     + @notice calculates the % difference between the individual position and the pool's average position
+     + @param positionId the NFT ID of the position being updated
+     + @param pid The index of the pool. See `poolInfo`.
     */
 
     function _calculateDistanceFromMean(uint positionId, uint8 pid) internal view returns (uint) {
@@ -457,15 +457,15 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     /*
-     +
-     +
-     +
+     + @notice updates the average entry time of each token in the pool
+     + @param pid The index of the pool. See `poolInfo`.
+     + @param amount the amount of tokens being accounted for
+     + @param kind the action being performed (deposit / withdrawal)
     */
-
 
     function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
       PoolInfo storage pool = poolInfo[pid];
-      uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+      uint256 lpSupply = _totalDeposits(pid);
       uint weight = pool.averageEntry * BASIS_POINTS / lpSupply;
       uint maturity = block.timestamp - pool.averageEntry;
       if (kind == Kind.Deposit) {
@@ -476,7 +476,13 @@ contract Reliquary is Memento, Ownable, Multicall {
       return true;
     }
 
-    function _updateEntry(uint _amount, uint positionId) internal returns (bool) {
+    /*
+     + @notice updates the user's entry time based on the weight of their deposit or withdrawal
+     + @param amount the amount of the deposit / withdrawal
+     + @param positionId the NFT ID of the position being updated
+    */
+
+    function _updateEntry(uint amount, uint positionId) internal returns (bool) {
       PositionInfo storage position = positionInfo[pid][positionId];
       uint weight = amount * BASIS_POINTS / position.amount;
       uint maturity = block.timestamp - position.relativeEntry;
@@ -485,9 +491,9 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     /*
-     +
-     +
-     +
+     + @notice returns the total deposits of the pool's token
+     + @param pid The index of the pool. See `poolInfo`.
+     + @return the amount of pool tokens held by the contract
     */
 
     function _totalDeposits(uint8 pid) internal view returns (uint256) {
