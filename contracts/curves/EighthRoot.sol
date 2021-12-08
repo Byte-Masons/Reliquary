@@ -4,7 +4,7 @@ library EighthRoot {
 
   function _curve(uint maturity) internal returns (uint) {
     uint juniorCurve = sqrt(maturity / 4) / 5;
-    uint seniorCurve = sqrt(Math.sqrt(maturity)) / 2;
+    uint seniorCurve = sqrt(sqrt(maturity)) / 2;
 
     return min(juniorCurve, seniorCurve);
   }

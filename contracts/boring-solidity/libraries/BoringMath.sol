@@ -17,17 +17,17 @@ library BoringMath {
     }
 
     function to128(uint256 a) internal pure returns (uint128 c) {
-        require(a <= uint128(-1), "BoringMath: uint128 Overflow");
+        require(a <= type(uint128).max, "BoringMath: uint128 Overflow");
         c = uint128(a);
     }
 
     function to64(uint256 a) internal pure returns (uint64 c) {
-        require(a <= uint64(-1), "BoringMath: uint64 Overflow");
+        require(a <= type(uint64).max, "BoringMath: uint64 Overflow");
         c = uint64(a);
     }
 
     function to32(uint256 a) internal pure returns (uint32 c) {
-        require(a <= uint32(-1), "BoringMath: uint32 Overflow");
+        require(a <= type(uint32).max, "BoringMath: uint32 Overflow");
         c = uint32(a);
     }
 }
