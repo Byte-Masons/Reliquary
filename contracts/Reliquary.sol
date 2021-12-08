@@ -11,6 +11,10 @@ import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
 import "./Memento.sol";
 
+interface ICurve {
+    function curve(uint maturity) external returns (uint);
+}
+
 /*
  + @title Reliquary
  + @author Justin Bebis & the Byte Masons team
