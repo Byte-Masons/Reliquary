@@ -17,6 +17,12 @@ interface ICurve {
 }
 
 /*
+ + NOTE: Maybe make BASE_RELIC_PER_BLOCK an upgradable function call so we can curve that too
+ + NOTE: Add UniV3's NFT metadata standard so marketplace frontends can return json data
+ + NOTE: Work on quality of life abstractions and position management
+*/
+
+/*
  + @title Reliquary
  + @author Justin Bebis & the Byte Masons team
  + @notice Built on the MasterChefV2 system authored by Sushi's team
@@ -195,10 +201,6 @@ contract Reliquary is Memento, Ownable, Multicall {
         pending = _modifyEmissions(rawPending, positionId, _pid);
     }
 
-    function createNewPosition(address to, uint256 pid) public returns (bytes32) {
-      mint(to, pid);
-    }
-
     /*
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
@@ -228,6 +230,17 @@ contract Reliquary is Memento, Ownable, Multicall {
             poolInfo[pid] = pool;
             emit LogUpdatePool(pid, pool.lastRewardTime, lpSupply, pool.accRelicPerShare);
         }
+    }
+
+    function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public returns (uint) {
+      uint id = createNewPosition(to, pid);
+      deposit(pid, amount, positionId);
+      return id;
+    }
+
+    function createNewPosition(address to, uint256 pid) public returns (uint) {
+      uint id = mint(to, pid);
+      return id;
     }
 
     /*

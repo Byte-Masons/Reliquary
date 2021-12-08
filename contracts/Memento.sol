@@ -12,9 +12,10 @@ contract Memento is ERC721("Relic Position", "MEMENTO") {
     return id;
   }
 
-  function mint(address to, uint pid) internal returns (bool) {
+  function mint(address to, uint pid) internal returns (uint) {
     uint id = createId(pid);
     _safeMint(to, id);
+    return id;
   }
 
   function burn(uint tokenId) internal returns (bool) {
