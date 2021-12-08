@@ -428,8 +428,8 @@
       ]
     },
     "C:\\Users\\ethjo\\Desktop\\Reliquary\\contracts\\Reliquary.sol": {
-      "lastModificationDate": 1638932249686,
-      "contentHash": "759a4d71f16994d2366f62d19e4b60eb",
+      "lastModificationDate": 1638984683518,
+      "contentHash": "a3f2c6e108d2cca3f0904f4148f494d9",
       "sourceName": "contracts/Reliquary.sol",
       "solcConfig": {
         "version": "0.8.0",
@@ -569,8 +569,8 @@
       ]
     },
     "C:\\Users\\ethjo\\Desktop\\Reliquary\\contracts\\Memento.sol": {
-      "lastModificationDate": 1638930445299,
-      "contentHash": "59223dfe6f6134227320363bed9c9438",
+      "lastModificationDate": 1638949149668,
+      "contentHash": "9eaa12f7e32c4cbdbb7c334c38713ee1",
       "sourceName": "contracts/Memento.sol",
       "solcConfig": {
         "version": "0.8.2",
