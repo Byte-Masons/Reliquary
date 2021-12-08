@@ -6,9 +6,14 @@ pragma experimental ABIEncoderV2;
 import "./boring-solidity/libraries/BoringMath.sol";
 import "./OZ/utils/Multicall.sol";
 import "./OZ/access/Ownable.sol";
+import "./OZ/token/ERC20/utils/SafeERC20.sol";
 import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
 import "./Memento.sol";
+
+interface ICurve {
+    function curve(uint maturity) external returns (uint);
+}
 
 /*
  + @title Reliquary
@@ -28,7 +33,7 @@ import "./Memento.sol";
 contract Reliquary is Memento, Ownable, Multicall {
     using BoringMath for uint256;
     using BoringMath128 for uint128;
-    using BoringERC20 for IERC20;
+    using SafeERC20 for IERC20;
     using SignedSafeMath for int256;
 
     /*
@@ -164,7 +169,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         totalAllocPoint = (totalAllocPoint - poolInfo[_pid].allocPoint) + _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint.to64();
         if (overwriteRewarder) { rewarder[_pid] = _rewarder; }
-        if (overwriteCurve) { poolInfo[_pid].curveAddress = _curve }
+        if (overwriteCurve) { poolInfo[_pid].curveAddress = _curve; }
         emit LogSetPool(_pid, _allocPoint, overwrite ? _rewarder : rewarder[_pid], overwrite);
     }
 
@@ -180,8 +185,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint256 accRelicPerShare = pool.accRelicPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTime && lpSupply != 0) {
-            uint256 seconds = block.timestamp - pool.lastRewardTime;
-            uint256 relicReward = ((seconds * BASE_RELIC_PER_SECOND) * pool.allocPoint) / totalAllocPoint;
+            uint256 secs = block.timestamp - pool.lastRewardTime;
+            uint256 relicReward = ((secs * BASE_RELIC_PER_SECOND) * pool.allocPoint) / totalAllocPoint;
             accRelicPerShare = ((accRelicPerShare + relicReward) * ACC_RELIC_PRECISION) / lpSupply;
         }
         uint256 rawPending = ((int256(position.amount * accRelicPerShare) / ACC_RELIC_PRECISION) - position.rewardDebt).toUInt256();
@@ -213,8 +218,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         if (block.timestamp > pool.lastRewardTime) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
             if (lpSupply > 0) {
-                uint256 seconds = block.timestamp - pool.lastRewardTime;
-                uint256 relicReward = seconds * BASE_RELIC_PER_SECOND * pool.allocPoint / totalAllocPoint;
+                uint256 secs = block.timestamp - pool.lastRewardTime;
+                uint256 relicReward = secs * BASE_RELIC_PER_SECOND * pool.allocPoint / totalAllocPoint;
                 pool.accRelicPerShare = (pool.accRelicPerShare + (relicReward * ACC_RELIC_PRECISION) / lpSupply).to128();
             }
             pool.lastRewardTime = Second.timestamp.to64();
