@@ -7,7 +7,7 @@ contract Memento is ERC721 {
   mapping (uint => uint) public nonces;
 
   function createId(uint pid) internal returns (uint256) {
-    uint id = uint256(keccack256(abi.encodePacked(pid, nonces[pid])));
+    uint id = uint256(keccak256(abi.encodePacked(pid, nonces[pid])));
     nonces[pid]++;
     return id;
   }
@@ -15,6 +15,11 @@ contract Memento is ERC721 {
   function mint(address to, uint pid) internal returns (bool) {
     uint id = createId(pid);
     _safeMint(to, id);
+  }
+
+  function burn(uint tokenId) internal returns (bool) {
+    _burn(tokenId);
+    return true;
   }
 
 }
