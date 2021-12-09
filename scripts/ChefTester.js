@@ -8,7 +8,7 @@ async function main() {
   let relicToken = await reaper.deployTestToken("RELIC", "RELIC");
   let chef = await relic.deployChef(relicToken.address);
 
-  let info = await chef.getGlobalInfo(chef.address);
+  let info = await relic.getGlobalInfo(chef.address);
   console.log(info);
 }
 

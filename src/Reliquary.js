@@ -25,7 +25,6 @@ async function getGlobalInfo(chefAddress) {
   let chef = await returnChef(chefAddress);
   let globalInfo = {
     totalAllocPoint: await chef.totalAllocPoint(),
-    relicPerBlock: await chef.BASE_RELIC_PER_BLOCK(),
     chefToken: await chef.RELIC()
   }
   return globalInfo;
