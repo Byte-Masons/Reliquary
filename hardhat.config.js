@@ -36,18 +36,18 @@ module.exports = {
         version: "0.7.5"
       },
       {
-        version: "0.8.0"
+        version: "0.8.0",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
       },
       {
         version: "0.8.2"
       }
-    ],
-    settings: {
-      optimizer: {
-        enabled: false,
-        runs:200
-      }
-    }
+    ]
   },
   paths: {
     sources: "./contracts",
