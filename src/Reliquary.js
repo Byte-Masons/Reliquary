@@ -30,10 +30,29 @@ async function getGlobalInfo(chefAddress) {
   return globalInfo;
 }
 
+async function deployRewarder(multiplier, token, chefAddress) {
+  let Rewarder = await ethers.getContractFactory("RewarderMock");
+  let rewarder = await Rewarder.deploy(multiplier, token, chefAddress);
+  return rewarder;
+}
+
+async function deployCurve() {
+  let Curve = await ethers.getContractFactory("EighthRoot");
+  let curve = await Curve.deploy();
+  return curve;
+}
+
 async function viewPoolInfo(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
   let poolInfo = await chef.poolInfo(pid);
-  return poolInfo;
+  let obj = {
+    "accRelicPerShare": poolInfo[0].toString(),
+    "lastRewardTime": poolInfo[1].toString(),
+    "allocPoint": poolInfo[2].toString(),
+    "averageEntry": poolInfo[3].toString(),
+    "curveAddress": poolInfo[4]
+  }
+  return obj;
 }
 
 async function viewLpToken(chefAddress, pid) {
@@ -50,7 +69,7 @@ async function viewRewarder(chefAddress, pid) {
 
 async function getPositionInfo(chefAddress, pid, positionId) {
   let chef = await returnChef(chefAddress);
-  let userInfo = await chef.userInfo(pid, positionId);
+  let userInfo = await chef.positionInfo(pid, positionId);
   return userInfo;
 }
 
@@ -96,12 +115,12 @@ async function updatePool(chefAddress, pid) {
 
 async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
   let chef = await returnChef(chefAddress);
-  let id = await chef.createNewPositionAndDeposit(to, pid, amount);
-  await id.wait();
-  return id;
+  let tx = await chef.createPositionAndDeposit(to, pid, amount);
+  let receipt = await tx.wait();
+  return receipt;
 }
 
-async function createNewPosition(chefAddress, to, pid) {
+async function createNewPosition(chefAddress, to, pid, amount) {
   let chef = await returnChef(chefAddress);
   let id = await chef.createNewPosition(to, pid, amount);
   await id.wait();
@@ -150,9 +169,29 @@ async function curved(chefAddress, positionId, pid) {
   return curvedValue;
 }
 
+async function tokenOfOwnerByIndex(chefAddress, ownerAddress, index) {
+  let chef = await returnChef(chefAddress);
+  let tokenId = await chef.tokenOfOwnerByIndex(ownerAddress, index);
+  return tokenId;
+}
+
+async function tokenByIndex(chefAddress, index) {
+  let chef = await returnChef(chefAddress);
+  let tokenId = await chef.tokenByIndex(index);
+  return tokenId;
+}
+
+async function totalPositions(chefAddress) {
+  let chef = await returnChef(chefAddress);
+  let supply = chef.totalSupply();
+  return supply;
+}
+
 module.exports = {
   debug,
   deployChef,
+  deployRewarder,
+  deployCurve,
   returnChef,
   getGlobalInfo,
   viewPoolInfo,
