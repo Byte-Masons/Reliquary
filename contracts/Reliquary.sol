@@ -234,6 +234,11 @@ contract Reliquary is Memento, Ownable, Multicall {
         }
     }
 
+    function getPoolIdForPositionId(uint256 positionId) external view returns (uint256) {
+        PositionInfo memory position = positionInfo[positionId];
+        return position.poolId;
+    }
+
     function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public returns (uint) {
       uint id = createNewPosition(to, pid);
       deposit(amount, id);
