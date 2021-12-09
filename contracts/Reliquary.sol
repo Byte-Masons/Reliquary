@@ -470,14 +470,19 @@ contract Reliquary is Memento, Ownable, Multicall {
     function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
       PoolInfo storage pool = poolInfo[pid];
       uint256 lpSupply = _totalDeposits(pid);
-      uint weight = pool.averageEntry * BASIS_POINTS / lpSupply;
-      uint maturity = block.timestamp - pool.averageEntry;
-      if (kind == Kind.DEPOSIT) {
-        pool.averageEntry += (maturity * weight / BASIS_POINTS);
+      if (lpSupply == 0) {
+        pool.averageEntry = block.timestamp;
+        return true;
       } else {
-        pool.averageEntry -= (maturity * weight / BASIS_POINTS);
+        uint weight = pool.averageEntry * BASIS_POINTS / lpSupply;
+        uint maturity = block.timestamp - pool.averageEntry;
+        if (kind == Kind.DEPOSIT) {
+          pool.averageEntry += (maturity * weight / BASIS_POINTS);
+        } else {
+          pool.averageEntry -= (maturity * weight / BASIS_POINTS);
+        }
+        return true;
       }
-      return true;
     }
 
     /*
