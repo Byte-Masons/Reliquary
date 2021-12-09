@@ -1,11 +1,6 @@
 const tokens = require("../tokens.json");
 const reaper = require("./ReaperSDK.js");
 
-<<<<<<< HEAD
-=======
-let debugSwitch = false;
-
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
 function debug(arguments) {
   let argumentTypes;
   for(let i=0; i<arguments.length; i++) {
@@ -15,30 +10,18 @@ function debug(arguments) {
 }
 
 async function deployChef(relicAddress) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let Reliquary = await ethers.getContractFactory("Reliquary");
   let chef = await Reliquary.deploy(relicAddress);
   return chef;
 }
 
 async function returnChef(chefAddress) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let Reliquary = await ethers.getContractFactory("Reliquary");
   let chef = await Reliquary.attach(chefAddress);
   return chef;
 }
 
 async function getGlobalInfo(chefAddress) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let globalInfo = {
     totalAllocPoint: await chef.totalAllocPoint(),
@@ -49,40 +32,24 @@ async function getGlobalInfo(chefAddress) {
 }
 
 async function viewPoolInfo(chefAddress, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let poolInfo = await chef.poolInfo(pid);
   return poolInfo;
 }
 
 async function viewLpToken(chefAddress, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let lpToken = await chef.lpToken(pid);
   return lpToken;
 }
 
 async function viewRewarder(chefAddress, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let rewarder = await chef.rewarder(pid);
   return rewarder;
 }
 
 async function getPositionInfo(chefAddress, pid, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let userInfo = await chef.userInfo(pid, positionId);
   return userInfo;
@@ -99,10 +66,6 @@ async function getPoolCount(chefAddress) {
 }
 
 async function add(chefAddress, allocPoint, lpToken, rewarder, curve) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.add(allocPoint, lpToken, rewarder, curve);
   let receipt = await tx.wait();
@@ -110,10 +73,6 @@ async function add(chefAddress, allocPoint, lpToken, rewarder, curve) {
 }
 
 async function set(chefAddress, pid, rewarder, curve, overwriteRewarder, overwriteCurve) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.set(pic, rewarder, overwrite);
   let receipt = await tx.wait();
@@ -121,20 +80,12 @@ async function set(chefAddress, pid, rewarder, curve, overwriteRewarder, overwri
 }
 
 async function pendingRelic(chefAddress, pid, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let pending = await chef.pendingRelic(pid, positoinId);
   return pending;
 }
 
 async function massUpdatePools(chefAddress, pids) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.massUpdatePools(pids)
   let receipt = await tx.wait();
@@ -142,10 +93,6 @@ async function massUpdatePools(chefAddress, pids) {
 }
 
 async function updatePool(chefAddress, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let pool = await chef.updatePool(pid);
   await pool.wait();
@@ -153,10 +100,6 @@ async function updatePool(chefAddress, pid) {
 }
 
 async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let id = await chef.createNewPositionAndDeposit(to, pid, amount);
   await id.wait();
@@ -164,10 +107,6 @@ async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
 }
 
 async function createNewPosition(chefAddress, to, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let id = await chef.createNewPosition(to, pid, amount);
   await id.wait();
@@ -175,10 +114,6 @@ async function createNewPosition(chefAddress, to, pid) {
 }
 
 async function deposit(chefAddress, pid, amount, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.deposit(pid, amount, positionId);
   let receipt = await tx.wait();
@@ -186,10 +121,6 @@ async function deposit(chefAddress, pid, amount, positionId) {
 }
 
 async function withdraw(chefAddress, pid, amount, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.withdraw(pid, amount, positionId);
   let receipt = await tx.wait();
@@ -197,10 +128,6 @@ async function withdraw(chefAddress, pid, amount, positionId) {
 }
 
 async function harvest(chefAddress, pid, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.harvest(pid, positionId);
   let receipt = await tx.wait();
@@ -208,10 +135,6 @@ async function harvest(chefAddress, pid, positionId) {
 }
 
 async function withdrawAndHarvest(chefAddress, pid, amount, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.harvest(pid, amount, positionId);
   let receipt = await tx.wait();
@@ -219,10 +142,6 @@ async function withdrawAndHarvest(chefAddress, pid, amount, positionId) {
 }
 
 async function emergencyWithdraw(chefAddress, pid, positionId) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let tx = await chef.emergencyWithdraw(pid, positionId);
   let receipt = await tx.wait();
@@ -230,10 +149,6 @@ async function emergencyWithdraw(chefAddress, pid, positionId) {
 }
 
 async function curved(chefAddress, positionId, pid) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let curvedValue = await chef.curved(positionId, pid);
   await curvedValue.wait();
