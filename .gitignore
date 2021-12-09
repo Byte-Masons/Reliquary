@@ -2,3 +2,4 @@ artifacts/
 cache/
 secrets.json
 node_modules/
+artifacts/
