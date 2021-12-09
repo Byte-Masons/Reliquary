@@ -56,10 +56,6 @@ async function getPositionInfo(chefAddress, pid, positionId) {
 }
 
 async function getPoolCount(chefAddress) {
-<<<<<<< HEAD
-=======
-  debugSwitch ? debug(arguments) : false;
->>>>>>> 9785811f2aceb05363f3c60c2a0a434d3778461e
   let chef = await returnChef(chefAddress);
   let poolLength = await chef.poolLength();
   return poolLength;
