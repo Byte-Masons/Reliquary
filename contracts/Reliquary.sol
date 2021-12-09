@@ -55,6 +55,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
         uint entry; // position owner's relative entry into the pool.
         bool exempt; // exemption from vesting cliff.
+	uint poolId;
     }
 
     /*
@@ -101,7 +102,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     IRewarder[] public rewarder;
 
     /// @notice Info of each staked position
-    mapping (uint256 => mapping (uint256 => PositionInfo)) public positionInfo;
+    mapping (uint256 => PositionInfo) public positionInfo;
 
     /// @notice ensures the same token isn't added to the contract twice
     mapping (address => bool) public hasBeenAdded;
@@ -187,9 +188,10 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param _positionId ID of the position.
      + @return pending RELIC reward for a given position owner.
     */
-    function pendingRelic(uint256 _pid, uint256 positionId) external view returns (uint256 pending) {
+    function pendingRelic(uint256 positionId) external view returns (uint256 pending) {
+        PositionInfo storage position = positionInfo[positionId];
+        uint _pid = position.poolId;
         PoolInfo memory pool = poolInfo[_pid];
-        PositionInfo storage position = positionInfo[_pid][positionId];
         uint256 accRelicPerShare = pool.accRelicPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTime && lpSupply != 0) {
@@ -239,7 +241,8 @@ contract Reliquary is Memento, Ownable, Multicall {
     }
 
     function createNewPosition(address to, uint256 pid) public returns (uint) {
-      uint id = mint(to, pid);
+      uint id = mint(to);
+      positionInfo[id].poolId = pid;
       return id;
     }
 
@@ -251,8 +254,8 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
     function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.DEPOSIT);
-        PositionInfo storage position = positionInfo[pid][positionId];
+        _updateAverageEntry(pid, Kind.DEPOSIT);
+        PositionInfo storage position = positionInfo[positionId];
         address to = ownerOf(positionId);
 
         // Effects
@@ -265,7 +268,7 @@ contract Reliquary is Memento, Ownable, Multicall {
             _rewarder.onRelicReward(pid, to, to, 0, position.amount);
         }
 
-        _updateEntry(pid, amount, positionId);
+        _updateEntry(amount, positionId);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, pid, amount, to, positionId);
@@ -277,10 +280,11 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param amount LP token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function withdraw(uint256 pid, uint256 amount, uint256 positionId) public {
+    function withdraw(uint256 amount, uint256 positionId) public {
+        PositionInfo storage position = positionInfo[positionId];
+        uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
-        PositionInfo storage position = positionInfo[pid][positionId];
+        _updateAverageEntry(pid, Kind.WITHDRAW);
         address to = ownerOf(positionId);
 
         // Effects
@@ -293,8 +297,8 @@ contract Reliquary is Memento, Ownable, Multicall {
             _rewarder.onRelicReward(pid, msg.sender, to, 0, position.amount);
         }
 
-        _updateEntry(pid, amount, positionId);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+        _updateEntry(amount, positionId);
+        _updateAverageEntry(pid, Kind.WITHDRAW);
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
@@ -305,9 +309,10 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of RELIC rewards.
     */
-    function harvest(uint256 pid, uint256 positionId) public {
+    function harvest(uint256 positionId) public {
+        PositionInfo storage position = positionInfo[positionId];
+        uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
@@ -335,10 +340,11 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param amount token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens and RELIC rewards.
     */
-    function withdrawAndHarvest(uint256 pid, uint256 amount, uint256 positionId) public {
+    function withdrawAndHarvest(uint256 amount, uint256 positionId) public {
+        PositionInfo storage position = positionInfo[positionId];
+        uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
-        PositionInfo storage position = positionInfo[pid][positionId];
+        _updateAverageEntry(pid, Kind.WITHDRAW);
         address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
@@ -356,7 +362,7 @@ contract Reliquary is Memento, Ownable, Multicall {
             _rewarder.onRelicReward(pid, msg.sender, to, _curvedRelic, position.amount);
         }
 
-        _updateEntry(pid, amount, positionId);
+        _updateEntry(amount, positionId);
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
@@ -368,11 +374,12 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint256 pid, uint256 positionId) public {
-        PositionInfo storage position = positionInfo[pid][positionId];
+    function emergencyWithdraw(uint256 positionId) public {
+        PositionInfo storage position = positionInfo[positionId];
         uint256 amount = position.amount;
         address to = ownerOf(positionId);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+        uint pid = position.poolId;
+        _updateAverageEntry(pid, Kind.WITHDRAW);
         position.amount = 0;
         position.rewardDebt = 0;
 
@@ -393,9 +400,9 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
     */
 
-    function curved(uint positionId, uint pid) public view returns (uint) {
-      PositionInfo memory position = positionInfo[pid][positionId];
-      PoolInfo memory pool = poolInfo[pid];
+    function curved(uint positionId) public view returns (uint) {
+      PositionInfo memory position = positionInfo[positionId];
+      PoolInfo memory pool = poolInfo[position.poolId];
 
       uint maturity = block.timestamp - position.entry;
 
@@ -428,7 +435,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
 
     function _calculateDistanceFromMean(uint positionId, uint pid) internal view returns (Position memory) {
-      uint position = curved(positionId, pid);
+      uint position = curved(positionId);
       uint mean = _calculateMean(pid);
 
       if (position < mean) {
@@ -467,7 +474,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param kind the action being performed (deposit / withdrawal)
     */
 
-    function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
+    function _updateAverageEntry(uint pid, Kind kind) internal returns (bool) {
       PoolInfo storage pool = poolInfo[pid];
       uint256 lpSupply = _totalDeposits(pid);
       if (lpSupply == 0) {
@@ -492,8 +499,8 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param positionId the NFT ID of the position being updated
     */
 
-    function _updateEntry(uint pid, uint amount, uint positionId) internal returns (bool) {
-      PositionInfo storage position = positionInfo[pid][positionId];
+    function _updateEntry(uint amount, uint positionId) internal returns (bool) {
+      PositionInfo storage position = positionInfo[positionId];
       uint weight = amount * BASIS_POINTS / position.amount;
       uint maturity = block.timestamp - position.entry;
       position.entry += (maturity * weight / BASIS_POINTS);

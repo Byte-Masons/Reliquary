@@ -46,14 +46,16 @@ describe("Reliquary", function () {
   describe("PendingRelic", function () {
     // take into account curve
     it("PendingRelic should equal ExpectedRelic", async function () {
-      await add(this.chef.address, 100, this.lp.address, this.rewarder.address, this.curve.address);
+      await add(this.chef.address, 100, this.lp.address, "0x0000000000000000000000000000000000000000", this.curve.address);
       await this.lp.approve(this.chef.address, ethers.utils.parseEther("1000"));
-      let log = await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1000"));
-      await ethers.provider.send("evm_increaseTime", [31557600]);
-      await ethers.provider.send("evm_mine", []);
-      let log2 = await this.chef.updatePool(0);
-      await ethers.provider.send("evm_mine", []);
-      let pendingRelic = await this.chef.pendingRelic(0, 0);
+      await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1000"));
+      await network.provider.send("evm_increaseTime", [31557600]);
+      await network.provider.send("evm_mine");
+      await this.chef.updatePool(0);
+      await network.provider.send("evm_mine");
+      const chefAlice = this.chef.connect(alice);
+      const firstOwnedToken = await chefAlice.tokenOfOwnerByIndex(alice.address, 0);
+      let pendingRelic = await this.chef.pendingRelic(firstOwnedToken);
       console.log(pendingRelic.toString());
     })
     it("When block is lastRewardBlock", async function () {})
