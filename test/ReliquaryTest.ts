@@ -3,18 +3,22 @@ const { debug, deployChef, returnChef, getGlobalInfo, viewPoolInfo, viewLpToken,
   getPoolCount, add, set, pendingRelic, massUpdatePools, updatePool, createNewPositionAndDeposit, createNewPosition,
   deposit, withdraw, harvest, withdrawAndHarvest, emrgencyWithdraw, curved } = require("../src/Reliquary.js");
 
+let owner, alice, bob;
+
 describe("Reliquary", function () {
   beforeEach(async function () {
-    let [owner, alice, bob] = await ethers.getSigners();
+    [owner, alice, bob] = await ethers.getSigners();
 
     const ERC20Mock = await ethers.getContractFactory("ERC20Mock");
-    this.relic = await ERC20Mock.deploy("Relic", "RELIC", owner.address, 1000000);
-    this.lp = await ERC20Mock.deploy("LP Token", "LPT", owner.address, 1000000);
+    const Relic = await ethers.getContractFactory("Relic");
+    this.relic = await Relic.deploy("Relic", "RELIC");
+    this.lp = await ERC20Mock.deploy("LP Token", "LPT", owner.address, ethers.utils.parseEther("1000"));
 
     const EighthRoot = await ethers.getContractFactory("EighthRoot");
     this.curve = await EighthRoot.deploy();
 
     this.chef = await deployChef(this.relic.address);
+    await this.relic.mint(this.chef.address, ethers.utils.parseEther("100000000"));
     const Rewarder = await ethers.getContractFactory("RewarderMock");
     this.rewarder = await Rewarder.deploy(1, this.relic.address, this.chef.address);
   })
@@ -27,16 +31,34 @@ describe("Reliquary", function () {
   })
 
   describe("Set", function () {
-    it("Should emit event LogSetPool", async function () {})
-    it("Should revert if invalid pool", async function () {})
+    it("Should emit event LogSetPool", async function () {
+      await add(this.chef.address, 100, this.lp.address, this.rewarder.address, this.curve.address);
+      await expect(this.chef.set(0, 100, this.rewarder.address, this.curve.address, false, false)).to.emit(this.chef, "LogSetPool");
+      await expect(this.chef.set(0, 100, this.relic.address, this.curve.address, true, false)).to.emit(this.chef, "LogSetPool").
+        withArgs(0, 100, this.relic.address, this.curve.address);
+    })
+
+    it("Should revert if invalid pool", async function () {
+      await expect(this.chef.set(0, 100, this.rewarder.address, this.curve.address, false, false)).to.be.reverted;
+    })
   })
 
   describe("PendingRelic", function () {
     // take into account curve
-    it("PendingRelic should equal ExpectedRelic", async function () {})
+    it("PendingRelic should equal ExpectedRelic", async function () {
+      await add(this.chef.address, 100, this.lp.address, this.rewarder.address, this.curve.address);
+      await this.lp.approve(this.chef.address, ethers.utils.parseEther("1000"));
+      let log = await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1000"));
+      await ethers.provider.send("evm_increaseTime", [31557600]);
+      await ethers.provider.send("evm_mine", []);
+      let log2 = await this.chef.updatePool(0);
+      await ethers.provider.send("evm_mine", []);
+      let pendingRelic = await this.chef.pendingRelic(0, 0);
+      console.log(pendingRelic.toString());
+    })
     it("When block is lastRewardBlock", async function () {})
   })
-
+/*
   describe("MassUpdatePools", function () {
     it("Should call updatePool", async function () {})
     it("Updating invalid pools should fail", async function () {})
@@ -68,5 +90,5 @@ describe("Reliquary", function () {
 
   describe("EmergencyWithdraw", function () {
     it("Should emit event EmergencyWithdraw", async function () {})
-  })
+  })*/
 })
