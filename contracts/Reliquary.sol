@@ -236,7 +236,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
     function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public returns (uint) {
       uint id = createNewPosition(to, pid);
-      deposit(pid, amount, id);
+      deposit(amount, id);
       return id;
     }
 
@@ -252,10 +252,11 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
+    function deposit(uint256 amount, uint256 positionId) public {
+        PositionInfo storage position = positionInfo[positionId];
+        uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, Kind.DEPOSIT);
-        PositionInfo storage position = positionInfo[positionId];
         address to = ownerOf(positionId);
 
         // Effects
