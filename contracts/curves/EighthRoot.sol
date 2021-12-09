@@ -2,7 +2,7 @@ pragma solidity ^0.8.0;
 
 library EighthRoot {
 
-  function _curve(uint maturity) internal returns (uint) {
+  function curve(uint maturity) external pure returns (uint) {
     uint juniorCurve = sqrt(maturity / 4) / 5;
     uint seniorCurve = sqrt(sqrt(maturity)) / 2;
 
