@@ -55,7 +55,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
         uint entry; // position owner's relative entry into the pool.
         bool exempt; // exemption from vesting cliff.
-	uint poolId;
+        uint poolId;
     }
 
     /*
