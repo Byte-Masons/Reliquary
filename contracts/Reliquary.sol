@@ -261,7 +261,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         PositionInfo storage position = positionInfo[positionId];
         uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, Kind.DEPOSIT);
+        _updateAverageEntry(pid, amount, Kind.DEPOSIT);
         address to = ownerOf(positionId);
 
         // Effects
@@ -290,7 +290,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         PositionInfo storage position = positionInfo[positionId];
         uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, Kind.WITHDRAW);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         address to = ownerOf(positionId);
 
         // Effects
@@ -304,7 +304,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         }
 
         _updateEntry(amount, positionId);
-        _updateAverageEntry(pid, Kind.WITHDRAW);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
@@ -350,7 +350,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         PositionInfo storage position = positionInfo[positionId];
         uint pid = position.poolId;
         PoolInfo memory pool = updatePool(pid);
-        _updateAverageEntry(pid, Kind.WITHDRAW);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
@@ -385,7 +385,7 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint256 amount = position.amount;
         address to = ownerOf(positionId);
         uint pid = position.poolId;
-        _updateAverageEntry(pid, Kind.WITHDRAW);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         position.amount = 0;
         position.rewardDebt = 0;
 
@@ -470,7 +470,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param kind the action being performed (deposit / withdrawal)
     */
 
-    function _updateAverageEntry(uint pid, Kind kind) internal returns (bool) {
+    function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
       PoolInfo storage pool = poolInfo[pid];
       uint256 lpSupply = _totalDeposits(pid);
       if (lpSupply == 0) {
