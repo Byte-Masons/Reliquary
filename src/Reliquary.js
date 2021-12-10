@@ -70,7 +70,12 @@ async function viewRewarder(chefAddress, pid) {
 async function getPositionInfo(chefAddress, pid, positionId) {
   let chef = await returnChef(chefAddress);
   let userInfo = await chef.positionInfo(pid, positionId);
-  return userInfo;
+  return {
+    "amount": userInfo[0].toString(),
+    "rewardDebt": userInfo[1].toString(),
+    "entry": userInfo[2].toString(),
+    "exempt": userInfo[3]
+  };
 }
 
 async function getPoolCount(chefAddress) {
@@ -95,7 +100,7 @@ async function set(chefAddress, pid, rewarder, curve, overwriteRewarder, overwri
 
 async function pendingRelic(chefAddress, pid, positionId) {
   let chef = await returnChef(chefAddress);
-  let pending = await chef.pendingRelic(pid, positoinId);
+  let pending = await chef.pendingRelic(pid, positionId);
   return pending;
 }
 
@@ -108,9 +113,9 @@ async function massUpdatePools(chefAddress, pids) {
 
 async function updatePool(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
-  let pool = await chef.updatePool(pid);
-  await pool.wait();
-  return pool;
+  let tx = await chef.updatePool(pid);
+  let receipt = await tx.wait();
+  return receipt;
 }
 
 async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
@@ -192,6 +197,9 @@ module.exports = {
   deployChef,
   deployRewarder,
   deployCurve,
+  tokenOfOwnerByIndex,
+  tokenByIndex,
+  totalPositions,
   returnChef,
   getGlobalInfo,
   viewPoolInfo,
