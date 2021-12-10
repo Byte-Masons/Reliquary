@@ -13,7 +13,7 @@ contract RewarderMock is IRewarder {
     uint256 private constant REWARD_TOKEN_DIVISOR = 1e18;
     address private immutable MASTERCHEF_V2;
 
-    constructor (uint256 _rewardMultiplier, IERC20 _rewardToken, address _MASTERCHEF_V2) public {
+    constructor (uint256 _rewardMultiplier, IERC20 _rewardToken, address _MASTERCHEF_V2) {
         rewardMultiplier = _rewardMultiplier;
         rewardToken = _rewardToken;
         MASTERCHEF_V2 = _MASTERCHEF_V2;
