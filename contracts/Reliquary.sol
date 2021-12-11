@@ -239,7 +239,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
         }
     }
 
-    function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public nonReentrant returns (uint) {
+    function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public returns (uint) {
       uint id = createNewPosition(to, pid);
       deposit(pid, amount, id);
       return id;
@@ -256,7 +256,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
+    function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
         require(amount > 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
@@ -285,7 +285,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
      + @param amount LP token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function withdraw(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
+    function withdraw(uint256 pid, uint256 amount, uint256 positionId) public {
         require(ownerOf(positionId) == msg.sender, "you do not own this position");
         require(amount > 0, "withdrawing 0 amount");
         PoolInfo memory pool = updatePool(pid);
@@ -314,7 +314,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of RELIC rewards.
     */
-    function harvest(uint256 pid, uint256 positionId) public nonReentrant {
+    function harvest(uint256 pid, uint256 positionId) public {
         require(ownerOf(positionId) == msg.sender, "you do not own this position");
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
@@ -382,7 +382,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint256 pid, uint256 positionId) public nonReentrant {
+    function emergencyWithdraw(uint256 pid, uint256 positionId) public {
         require(ownerOf(positionId) == msg.sender, "you do not own this position");
         PositionInfo storage position = positionInfo[pid][positionId];
         uint256 amount = position.amount;
