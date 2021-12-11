@@ -24,7 +24,7 @@ interface ICurve {
 
 /*
  + @title Reliquary
- + @author Justin Bebis, Zokunei & the Byte Masons team
+ + @author Justin Bebis & the Byte Masons team
  + @notice Built on the MasterChefV2 system authored by Sushi's team
  +
  + @notice This system is designed to modify Masterchef accounting logic such that
@@ -112,6 +112,7 @@ contract Reliquary is Memento, Ownable, Multicall {
 
     uint256 private constant BASE_RELIC_PER_SECOND = 1e12;
     uint256 private constant ACC_RELIC_PRECISION = 1e12;
+    uint256 private constant CURVE_PRECISION = 1e18;
     uint256 private constant BASIS_POINTS = 10000;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, address indexed to, uint positionId);
@@ -141,7 +142,6 @@ contract Reliquary is Memento, Ownable, Multicall {
     */
     function add(uint256 allocPoint, IERC20 _lpToken, IRewarder _rewarder, ICurve _curve) public onlyOwner {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
-        require(_lpToken != RELIC, "same token");
         uint256 lastRewardTime = _timestamp();
         totalAllocPoint = (totalAllocPoint + allocPoint);
         lpToken.push(_lpToken);
@@ -196,8 +196,8 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
             uint256 secs = _timestamp() - pool.lastRewardTime;
-            uint256 relicReward = secs * BASE_RELIC_PER_SECOND * pool.allocPoint / totalAllocPoint;
-            accRelicPerShare = accRelicPerShare + (relicReward * ACC_RELIC_PRECISION / lpSupply);
+            uint256 relicReward = ((secs * BASE_RELIC_PER_SECOND) * pool.allocPoint) / totalAllocPoint;
+            accRelicPerShare = ((accRelicPerShare + relicReward) * ACC_RELIC_PRECISION) / lpSupply;
         }
         uint256 rawPending = (int256(position.amount * accRelicPerShare / ACC_RELIC_PRECISION) - position.rewardDebt).toUInt256();
         pending = _modifyEmissions(rawPending, positionId, _pid);
@@ -448,6 +448,16 @@ contract Reliquary is Memento, Ownable, Multicall {
       PoolInfo memory pool = poolInfo[pid];
       uint maturity = _timestamp() - pool.averageEntry;
       return ICurve(pool.curveAddress).curve(maturity);
+    }
+
+    /*
+     + @notice calculates the weight of a withdraw/deposit compared to the system total
+     + @param pid The index of the pool. See `poolInfo`.
+     + @param amount the number being weighted
+    */
+
+    function _calculateWeight(uint pid, uint amount) internal view returns (uint) {
+      return amount * CURVE_PRECISION / _totalDeposits(pid);
     }
 
     /*

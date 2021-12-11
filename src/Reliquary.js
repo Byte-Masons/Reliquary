@@ -52,8 +52,6 @@ async function viewPoolInfo(chefAddress, pid) {
     "averageEntry": poolInfo[3].toString(),
     "curveAddress": poolInfo[4]
   }
-  console.log("Pool Info:");
-  console.log(obj);
   return obj;
 }
 
@@ -72,15 +70,12 @@ async function viewRewarder(chefAddress, pid) {
 async function getPositionInfo(chefAddress, pid, positionId) {
   let chef = await returnChef(chefAddress);
   let userInfo = await chef.positionInfo(pid, positionId);
-  let obj = {
+  return {
     "amount": userInfo[0].toString(),
     "rewardDebt": userInfo[1].toString(),
     "entry": userInfo[2].toString(),
     "exempt": userInfo[3]
   };
-  console.log("Position Info:");
-  console.log(obj);
-  return obj;
 }
 
 async function getPoolCount(chefAddress) {
