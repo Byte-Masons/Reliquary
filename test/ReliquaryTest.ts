@@ -59,15 +59,13 @@ describe("Reliquary", function () {
       const pendingRelic = await this.chef.pendingRelic(0, firstOwnedToken);
       expect(pendingRelic).to.equal(ethers.BigNumber.from("3155760200000000000")); //(31557600 + 2) * 100000000000
     })
-
-    it("When block is lastRewardBlock", async function () {})
   })
 
   describe("MassUpdatePools", function () {
     it("Should call updatePool", async function () {
       await add(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await network.provider.send("evm_mine");
-      await this.chef.massUpdatePools([0]);
+      await expect(this.chef.massUpdatePools([0])).to.emit(this.chef, "LogUpdatePool");
     })
 
     it("Updating invalid pools should fail", async function () {
