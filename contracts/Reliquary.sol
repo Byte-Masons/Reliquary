@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
@@ -6,7 +8,6 @@ import "./OZ/utils/Multicall.sol";
 import "./OZ/access/Ownable.sol";
 import "./OZ/token/ERC20/utils/SafeERC20.sol";
 import "./OZ/token/ERC20/IERC20.sol";
-import "./OZ/security/ReentrancyGuard.sol";
 import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
 import "./Memento.sol";
@@ -109,13 +110,7 @@ contract Reliquary is Memento, Ownable, Multicall {
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint;
 
-    /*
-     + NOTE: For Auditors - is there a BASE_RELIC_PER_MILISECOND you wouldn't advise?
-     + the internal _timestamp() function is a fix for precision issues for young
-     + positions. We could do a lot of /1000 division for the pending Relic output
-     + but it seems more sensible to just change the base to miliseconds.
-    */
-    uint256 private constant BASE_RELIC_PER_MILISECOND = 1e8;
+    uint256 private constant BASE_RELIC_PER_SECOND = 1e12;
     uint256 private constant ACC_RELIC_PRECISION = 1e12;
     uint256 private constant BASIS_POINTS = 10000;
 
@@ -224,7 +219,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public nonReentrant returns (PoolInfo memory pool) {
+    function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
         if (_timestamp() > pool.lastRewardTime) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
@@ -239,13 +234,13 @@ contract Reliquary is Memento, Ownable, Multicall {
         }
     }
 
-    function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public nonReentrant returns (uint) {
+    function createPositionAndDeposit(address to, uint256 pid, uint256 amount) public returns (uint) {
       uint id = createNewPosition(to, pid);
       deposit(amount, id);
       return id;
     }
 
-    function createNewPosition(address to, uint256 pid) public nonReentrant returns (uint) {
+    function createNewPosition(address to, uint256 pid) public returns (uint) {
       uint id = mint(to, pid);
       return id;
     }
@@ -256,8 +251,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
-        require(amount > 0, "depositing 0 amount");
+    function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
         address to = ownerOf(positionId);
@@ -284,12 +278,9 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param amount LP token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function withdraw(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
-        require(amount > 0, "withdrawing 0 amount");
+    function withdraw(uint256 pid, uint256 amount, uint256 positionId) public {
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
-        _updateEntry(pid, amount, positionId);
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
 
@@ -303,6 +294,8 @@ contract Reliquary is Memento, Ownable, Multicall {
             _rewarder.onRelicReward(pid, msg.sender, to, 0, position.amount);
         }
 
+        _updateEntry(pid, amount, positionId);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
@@ -313,8 +306,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of RELIC rewards.
     */
-    function harvest(uint256 pid, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
+    function harvest(uint256 pid, uint256 positionId) public {
         PoolInfo memory pool = updatePool(pid);
         address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
@@ -342,14 +334,8 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @param amount token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens and RELIC rewards.
-     +
-     + NOTE: We broke the effects / interactions pattern so that we don't affect the user's curve
-     + while still sending them the proper harvest amount before we modify their average entry time.
-     + This is a UX decision, and is covered by the nonReentrant modifier.
     */
-    function withdrawAndHarvest(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
-        require(amount > 0, "withdrawing 0 amount");
+    function withdrawAndHarvest(uint256 pid, uint256 amount, uint256 positionId) public {
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         address to = ownerOf(positionId);
@@ -357,17 +343,19 @@ contract Reliquary is Memento, Ownable, Multicall {
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
         uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
 
-        RELIC.safeTransfer(to, _curvedRelic);
-        _updateEntry(pid, amount, positionId);
-
+        // Effects
         position.rewardDebt = accumulatedRelic - int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         position.amount = position.amount - amount;
+
+        // Interactions
+        RELIC.safeTransfer(to, _curvedRelic);
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
             _rewarder.onRelicReward(pid, msg.sender, to, _curvedRelic, position.amount);
         }
 
+        _updateEntry(pid, amount, positionId);
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
@@ -379,9 +367,7 @@ contract Reliquary is Memento, Ownable, Multicall {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint256 pid, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
-        require(amount > 0, "withdrawing 0 amount");
+    function emergencyWithdraw(uint256 pid, uint256 positionId) public {
         PositionInfo storage position = positionInfo[pid][positionId];
         uint256 amount = position.amount;
         address to = ownerOf(positionId);
@@ -513,9 +499,6 @@ contract Reliquary is Memento, Ownable, Multicall {
     function _totalDeposits(uint pid) internal view returns (uint256) {
       return IERC20(lpToken[pid]).balanceOf(address(this));
     }
-
-    // Converting timestamp to miliseconds so precision isn't lost when we mutate the
-    // user's entry time.
 
     function _timestamp() internal view returns (uint) {
       return block.timestamp * 1000;
