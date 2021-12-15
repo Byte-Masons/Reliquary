@@ -3,17 +3,17 @@ pragma solidity ^0.8.0;
 contract Sigmoid {
 
     function curve(uint maturity) external pure returns (uint) {
-        uint denom = sqrt(uint((int(maturity) - 2e7) ** 2) + 1e14);
+        int denom = sqrt((int(maturity) - 2e7) ** 2 + 1e14);
         return uint(
-            50 * (int(maturity) - 2e7 + int(denom))
-            / int(denom)
+            50 * (int(maturity) - 2e7 + denom)
+            / denom
         );
     }
 
-    function sqrt(uint y) internal pure returns (uint z) {
+    function sqrt(int y) internal pure returns (int z) {
         if (y > 3) {
             z = y;
-            uint x = y / 2 + 1;
+            int x = y / 2 + 1;
             while (x < z) {
                 z = x;
                 x = (y / x + x) / 2;
