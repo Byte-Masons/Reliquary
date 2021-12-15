@@ -2,11 +2,17 @@ pragma solidity ^0.8.0;
 
 contract Sigmoid {
 
+    int constant HORIZONTAL_STRETCH = 1e7;
+    int constant HORIZONTAL_SHIFT = 2e7;
+    int constant VERTICAL_STRETCH = 50;
+    int constant VERTICAL_SHIFT = 0;
+
     function curve(uint maturity) external pure returns (uint) {
-        int denom = sqrt((int(maturity) - 2e7) ** 2 + 1e14);
+        int denom = sqrt((int(maturity) - HORIZONTAL_SHIFT) ** 2 + HORIZONTAL_STRETCH ** 2);
+
         return uint(
-            50 * (int(maturity) - 2e7 + denom)
-            / denom
+            VERTICAL_STRETCH * ((int(maturity) - HORIZONTAL_SHIFT) + denom)
+            / denom + VERTICAL_SHIFT
         );
     }
 
