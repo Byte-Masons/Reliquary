@@ -1,6 +1,6 @@
 # Reliquary
-### Designed and Written by Justin Bebis with help from Zokunei, Goober, and the rest of the Byte Masons crew
-
+#### Designed and Written by Justin Bebis with help from Zokunei, Goober, and the rest of the Byte Masons crew
+---
 Reliquary is a modified MasterchefV2 contract that is designed to
 1) Emit tokens based on an arbitrary curve dictated within a "Curve" library (stored as an address within each pool)
 2) Bind that curve to a base emission rate (The curve will be set by your earliest pool entrants)
