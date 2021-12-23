@@ -53,8 +53,6 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
         int256 rewardDebt;
 
         uint entry; // position owner's relative entry into the pool.
-        bool exempt; // exemption from vesting cliff.
-        uint poolId;
     }
 
     /*
@@ -391,6 +389,7 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         position.amount = 0;
         position.rewardDebt = 0;
+        position.entry = 0;
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
@@ -398,7 +397,6 @@ contract Reliquary is Memento, Ownable, Multicall, ReentrancyGuard {
         }
 
         // Note: transfer can fail or succeed if `amount` is zero.
-        burn(positionId);
         lpToken[pid].safeTransfer(to, amount);
         emit EmergencyWithdraw(msg.sender, pid, amount, to, positionId);
     }
