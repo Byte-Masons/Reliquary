@@ -5,7 +5,7 @@ Reliquary is a modified MasterchefV2 contract that is designed to
 1) Emit tokens based on an arbitrary curve dictated within a "Curve" library (stored as an address within each pool)
 2) Bind that curve to a base emission rate (The curve will be set by your earliest pool entrants)
 3) Push users down the curve when they deposit or withdraw their tokens based on the weight of their deposit/withdrawal
-4) Move the average curve of the entire pool up and down as people enter and exit the pool
+4) Move the average curve of the entire pool up and down as people enter and exit the pools
 5) Issue an NFT derivative that represents your positions within the farm
 
 By binding tokens to a base emission rate, you not only gain the advantage of a predictable emission curve, but you're able
