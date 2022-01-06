@@ -2,9 +2,9 @@ pragma solidity ^0.8.0;
 
 import "./OZ/token/ERC721/extensions/ERC721Enumerable.sol";
 
-contract Memento is IERC721, ERC721Enumerable {
+contract Relic is IERC721, ERC721Enumerable {
 
-  constructor() ERC721("Reliquary Position", "Memento") { }
+  constructor() ERC721("Shrine Liquidity Position", "RELIC") { }
 
   uint private nonce;
 
