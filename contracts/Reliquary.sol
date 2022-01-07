@@ -53,10 +53,6 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
         int256 rewardDebt;
 
         uint entry; // position owner's relative entry into the pool.
-<<<<<<< HEAD
-        bool exempt; // exemption from vesting cliff.
-=======
->>>>>>> 00152cd916209df2b926f8cd4c33572ef7975f44
     }
 
     /*
@@ -125,9 +121,8 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
     event LogInit();
 
     /// @param _relic The RELIC token contract address.
-    constructor(IERC20 _relic, ICurve _baseCurve) {
+    constructor(IERC20 _relic) {
         RELIC = _relic;
-        BASE_CURVE = _baseCurve
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -270,13 +265,13 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
             _rewarder.onRelicReward(pid, to, to, 0, position.amount);
         }
 
-        uint before = lpToken[pid].balanceOf(address(this));
+        uint _before = lpToken[pid].balanceOf(address(this));
         //_updateEntry(pid, amount, positionId);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        uint after = lpToken[pid].balanceOf(address(this) - before;
-        _updateEntry(pid, after, positionId);
-        position.amount = position.amount + after;
-        position.rewardDebt = position.rewardDebt + (int256(after * pool.accRelicPerShare / ACC_RELIC_PRECISION));
+        uint _after = lpToken[pid].balanceOf(address(this)) - _before;
+        _updateEntry(pid, _after, positionId);
+        position.amount = position.amount + _after;
+        position.rewardDebt = position.rewardDebt + (int256(_after * pool.accRelicPerShare / ACC_RELIC_PRECISION));
 
 
         emit Deposit(msg.sender, pid, amount, to, positionId);
@@ -413,7 +408,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
 
     function curved(uint256 _pid, uint positionId) public view returns (uint) {
       PositionInfo storage position = positionInfo[_pid][positionId];
-      PoolInfo memory pool = poolInfo[position.poolId];
+      PoolInfo memory pool = poolInfo[_pid];
 
       uint maturity = _timestamp() - position.entry;
 
