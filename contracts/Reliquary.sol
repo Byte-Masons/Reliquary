@@ -36,7 +36,7 @@ interface ICurve {
  + accounting logic too much, and users can exit their position without withdrawing
  + their liquidity oShriner sacrificing their position's maturity.
 */
-contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
+contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     using BoringMath for uint256;
     using BoringMath128 for uint128;
     using SignedSafeMath for int256;
@@ -216,7 +216,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public nonReentrant returns (PoolInfo memory pool) {
+    function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
         if (_timestamp() > pool.lastRewardTime) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
@@ -248,7 +248,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
+    function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
         require(amount > 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
@@ -269,8 +269,8 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
         //_updateEntry(pid, amount, positionId);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
         uint _after = lpToken[pid].balanceOf(address(this)) - _before;
-        _updateEntry(pid, _after, positionId);
         position.amount = position.amount + _after;
+        _updateEntry(pid, _after, positionId);
         position.rewardDebt = position.rewardDebt + (int256(_after * pool.accRelicPerShare / ACC_RELIC_PRECISION));
 
 
@@ -313,10 +313,10 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param positionId NFT ID of the receiver of RELIC rewards.
     */
     function harvest(uint256 pid, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
+        address to = ownerOf(positionId);
+        require(to == msg.sender, "you do not own this position");
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
-        address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
         uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
