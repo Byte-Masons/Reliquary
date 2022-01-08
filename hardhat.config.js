@@ -2,9 +2,9 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require('hardhat-deploy');
 require("hardhat-deploy-ethers");
-require("./secrets.json");
+// require("./secrets.json");
 
-const { devAccount, reaperAccount, testAccount, ftmScan } = require('./secrets.json');
+// const { devAccount, reaperAccount, testAccount, ftmScan } = require('./secrets.json');
 
 module.exports = {
   networks: {
@@ -12,21 +12,21 @@ module.exports = {
       forking: {
         url: "https://rpc.ftm.tools/",
         blockNumber: 11238828,
-        accounts: [reaperAccount]
+        // accounts: [reaperAccount]
       }
     },
     test: {
       url: "https://rpc.testnet.fantom.network/",
-      accounts: [testAccount]
+      // accounts: [testAccount]
     },
     opera: {
       url: "https://rpc.ftm.tools/",
-      accounts: [testAccount]
+      // accounts: [testAccount]
     }
   },
-  etherscan: {
-    apiKey: ftmScan
-  },
+  // etherscan: {
+    // apiKey: ftmScan
+  // },
   solidity: {
     compilers: [
       {
