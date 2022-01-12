@@ -269,8 +269,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         //_updateEntry(pid, amount, positionId);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
         uint _after = lpToken[pid].balanceOf(address(this)) - _before;
+        _updateEntry(pid, _after, Kind.DEPOSIT, positionId);
         position.amount = position.amount + _after;
-        _updateEntry(pid, _after, positionId);
         position.rewardDebt = position.rewardDebt + (int256(_after * pool.accRelicPerShare / ACC_RELIC_PRECISION));
 
 
@@ -288,7 +288,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         require(amount > 0, "withdrawing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
-        _updateEntry(pid, amount, positionId);
+        _updateEntry(pid, amount, Kind.WITHDRAW, positionId);
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
 
@@ -359,7 +359,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
 
         RELIC.safeTransfer(to, _curvedRelic);
-        _updateEntry(pid, amount, positionId);
+        _updateEntry(pid, amount, Kind.WITHDRAW, positionId);
 
         position.rewardDebt = accumulatedRelic - int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         position.amount = position.amount - amount;
@@ -495,11 +495,19 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param positionId the NFT ID of the position being updated
     */
 
-    function _updateEntry(uint256 pid, uint amount, uint positionId) internal returns (bool) {
+    function _updateEntry(uint256 pid, uint amount, Kind kind, uint positionId) internal returns (bool) {
       PositionInfo storage position = positionInfo[pid][positionId];
+      if (position.amount == 0) {
+        position.entry = _timestamp();
+	return true;
+      }
       uint weight = amount * BASIS_POINTS / position.amount;
       uint maturity = _timestamp() - position.entry;
-      position.entry += (maturity * weight / BASIS_POINTS);
+      if (kind == Kind.DEPOSIT) {
+        position.entry += (maturity * weight / BASIS_POINTS);
+      } else {
+        position.entry -= (maturity * weight / BASIS_POINTS);
+      }
       return true;
     }
 
