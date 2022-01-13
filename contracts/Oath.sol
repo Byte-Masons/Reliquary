@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// TODO tess3rac7 ask bebis what license he wants apply it across
 
 pragma solidity ^0.8.0;
 

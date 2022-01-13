@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 import "./OZ/token/ERC721/extensions/ERC721Enumerable.sol";
