@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.9;
+
 import "./interfaces/IRewarder.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./boring-solidity/libraries/BoringMath.sol";
@@ -13,13 +14,23 @@ contract RewarderMock is IRewarder {
     uint256 private constant REWARD_TOKEN_DIVISOR = 1e18;
     address private immutable MASTERCHEF_V2;
 
-    constructor (uint256 _rewardMultiplier, IERC20 _rewardToken, address _MASTERCHEF_V2) {
+    constructor(
+        uint256 _rewardMultiplier,
+        IERC20 _rewardToken,
+        address _MASTERCHEF_V2
+    ) {
         rewardMultiplier = _rewardMultiplier;
         rewardToken = _rewardToken;
         MASTERCHEF_V2 = _MASTERCHEF_V2;
     }
 
-    function onRelicReward (uint256, address user, address to, uint256 sushiAmount, uint256) onlyMCV2 override external {
+    function onRelicReward(
+        uint256,
+        address user,
+        address to,
+        uint256 sushiAmount,
+        uint256
+    ) external override onlyMCV2 {
         /*uint256 pendingReward = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
         uint256 rewardBal = rewardToken.balanceOf(address(this));
         if (pendingReward > rewardBal) {
@@ -29,7 +40,16 @@ contract RewarderMock is IRewarder {
         }*/
     }
 
-    function pendingTokens(uint256 pid, address user, uint256 sushiAmount) override external view returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
+    function pendingTokens(
+        uint256 pid,
+        address user,
+        uint256 sushiAmount
+    )
+        external
+        view
+        override
+        returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts)
+    {
         /*IERC20[] memory _rewardTokens = new IERC20[](1);
         _rewardTokens[0] = (rewardToken);
         uint256[] memory _rewardAmounts = new uint256[](1);
@@ -38,7 +58,7 @@ contract RewarderMock is IRewarder {
         */
     }
 
-    modifier onlyMCV2 {
+    modifier onlyMCV2() {
         require(
             msg.sender == MASTERCHEF_V2,
             "Only MCV2 can call this function."
