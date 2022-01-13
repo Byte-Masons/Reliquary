@@ -12,18 +12,18 @@ describe("Reliquary", function () {
   beforeEach(async function () {
     [owner, alice, bob] = await ethers.getSigners();
 
-    this.ERC20Mock = await ethers.getContractFactory("ERC20Mock");
-    const Relic = await ethers.getContractFactory("Oath");
-    this.relic = await Relic.deploy("Relic", "RELIC");
-    this.lp = await this.ERC20Mock.deploy("LP Token", "LPT", owner.address, ethers.utils.parseEther("1000"));
+    const Oath = await ethers.getContractFactory("Oath");
+    this.oath = await Oath.deploy("Oath", "OATH");
+    this.lp = await Oath.deploy("LP Token", "LPT");
+    await this.lp.mint(owner.address, ethers.utils.parseEther("1000"));
 
     const EighthRoot = await ethers.getContractFactory("EighthRoot");
     this.curve = await EighthRoot.deploy();
 
-    this.chef = await deployChef(this.relic.address);
-    await this.relic.mint(this.chef.address, ethers.utils.parseEther("100000000"));
+    this.chef = await deployChef(this.oath.address);
+    await this.oath.mint(this.chef.address, ethers.utils.parseEther("100000000"));
     //const Rewarder = await ethers.getContractFactory("RewarderMock");
-    //this.rewarder = await Rewarder.deploy(1, this.relic.address, this.chef.address);
+    //this.rewarder = await Rewarder.deploy(1, this.oath.address, this.chef.address);
   })
 
   describe("PoolLength", function () {
@@ -37,8 +37,8 @@ describe("Reliquary", function () {
     it("Should emit event LogSetPool", async function () {
       await add(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
       await expect(this.chef.set(0, 100, zeroAddress, this.curve.address, false, false)).to.emit(this.chef, "LogSetPool");
-      await expect(this.chef.set(0, 100, this.relic.address, this.curve.address, true, false)).to.emit(this.chef, "LogSetPool").
-        withArgs(0, 100, this.relic.address, this.curve.address);
+      await expect(this.chef.set(0, 100, this.oath.address, this.curve.address, true, false)).to.emit(this.chef, "LogSetPool").
+        withArgs(0, 100, this.oath.address, this.curve.address);
     })
 
     it("Should revert if invalid pool", async function () {
@@ -131,7 +131,7 @@ describe("Reliquary", function () {
       await network.provider.send("evm_mine");
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
       await this.chef.connect(alice).harvest(0, firstOwnedToken);
-      const balance = await this.relic.balanceOf(alice.address);
+      const balance = await this.oath.balanceOf(alice.address);
       expect(balance).to.equal(ethers.BigNumber.from("3155760100000000000")); // (31557600 + 1) * 100000000000
     })
   })
