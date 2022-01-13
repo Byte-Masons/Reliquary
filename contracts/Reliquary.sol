@@ -9,11 +9,8 @@ import "./OZ/token/ERC20/IERC20.sol";
 import "./OZ/security/ReentrancyGuard.sol";
 import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
+import "./interfaces/ICurve.sol";
 import "./Relic.sol";
-
-interface ICurve {
-    function curve(uint maturity) external pure returns (uint);
-}
 
 /*
  + NOTE: Maybe make BASE_RELIC_PER_BLOCK an upgradable function call so we can curve that too
