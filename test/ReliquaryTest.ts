@@ -13,7 +13,7 @@ describe("Reliquary", function () {
     [owner, alice, bob] = await ethers.getSigners();
 
     this.ERC20Mock = await ethers.getContractFactory("ERC20Mock");
-    const Relic = await ethers.getContractFactory("Relic");
+    const Relic = await ethers.getContractFactory("Oath");
     this.relic = await Relic.deploy("Relic", "RELIC");
     this.lp = await this.ERC20Mock.deploy("LP Token", "LPT", owner.address, ethers.utils.parseEther("1000"));
 

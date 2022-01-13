@@ -1,15 +1,21 @@
 pragma solidity ^0.8.0;
 
-import "./OZ/token/ERC20/ERC20.sol";
+import "./OZ/token/ERC721/extensions/ERC721Enumerable.sol";
 
-contract Relic is ERC20 {
+contract Relic is IERC721, ERC721Enumerable {
 
-  constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+  constructor() ERC721("Shrine Liquidity Position", "RELIC") { }
 
+  uint private nonce;
+
+  function mint(address to) internal returns (uint id) {
+    id = nonce;
+    nonce++;
+    _safeMint(to, id);
   }
 
-  function mint(address to, uint amount) external returns (bool) {
-    _mint(to, amount);
+  function burn(uint tokenId) internal returns (bool) {
+    _burn(tokenId);
     return true;
   }
 

@@ -9,7 +9,7 @@ import "./OZ/token/ERC20/IERC20.sol";
 import "./OZ/security/ReentrancyGuard.sol";
 import "./libraries/SignedSafeMath.sol";
 import "./interfaces/IRewarder.sol";
-import "./Memento.sol";
+import "./Relic.sol";
 
 interface ICurve {
     function curve(uint maturity) external pure returns (uint);
@@ -36,7 +36,7 @@ interface ICurve {
  + accounting logic too much, and users can exit their position without withdrawing
  + their liquidity oShriner sacrificing their position's maturity.
 */
-contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
+contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     using BoringMath for uint256;
     using BoringMath128 for uint128;
     using SignedSafeMath for int256;
@@ -52,6 +52,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 amount;
         int256 rewardDebt;
 
+        // why is entry required in the struct itself? isn't it the mapping key?
         uint entry; // position owner's relative entry into the pool.
     }
 
@@ -140,7 +141,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != RELIC, "same token");
         uint256 lastRewardTime = _timestamp();
-        totalAllocPoint = (totalAllocPoint + allocPoint);
+        totalAllocPoint = (totalAllocPoint + allocPoint); // +=
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
 
@@ -192,7 +193,7 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 accRelicPerShare = pool.accRelicPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
-            uint256 secs = _timestamp() - pool.lastRewardTime;
+            uint256 secs = _timestamp() - pool.lastRewardTime; // should rename to millis
             uint256 relicReward = secs * EMISSIONS_PER_MILISECOND * pool.allocPoint / totalAllocPoint;
             accRelicPerShare = accRelicPerShare + (relicReward * ACC_RELIC_PRECISION / lpSupply);
         }
@@ -216,14 +217,16 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public nonReentrant returns (PoolInfo memory pool) {
+    function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
         if (_timestamp() > pool.lastRewardTime) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
             if (lpSupply > 0) {
-                uint256 secs = _timestamp() - pool.lastRewardTime;
+                uint256 secs = _timestamp() - pool.lastRewardTime; // rename to millis
                 uint256 relicReward = secs * EMISSIONS_PER_MILISECOND * pool.allocPoint / totalAllocPoint;
                 pool.accRelicPerShare = pool.accRelicPerShare + ((relicReward * ACC_RELIC_PRECISION / lpSupply).to128());
+                // a lot of to64/to128/int/uint casting makes things hard to read/catch errors
+                // i get struct packing is a thing but worth the hassle?
             }
             pool.lastRewardTime = _timestamp().to64();
             poolInfo[pid] = pool;
@@ -248,7 +251,8 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 pid, uint256 amount, uint256 positionId) public nonReentrant {
+    // this should still be public?
+    function deposit(uint256 pid, uint256 amount, uint256 positionId) public {
         require(amount > 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
@@ -313,10 +317,10 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param positionId NFT ID of the receiver of RELIC rewards.
     */
     function harvest(uint256 pid, uint256 positionId) public nonReentrant {
-        require(ownerOf(positionId) == msg.sender, "you do not own this position");
+        address to = ownerOf(positionId);
+        require(to == msg.sender, "you do not own this position");
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
-        address to = ownerOf(positionId);
         int256 accumulatedRelic = int256(position.amount * pool.accRelicPerShare / ACC_RELIC_PRECISION);
         uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt).toUInt256();
         uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
@@ -472,6 +476,9 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
 
     function _updateAverageEntry(uint pid, uint amount, Kind kind) internal returns (bool) {
       PoolInfo storage pool = poolInfo[pid];
+      // _totalDeposits feels a bit misleading especially when we have "deposit" and
+      // "withdraw" being treated as first class citizens in the context of this contract
+      // like this is just LP token balance might as well inline
       uint256 lpSupply = _totalDeposits(pid);
       if (lpSupply == 0) {
         pool.averageEntry = _timestamp();
@@ -497,6 +504,10 @@ contract Shrine is Relic, Ownable, Multicall, ReentrancyGuard {
 
     function _updateEntry(uint256 pid, uint amount, uint positionId) internal returns (bool) {
       PositionInfo storage position = positionInfo[pid][positionId];
+      if (position.amount == 0) {
+        position.entry = _timestamp();
+	return true;
+      }
       uint weight = amount * BASIS_POINTS / position.amount;
       uint maturity = _timestamp() - position.entry;
       position.entry += (maturity * weight / BASIS_POINTS);
