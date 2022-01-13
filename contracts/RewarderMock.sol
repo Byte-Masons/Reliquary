@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 import "./interfaces/IRewarder.sol";
-import "./OZ/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./boring-solidity/libraries/BoringMath.sol";
 
 contract RewarderMock is IRewarder {

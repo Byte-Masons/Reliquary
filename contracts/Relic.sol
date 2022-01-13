@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./OZ/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 // The NFT
 contract Relic is IERC721, ERC721Enumerable {

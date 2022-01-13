@@ -3,16 +3,17 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "./boring-solidity/libraries/BoringMath.sol";
-import "./OZ/utils/Multicall.sol";
-import "./OZ/access/Ownable.sol";
-import "./OZ/token/ERC20/utils/SafeERC20.sol";
-import "./OZ/token/ERC20/IERC20.sol";
-import "./OZ/security/ReentrancyGuard.sol";
-import "./libraries/SignedSafeMath.sol";
-import "./interfaces/IRewarder.sol";
-import "./interfaces/ICurve.sol";
 import "./Relic.sol";
+import "./interfaces/ICurve.sol";
+import "./interfaces/IRewarder.sol";
+import "./libraries/SignedSafeMath.sol";
+import "./boring-solidity/libraries/BoringMath.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+// TODO tess3rac7 can consider migrating from Ownable to AccessControl
 
 /*
  + NOTE: Maybe make BASE_RELIC_PER_BLOCK an upgradable function call so we can curve that too
