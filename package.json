@@ -14,7 +14,7 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.4.1",
-    "hardhat": "^2.4.1",
+    "hardhat": "^2.8.2",
     "hardhat-deploy": "^0.8.11",
     "hardhat-deploy-ethers": "^0.3.0-beta.10",
     "prettier": "^2.5.1",
@@ -25,7 +25,7 @@
     "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/providers": "^5.4.1",
     "@ethersproject/solidity": "^5.4.0",
-    "@openzeppelin/contracts": "^3.2.0",
+    "@openzeppelin/contracts": "^4.4.2",
     "@uniswap/sdk": "^3.0.3",
     "install": "^0.13.0",
     "npm": "^7.20.3"

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.0;
+pragma solidity 0.8.9;
 import "./interfaces/IRewarder.sol";
 import "./OZ/token/ERC20/utils/SafeERC20.sol";
 import "./boring-solidity/libraries/BoringMath.sol";
