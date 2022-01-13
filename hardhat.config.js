@@ -36,6 +36,7 @@ module.exports = {
         version: "0.7.5"
       },
       {
+        // TODO tess3rac7 can use 0.8.9 (hardhat supports it)
         version: "0.8.0",
         settings: {
           optimizer: {
