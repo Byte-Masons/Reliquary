@@ -91,7 +91,7 @@ describe("Reliquary", function () {
           0,
           (await this.chef.poolInfo(0)).lastRewardTime,
           await this.lp.balanceOf(this.chef.address),
-          (await this.chef.poolInfo(0)).accRelicPerShare
+          (await this.chef.poolInfo(0)).accOathPerShare
         )
     })
   })
