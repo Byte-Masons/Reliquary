@@ -179,12 +179,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Add a new LP to the pool. Can only be called by the owner.
+     + @notice Add a new pool for the specified LP.
+     +         Can only be called by the owner.
+     +
      + @param allocPoint the allocation points for the new pool
      + @param _lpToken address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
     */
-    function add(
+    function addPool(
         uint256 allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
@@ -195,7 +197,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             "this token has already been added"
         );
         require(_lpToken != OATH, "same token");
-        uint256 lastRewardTime = _timestamp();
+
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
@@ -203,13 +205,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         poolInfo.push(
             PoolInfo({
                 allocPoint: allocPoint,
-                lastRewardTime: lastRewardTime,
+                lastRewardTime: _timestamp(),
                 accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(_curve)
             })
         );
         hasBeenAdded[address(_lpToken)] = true;
+
         emit LogPoolAddition(
             (lpToken.length - 1),
             allocPoint,

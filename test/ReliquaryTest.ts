@@ -1,6 +1,6 @@
 const { assert, expect } = require("chai");
 const { debug, deployChef, deployRewarder, deployCurve, tokenOfOwnerByIndex, tokenByIndex, totalPositions, returnChef,
-  getGlobalInfo, viewPoolInfo, viewLpToken, viewRewarder, getPositionInfo, getPoolCount, add, set, pendingRelic,
+  getGlobalInfo, viewPoolInfo, viewLpToken, viewRewarder, getPositionInfo, getPoolCount, addPool, set, pendingRelic,
   massUpdatePools, updatePool, createNewPositionAndDeposit, createNewPosition, deposit, withdraw, harvest,
   withdrawAndHarvest, emergencyWithdraw, curved } = require("../src/Reliquary.js");
 
@@ -28,14 +28,14 @@ describe("Reliquary", function () {
 
   describe("PoolLength", function () {
     it("PoolLength should execute", async function () {
-      await add(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
       expect(await getPoolCount(this.chef.address)).to.be.equal(1);
     })
   })
 
   describe("Set", function () {
     it("Should emit event LogSetPool", async function () {
-      await add(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
       await expect(this.chef.set(0, 100, zeroAddress, this.curve.address, false, false)).to.emit(this.chef, "LogSetPool");
       await expect(this.chef.set(0, 100, this.oath.address, this.curve.address, true, false)).to.emit(this.chef, "LogSetPool").
         withArgs(0, 100, this.oath.address, this.curve.address);
@@ -48,7 +48,7 @@ describe("Reliquary", function () {
 
   describe("PendingRelic", function () {
     it("PendingRelic should equal ExpectedRelic", async function () {
-      await add(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, ethers.utils.parseEther("1000"));
       await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1"));
       await network.provider.send("evm_increaseTime", [31557600]);
@@ -63,7 +63,7 @@ describe("Reliquary", function () {
 
   describe("MassUpdatePools", function () {
     it("Should call updatePool", async function () {
-      await add(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await network.provider.send("evm_mine");
       await expect(this.chef.massUpdatePools([0])).to.emit(this.chef, "LogUpdatePool");
     })
@@ -73,9 +73,9 @@ describe("Reliquary", function () {
     })
   })
 
-  describe("Add", function () {
+  describe("AddPool", function () {
     it("Should add pool with reward token multiplier", async function () {
-      await expect(this.chef.add(10, this.lp.address, zeroAddress, this.curve.address))
+      await expect(this.chef.addPool(10, this.lp.address, zeroAddress, this.curve.address))
         .to.emit(this.chef, "LogPoolAddition")
         .withArgs(0, 10, this.lp.address, zeroAddress, this.curve.address);
     })
@@ -83,7 +83,7 @@ describe("Reliquary", function () {
 
   describe("UpdatePool", function () {
     it("Should emit event LogUpdatePool", async function () {
-      await add(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await network.provider.send("evm_mine");
       await expect(this.chef.updatePool(0))
         .to.emit(this.chef, "LogUpdatePool")
@@ -98,7 +98,7 @@ describe("Reliquary", function () {
 
   describe("Deposit", function () {
     it("Depositing 1", async function () {
-      await add(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, 10);
       await expect(this.chef.createPositionAndDeposit(alice.address, 0, 1))
         .to.emit(this.chef, "Deposit")
@@ -112,7 +112,7 @@ describe("Reliquary", function () {
 
   describe("Withdraw", function () {
     it("Withdraw 1", async function () {
-      await add(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, 10);
       await this.chef.createPositionAndDeposit(alice.address, 0, 1);
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
@@ -124,7 +124,7 @@ describe("Reliquary", function () {
 
   describe("Harvest", function () {
     it("Should give back the correct amount of RELIC", async function () {
-      await add(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, ethers.utils.parseEther("1000"));
       await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1"));
       await network.provider.send("evm_increaseTime", [31557600]);
@@ -138,7 +138,7 @@ describe("Reliquary", function () {
 
   describe("EmergencyWithdraw", function () {
     it("Should emit event EmergencyWithdraw", async function () {
-      await add(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
+      await addPool(this.chef.address, 10, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, 10);
       await this.chef.createPositionAndDeposit(alice.address, 0, 1);
     })

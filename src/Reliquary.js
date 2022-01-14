@@ -81,9 +81,9 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function add(chefAddress, allocPoint, lpToken, rewarder, curve) {
+async function addPool(chefAddress, allocPoint, lpToken, rewarder, curve) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.add(allocPoint, lpToken, rewarder, curve);
+  let tx = await chef.addPool(allocPoint, lpToken, rewarder, curve);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -204,7 +204,7 @@ module.exports = {
   viewRewarder,
   getPositionInfo,
   getPoolCount,
-  add,
+  addPool,
   set,
   pendingOath,
   massUpdatePools,
