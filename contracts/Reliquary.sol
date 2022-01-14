@@ -7,7 +7,6 @@ import "./Relic.sol";
 import "./interfaces/ICurve.sol";
 import "./interfaces/IRewarder.sol";
 import "./libraries/SignedSafeMath.sol";
-import "./boring-solidity/libraries/BoringMath.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -43,8 +42,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + their liquidity oShriner sacrificing their position's maturity.
 */
 contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
-    using BoringMath for uint256;
-    using BoringMath128 for uint128;
     using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
@@ -70,9 +67,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + `curveAddress` math library used to curve emissions
     */
     struct PoolInfo {
-        uint128 accRelicPerShare;
-        uint64 lastRewardTime;
-        uint64 allocPoint;
+        uint256 accRelicPerShare;
+        uint256 lastRewardTime;
+        uint256 allocPoint;
         uint256 averageEntry;
         address curveAddress;
     }
@@ -118,7 +115,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint;
 
-    uint256 private constant EMISSIONS_PER_MILISECOND = 1e8;
+    uint256 private constant EMISSIONS_PER_MILLISECOND = 1e8;
     uint256 private constant ACC_RELIC_PRECISION = 1e12;
     uint256 private constant BASIS_POINTS = 10000;
 
@@ -164,7 +161,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     );
     event LogUpdatePool(
         uint256 indexed pid,
-        uint64 lastRewardTime,
+        uint256 lastRewardTime,
         uint256 lpSupply,
         uint256 accRELICPerShare
     );
@@ -198,14 +195,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         );
         require(_lpToken != RELIC, "same token");
         uint256 lastRewardTime = _timestamp();
-        totalAllocPoint = (totalAllocPoint + allocPoint); // +=
+        totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
 
         poolInfo.push(
             PoolInfo({
-                allocPoint: allocPoint.to64(),
-                lastRewardTime: lastRewardTime.to64(),
+                allocPoint: allocPoint,
+                lastRewardTime: lastRewardTime,
                 accRelicPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(_curve)
@@ -242,7 +239,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         totalAllocPoint =
             (totalAllocPoint - poolInfo[_pid].allocPoint) +
             _allocPoint;
-        poolInfo[_pid].allocPoint = _allocPoint.to64();
+        poolInfo[_pid].allocPoint = _allocPoint;
         if (overwriteRewarder) {
             rewarder[_pid] = _rewarder;
         }
@@ -273,9 +270,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 accRelicPerShare = pool.accRelicPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
-            uint256 secs = _timestamp() - pool.lastRewardTime; // should rename to millis
-            uint256 relicReward = (secs *
-                EMISSIONS_PER_MILISECOND *
+            uint256 milliSecs = _timestamp() - pool.lastRewardTime;
+            uint256 relicReward = (milliSecs *
+                EMISSIONS_PER_MILLISECOND *
                 pool.allocPoint) / totalAllocPoint;
             accRelicPerShare =
                 accRelicPerShare +
@@ -310,15 +307,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             if (lpSupply > 0) {
                 uint256 secs = _timestamp() - pool.lastRewardTime; // rename to millis
                 uint256 relicReward = (secs *
-                    EMISSIONS_PER_MILISECOND *
+                    EMISSIONS_PER_MILLISECOND *
                     pool.allocPoint) / totalAllocPoint;
                 pool.accRelicPerShare =
                     pool.accRelicPerShare +
-                    (((relicReward * ACC_RELIC_PRECISION) / lpSupply).to128());
-                // a lot of to64/to128/int/uint casting makes things hard to read/catch errors
-                // i get struct packing is a thing but worth the hassle?
+                    (((relicReward * ACC_RELIC_PRECISION) / lpSupply));
             }
-            pool.lastRewardTime = _timestamp().to64();
+            pool.lastRewardTime = _timestamp();
             poolInfo[pid] = pool;
             emit LogUpdatePool(
                 pid,
