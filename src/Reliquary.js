@@ -1,6 +1,3 @@
-const tokens = require("../tokens.json");
-const reaper = require("./ReaperSDK.js");
-
 function debug(arguments) {
   let argumentTypes;
   for(let i=0; i<arguments.length; i++) {
