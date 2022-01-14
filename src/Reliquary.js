@@ -6,9 +6,9 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(relicAddress) {
+async function deployChef(oathAddress) {
   let Reliquary = await ethers.getContractFactory("Reliquary");
-  let chef = await Reliquary.deploy(relicAddress);
+  let chef = await Reliquary.deploy(oathAddress);
   return chef;
 }
 
@@ -22,7 +22,7 @@ async function getGlobalInfo(chefAddress) {
   let chef = await returnChef(chefAddress);
   let globalInfo = {
     totalAllocPoint: await chef.totalAllocPoint(),
-    chefToken: await chef.RELIC()
+    chefToken: await chef.OATH()
   }
   return globalInfo;
 }
@@ -43,7 +43,7 @@ async function viewPoolInfo(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
   let poolInfo = await chef.poolInfo(pid);
   let obj = {
-    "accRelicPerShare": poolInfo[0].toString(),
+    "accOathPerShare": poolInfo[0].toString(),
     "lastRewardTime": poolInfo[1].toString(),
     "allocPoint": poolInfo[2].toString(),
     "averageEntry": poolInfo[3].toString(),
@@ -95,9 +95,9 @@ async function set(chefAddress, pid, rewarder, curve, overwriteRewarder, overwri
   return receipt;
 }
 
-async function pendingRelic(chefAddress, pid, positionId) {
+async function pendingOath(chefAddress, pid, positionId) {
   let chef = await returnChef(chefAddress);
-  let pending = await chef.pendingRelic(pid, positionId);
+  let pending = await chef.pendingOath(pid, positionId);
   return pending;
 }
 
@@ -206,7 +206,7 @@ module.exports = {
   getPoolCount,
   add,
   set,
-  pendingRelic,
+  pendingOath,
   massUpdatePools,
   updatePool,
   createNewPositionAndDeposit,
