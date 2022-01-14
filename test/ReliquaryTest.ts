@@ -56,8 +56,8 @@ describe("Reliquary", function () {
       await this.chef.updatePool(0);
       await network.provider.send("evm_mine");
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
-      const pendingRelic = await this.chef.pendingRelic(0, firstOwnedToken);
-      expect(pendingRelic).to.equal(ethers.BigNumber.from("3155760200000000000")); //(31557600 + 2) * 100000000000
+      const pendingOath = await this.chef.pendingOath(0, firstOwnedToken);
+      expect(pendingOath).to.equal(ethers.BigNumber.from("3155760200000000000")); //(31557600 + 2) * 100000000000
     })
   })
 
