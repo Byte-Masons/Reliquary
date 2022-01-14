@@ -22,7 +22,7 @@ contract RewarderMock is IRewarder {
         MASTERCHEF_V2 = _MASTERCHEF_V2;
     }
 
-    function onRelicReward(
+    function onOathReward(
         uint256,
         address user,
         address to,

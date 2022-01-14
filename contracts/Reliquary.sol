@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 // TODO tess3rac7 can consider migrating from Ownable to AccessControl
 
 /*
- + NOTE: Maybe make BASE_RELIC_PER_BLOCK an upgradable function call so we can curve that too
+ + NOTE: Maybe make BASE_OATH_PER_BLOCK an upgradable function call so we can curve that too
  + NOTE: Add UniV3's NFT metadata standard so marketplace frontends can return json data
  + NOTE: Work on quality of life abstractions and position management
 */
@@ -26,8 +26,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + @notice Built on the MasterChefV2 system authored by Sushi's team
  +
  + // TODO tess3rac7 need some more ELI5 here. Define "position," "maturity" first
- + "Position" represents the order of entry into a pool via a deposit. The n-th
- + deposit is represented by the n-th position.
  +
  + @notice This system is designed to modify Masterchef accounting logic such that
  + behaviors can be programmed on a per-pool basis using a curve library, which
@@ -40,34 +38,36 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + NFT as opposed to an EOA. This allows for increased composability without affecting
  + accounting logic too much, and users can exit their position without withdrawing
  + their liquidity oShriner sacrificing their position's maturity.
+ +
+ + // TODO tess3rac7 typo above ^ needs fixing
 */
 contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
+    // TODO tess3rac7 is there a better term than PositionInfo? RelicInfo?
     /*
-     + @notice Info for each Shrine position.
+     + @notice Info for each Reliquary position.
      + `amount` LP token amount the position owner has provided.
-     + `rewardDebt` The amount of RELIC entitled to the position owner.
+     + `rewardDebt` The amount of OATH entitled to the position owner.
      + `entry` Used to determine the entry of the position
     */
     struct PositionInfo {
         uint256 amount;
         int256 rewardDebt;
-        // why is entry required in the struct itself? isn't it the mapping key?
         uint256 entry; // position owner's relative entry into the pool.
     }
 
     /*
-     + @notice Info of each Shrine pool
-     + `accRelicPerShare` Accumulated relic per share of pool (1 / 1e12)
-     + `lastRewardTime` Last timestamp the accumulated relic was updated
+     + @notice Info of each Reliquary pool
+     + `accOathPerShare` Accumulated OATH per share of pool (1 / 1e12)
+     + `lastRewardTime` Last timestamp the accumulated OATH was updated
      + `allocPoint` pool's individual allocation - ratio of the total allocation
      + `averageEntry` average entry time of each share, used to determine pool maturity
      + `curveAddress` math library used to curve emissions
     */
     struct PoolInfo {
-        uint256 accRelicPerShare;
+        uint256 accOathPerShare;
         uint256 lastRewardTime;
         uint256 allocPoint;
         uint256 averageEntry;
@@ -79,7 +79,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + `param` distance the % distance the position is from the curve, in base 10000
      + `param` placement flag to note whether position is above or below the average maturity
     */
-
+    // TODO tess3rac7 this could also use a rename
     struct Position {
         uint256 distance;
         Placement placement;
@@ -97,8 +97,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         WITHDRAW
     }
 
-    /// @notice Address of RELIC contract.
-    IERC20 public immutable RELIC;
+    /// @notice Address of OATH contract.
+    IERC20 public immutable OATH;
     /// @notice Info of each MCV2 pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each MCV2 pool.
@@ -108,6 +108,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /// @notice Info of each staked position
     mapping(uint256 => mapping(uint256 => PositionInfo)) public positionInfo;
+    // TODO tess3rac7 maybe rename this mapping as well..
 
     /// @notice ensures the same token isn't added to the contract twice
     mapping(address => bool) public hasBeenAdded;
@@ -116,35 +117,35 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     uint256 public totalAllocPoint;
 
     uint256 private constant EMISSIONS_PER_MILLISECOND = 1e8;
-    uint256 private constant ACC_RELIC_PRECISION = 1e12;
-    uint256 private constant BASIS_POINTS = 10000;
+    uint256 private constant ACC_OATH_PRECISION = 1e12;
+    uint256 private constant BASIS_POINTS = 10_000;
 
     event Deposit(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId
+        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
     );
     event Withdraw(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId
+        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
     );
     event EmergencyWithdraw(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId
+        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
     );
     event Harvest(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
-        uint256 positionId
+        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
     );
     event LogPoolAddition(
         uint256 pid,
@@ -163,13 +164,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 indexed pid,
         uint256 lastRewardTime,
         uint256 lpSupply,
-        uint256 accRELICPerShare
+        uint256 accOathPerShare
     );
     event LogInit();
 
-    /// @param _relic The RELIC token contract address.
-    constructor(IERC20 _relic) {
-        RELIC = _relic;
+    /// @param _oath The OATH token contract address.
+    constructor(IERC20 _oath) {
+        OATH = _oath;
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -193,7 +194,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             !hasBeenAdded[address(_lpToken)],
             "this token has already been added"
         );
-        require(_lpToken != RELIC, "same token");
+        require(_lpToken != OATH, "same token");
         uint256 lastRewardTime = _timestamp();
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
@@ -203,7 +204,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             PoolInfo({
                 allocPoint: allocPoint,
                 lastRewardTime: lastRewardTime,
-                accRelicPerShare: 0,
+                accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(_curve)
             })
@@ -219,7 +220,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Update the given pool's RELIC allocation point and `IRewarder` contract
+     + @notice Update the given pool's OATH allocation point and `IRewarder` contract
      + @param _pid The index of the pool. See `poolInfo`.
      + @param _allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
@@ -255,31 +256,31 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice View function to see pending RELIC on frontend.
+     + @notice View function to see pending OATH on frontend.
      + @param _pid The index of the pool. See `poolInfo`.
      + @param _positionId ID of the position.
-     + @return pending RELIC reward for a given position owner.
+     + @return pending OATH reward for a given position owner.
     */
-    function pendingRelic(uint256 _pid, uint256 positionId)
+    function pendingOath(uint256 _pid, uint256 positionId)
         external
         view
         returns (uint256 pending)
     {
         PositionInfo storage position = positionInfo[_pid][positionId];
         PoolInfo memory pool = poolInfo[_pid];
-        uint256 accRelicPerShare = pool.accRelicPerShare;
+        uint256 accOathPerShare = pool.accOathPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
         if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
             uint256 milliSecs = _timestamp() - pool.lastRewardTime;
-            uint256 relicReward = (milliSecs *
+            uint256 oathReward = (milliSecs *
                 EMISSIONS_PER_MILLISECOND *
                 pool.allocPoint) / totalAllocPoint;
-            accRelicPerShare =
-                accRelicPerShare +
-                ((relicReward * ACC_RELIC_PRECISION) / lpSupply);
+            accOathPerShare =
+                accOathPerShare +
+                ((oathReward * ACC_OATH_PRECISION) / lpSupply);
         }
         uint256 rawPending = (int256(
-            (position.amount * accRelicPerShare) / ACC_RELIC_PRECISION
+            (position.amount * accOathPerShare) / ACC_OATH_PRECISION
         ) - position.rewardDebt).toUInt256();
         pending = _modifyEmissions(rawPending, positionId, _pid);
     }
@@ -305,13 +306,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         if (_timestamp() > pool.lastRewardTime) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
             if (lpSupply > 0) {
-                uint256 secs = _timestamp() - pool.lastRewardTime; // rename to millis
-                uint256 relicReward = (secs *
+                uint256 milliSecs = _timestamp() - pool.lastRewardTime;
+                uint256 oathReward = (milliSecs *
                     EMISSIONS_PER_MILLISECOND *
                     pool.allocPoint) / totalAllocPoint;
-                pool.accRelicPerShare =
-                    pool.accRelicPerShare +
-                    (((relicReward * ACC_RELIC_PRECISION) / lpSupply));
+                pool.accOathPerShare =
+                    pool.accOathPerShare +
+                    (((oathReward * ACC_OATH_PRECISION) / lpSupply));
             }
             pool.lastRewardTime = _timestamp();
             poolInfo[pid] = pool;
@@ -319,7 +320,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
                 pid,
                 pool.lastRewardTime,
                 lpSupply,
-                pool.accRelicPerShare
+                pool.accOathPerShare
             );
         }
     }
@@ -344,7 +345,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Deposit LP tokens to Shrine for RELIC allocation.
+     + @notice Deposit LP tokens to Reliquary for OATH allocation.
      + @param pid The index of the pool. See `poolInfo`.
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
@@ -363,12 +364,12 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
         // Effects
         //position.amount = position.amount + amount;
-        //position.rewardDebt = position.rewardDebt + (int256(amount * pool.accRelicPerShare / ACC_RELIC_PRECISION));
+        //position.rewardDebt = position.rewardDebt + (int256(amount * pool.accOathPerShare / ACC_OATH_PRECISION));
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onRelicReward(pid, to, to, 0, position.amount);
+            _rewarder.onOathReward(pid, to, to, 0, position.amount);
         }
 
         uint256 _before = lpToken[pid].balanceOf(address(this));
@@ -379,7 +380,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         position.amount = position.amount + _after;
         position.rewardDebt =
             position.rewardDebt +
-            (int256((_after * pool.accRelicPerShare) / ACC_RELIC_PRECISION));
+            (int256((_after * pool.accOathPerShare) / ACC_OATH_PRECISION));
 
         emit Deposit(msg.sender, pid, amount, to, positionId);
     }
@@ -409,13 +410,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         // Effects
         position.rewardDebt =
             position.rewardDebt -
-            (int256((amount * pool.accRelicPerShare) / ACC_RELIC_PRECISION));
+            (int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION));
         position.amount = position.amount - amount;
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onRelicReward(pid, msg.sender, to, 0, position.amount);
+            _rewarder.onOathReward(pid, msg.sender, to, 0, position.amount);
         }
 
         lpToken[pid].safeTransfer(to, amount);
@@ -426,47 +427,47 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     /*
      + @notice Harvest proceeds for transaction sender to `to`.
      + @param pid The index of the pool. See `poolInfo`.
-     + @param positionId NFT ID of the receiver of RELIC rewards.
+     + @param positionId NFT ID of the receiver of OATH rewards.
     */
     function harvest(uint256 pid, uint256 positionId) public nonReentrant {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
         PoolInfo memory pool = updatePool(pid);
         PositionInfo storage position = positionInfo[pid][positionId];
-        int256 accumulatedRelic = int256(
-            (position.amount * pool.accRelicPerShare) / ACC_RELIC_PRECISION
+        int256 accumulatedOath = int256(
+            (position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION
         );
-        uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt)
+        uint256 _pendingOath = (accumulatedOath - position.rewardDebt)
             .toUInt256();
-        uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
+        uint256 _curvedOath = _modifyEmissions(_pendingOath, positionId, pid);
 
         // Effects
-        position.rewardDebt = accumulatedRelic;
+        position.rewardDebt = accumulatedOath;
 
         // Interactions
-        if (_curvedRelic != 0) {
-            RELIC.safeTransfer(to, _curvedRelic);
+        if (_curvedOath != 0) {
+            OATH.safeTransfer(to, _curvedOath);
         }
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onRelicReward(
+            _rewarder.onOathReward(
                 pid,
                 msg.sender,
                 to,
-                _curvedRelic,
+                _curvedOath,
                 position.amount
             );
         }
 
-        emit Harvest(msg.sender, pid, _curvedRelic, positionId);
+        emit Harvest(msg.sender, pid, _curvedOath, positionId);
     }
 
     /*
      + @notice Withdraw LP tokens from MCV2 and harvest proceeds for transaction sender to `to`.
      + @param pid The index of the pool. See `poolInfo`.
      + @param amount token amount to withdraw.
-     + @param positionId NFT ID of the receiver of the tokens and RELIC rewards.
+     + @param positionId NFT ID of the receiver of the tokens and OATH rewards.
      +
      + NOTE: We broke the effects / interactions pattern so that we don't affect the user's curve
      + while still sending them the proper harvest amount before we modify their average entry time.
@@ -486,28 +487,28 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
-        int256 accumulatedRelic = int256(
-            (position.amount * pool.accRelicPerShare) / ACC_RELIC_PRECISION
+        int256 accumulatedOath = int256(
+            (position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION
         );
-        uint256 _pendingRelic = (accumulatedRelic - position.rewardDebt)
+        uint256 _pendingOath = (accumulatedOath - position.rewardDebt)
             .toUInt256();
-        uint256 _curvedRelic = _modifyEmissions(_pendingRelic, positionId, pid);
+        uint256 _curvedOath = _modifyEmissions(_pendingOath, positionId, pid);
 
-        RELIC.safeTransfer(to, _curvedRelic);
+        OATH.safeTransfer(to, _curvedOath);
         _updateEntry(pid, amount, positionId);
 
         position.rewardDebt =
-            accumulatedRelic -
-            int256((amount * pool.accRelicPerShare) / ACC_RELIC_PRECISION);
+            accumulatedOath -
+            int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         position.amount = position.amount - amount;
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onRelicReward(
+            _rewarder.onOathReward(
                 pid,
                 msg.sender,
                 to,
-                _curvedRelic,
+                _curvedOath,
                 position.amount
             );
         }
@@ -515,7 +516,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         lpToken[pid].safeTransfer(to, amount);
 
         emit Withdraw(msg.sender, pid, amount, to, positionId);
-        emit Harvest(msg.sender, pid, _curvedRelic, positionId);
+        emit Harvest(msg.sender, pid, _curvedOath, positionId);
     }
 
     /*
@@ -541,7 +542,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onRelicReward(pid, msg.sender, to, 0, 0);
+            _rewarder.onOathReward(pid, msg.sender, to, 0, 0);
         }
 
         // Note: transfer can fail or succeed if `amount` is zero.
@@ -570,7 +571,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /*
      + @notice operates on the position's MasterChef emissions
-     + @param amount RELIC amount to modify
+     + @param amount OATH amount to modify
      + @param positionId the position that's being modified
      + @param pid The index of the pool. See `poolInfo`.
     */
