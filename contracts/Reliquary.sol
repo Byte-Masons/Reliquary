@@ -154,7 +154,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         IRewarder indexed rewarder,
         address indexed curve
     );
-    event LogSetPool(
+    event LogPoolModified(
         uint256 indexed pid,
         uint256 allocPoint,
         IRewarder indexed rewarder,
@@ -179,12 +179,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Add a new LP to the pool. Can only be called by the owner.
+     + @notice Add a new pool for the specified LP.
+     +         Can only be called by the owner.
+     +
      + @param allocPoint the allocation points for the new pool
      + @param _lpToken address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
     */
-    function add(
+    function addPool(
         uint256 allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
@@ -195,7 +197,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             "this token has already been added"
         );
         require(_lpToken != OATH, "same token");
-        uint256 lastRewardTime = _timestamp();
+
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
@@ -203,13 +205,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         poolInfo.push(
             PoolInfo({
                 allocPoint: allocPoint,
-                lastRewardTime: lastRewardTime,
+                lastRewardTime: _timestamp(),
                 accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(_curve)
             })
         );
         hasBeenAdded[address(_lpToken)] = true;
+
         emit LogPoolAddition(
             (lpToken.length - 1),
             allocPoint,
@@ -220,15 +223,17 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Update the given pool's OATH allocation point and `IRewarder` contract
+     + @notice Modify the given pool's properties.
+     +         Can only be called by the owner.
+     +
      + @param _pid The index of the pool. See `poolInfo`.
      + @param _allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param _curve Address of the curve library
-     + @param overwriteRewarder True if _rewarder should be `set`. Otherwise `_rewarder` is ignored.
-     + @param overwriteCurve True if _curve should be `set`. Otherwise `_curve` is ignored.
+     + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
+     + @param overwriteCurve True if _curve should be set. Otherwise `_curve` is ignored.
     */
-    function set(
+    function modifyPool(
         uint256 _pid,
         uint256 _allocPoint,
         IRewarder _rewarder,
@@ -237,17 +242,20 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         bool overwriteCurve
     ) public onlyOwner {
         require(_pid < poolInfo.length, "set: pool does not exist");
-        totalAllocPoint =
-            (totalAllocPoint - poolInfo[_pid].allocPoint) +
-            _allocPoint;
+
+        totalAllocPoint -= poolInfo[_pid].allocPoint;
+        totalAllocPoint += _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint;
+
         if (overwriteRewarder) {
             rewarder[_pid] = _rewarder;
         }
+
         if (overwriteCurve) {
             poolInfo[_pid].curveAddress = _curve;
         }
-        emit LogSetPool(
+
+        emit LogPoolModified(
             _pid,
             _allocPoint,
             overwriteRewarder ? _rewarder : rewarder[_pid],
@@ -261,28 +269,30 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param _positionId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
+    // TODO tess3rac7 rename positionId above and below as well accordingly
     function pendingOath(uint256 _pid, uint256 positionId)
         external
         view
         returns (uint256 pending)
     {
         PositionInfo storage position = positionInfo[_pid][positionId];
-        PoolInfo memory pool = poolInfo[_pid];
+
+        PoolInfo storage pool = poolInfo[_pid];
         uint256 accOathPerShare = pool.accOathPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-        if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
-            uint256 milliSecs = _timestamp() - pool.lastRewardTime;
-            uint256 oathReward = (milliSecs *
+
+        uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
+        if (millisSinceReward != 0 && lpSupply != 0) {
+            uint256 oathReward = (millisSinceReward *
                 EMISSIONS_PER_MILLISECOND *
                 pool.allocPoint) / totalAllocPoint;
-            accOathPerShare =
-                accOathPerShare +
-                ((oathReward * ACC_OATH_PRECISION) / lpSupply);
+            accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
         }
-        uint256 rawPending = (int256(
+
+        int256 rawPending = int256(
             (position.amount * accOathPerShare) / ACC_OATH_PRECISION
-        ) - position.rewardDebt).toUInt256();
-        pending = _modifyEmissions(rawPending, positionId, _pid);
+        ) - position.rewardDebt;
+        pending = _modifyEmissions(rawPending.toUInt256(), positionId, _pid);
     }
 
     /*
@@ -290,8 +300,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
     function massUpdatePools(uint256[] calldata pids) external {
-        uint256 len = pids.length;
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < pids.length; i++) {
             updatePool(pids[i]);
         }
     }
@@ -303,19 +312,23 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     */
     function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
-        if (_timestamp() > pool.lastRewardTime) {
+        uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
+
+        if (millisSinceReward != 0) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
-            if (lpSupply > 0) {
-                uint256 milliSecs = _timestamp() - pool.lastRewardTime;
-                uint256 oathReward = (milliSecs *
+
+            if (lpSupply != 0) {
+                uint256 oathReward = (millisSinceReward *
                     EMISSIONS_PER_MILLISECOND *
                     pool.allocPoint) / totalAllocPoint;
-                pool.accOathPerShare =
-                    pool.accOathPerShare +
-                    (((oathReward * ACC_OATH_PRECISION) / lpSupply));
+                pool.accOathPerShare +=
+                    (oathReward * ACC_OATH_PRECISION) /
+                    lpSupply;
             }
+
             pool.lastRewardTime = _timestamp();
             poolInfo[pid] = pool;
+
             emit LogUpdatePool(
                 pid,
                 pool.lastRewardTime,
@@ -325,6 +338,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         }
     }
 
+    // TODO tess3rac7 "createRelicAndDeposit"?
     function createPositionAndDeposit(
         address to,
         uint256 pid,
@@ -335,6 +349,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         return id;
     }
 
+    // TODO tess3rac7 should this function be public or internal?
     function createNewPosition(address to)
         public
         nonReentrant
@@ -350,7 +365,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    // this should still be public?
+    // Q: TODO tess3rac7 this should still be public?
+    // A: for now since same relic for multiple pools, but will update
     function deposit(
         uint256 pid,
         uint256 amount,
