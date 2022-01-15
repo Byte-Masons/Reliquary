@@ -154,7 +154,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         IRewarder indexed rewarder,
         address indexed curve
     );
-    event LogSetPool(
+    event LogPoolModified(
         uint256 indexed pid,
         uint256 allocPoint,
         IRewarder indexed rewarder,
@@ -223,15 +223,17 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Update the given pool's OATH allocation point and `IRewarder` contract
+     + @notice Modify the given pool's properties.
+     +         Can only be called by the owner.
+     +
      + @param _pid The index of the pool. See `poolInfo`.
      + @param _allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param _curve Address of the curve library
-     + @param overwriteRewarder True if _rewarder should be `set`. Otherwise `_rewarder` is ignored.
-     + @param overwriteCurve True if _curve should be `set`. Otherwise `_curve` is ignored.
+     + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
+     + @param overwriteCurve True if _curve should be set. Otherwise `_curve` is ignored.
     */
-    function set(
+    function modifyPool(
         uint256 _pid,
         uint256 _allocPoint,
         IRewarder _rewarder,
@@ -240,17 +242,20 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         bool overwriteCurve
     ) public onlyOwner {
         require(_pid < poolInfo.length, "set: pool does not exist");
-        totalAllocPoint =
-            (totalAllocPoint - poolInfo[_pid].allocPoint) +
-            _allocPoint;
+
+        totalAllocPoint -= poolInfo[_pid].allocPoint;
+        totalAllocPoint += _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint;
+
         if (overwriteRewarder) {
             rewarder[_pid] = _rewarder;
         }
+
         if (overwriteCurve) {
             poolInfo[_pid].curveAddress = _curve;
         }
-        emit LogSetPool(
+
+        emit LogPoolModified(
             _pid,
             _allocPoint,
             overwriteRewarder ? _rewarder : rewarder[_pid],

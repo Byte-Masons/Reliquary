@@ -1,6 +1,6 @@
 const { assert, expect } = require("chai");
 const { debug, deployChef, deployRewarder, deployCurve, tokenOfOwnerByIndex, tokenByIndex, totalPositions, returnChef,
-  getGlobalInfo, viewPoolInfo, viewLpToken, viewRewarder, getPositionInfo, getPoolCount, addPool, set, pendingRelic,
+  getGlobalInfo, viewPoolInfo, viewLpToken, viewRewarder, getPositionInfo, getPoolCount, addPool, modifyPool, pendingRelic,
   massUpdatePools, updatePool, createNewPositionAndDeposit, createNewPosition, deposit, withdraw, harvest,
   withdrawAndHarvest, emergencyWithdraw, curved } = require("../src/Reliquary.js");
 
@@ -33,16 +33,16 @@ describe("Reliquary", function () {
     })
   })
 
-  describe("Set", function () {
-    it("Should emit event LogSetPool", async function () {
+  describe("ModifyPool", function () {
+    it("Should emit event LogPoolModified", async function () {
       await addPool(this.chef.address, 100, this.lp.address, zeroAddress, this.curve.address);
-      await expect(this.chef.set(0, 100, zeroAddress, this.curve.address, false, false)).to.emit(this.chef, "LogSetPool");
-      await expect(this.chef.set(0, 100, this.oath.address, this.curve.address, true, false)).to.emit(this.chef, "LogSetPool").
+      await expect(this.chef.modifyPool(0, 100, zeroAddress, this.curve.address, false, false)).to.emit(this.chef, "LogPoolModified");
+      await expect(this.chef.modifyPool(0, 100, this.oath.address, this.curve.address, true, false)).to.emit(this.chef, "LogPoolModified").
         withArgs(0, 100, this.oath.address, this.curve.address);
     })
 
     it("Should revert if invalid pool", async function () {
-      await expect(this.chef.set(0, 100, zeroAddress, this.curve.address, false, false)).to.be.reverted;
+      await expect(this.chef.modifyPool(0, 100, zeroAddress, this.curve.address, false, false)).to.be.reverted;
     })
   })
 
