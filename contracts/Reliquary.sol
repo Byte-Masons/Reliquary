@@ -269,28 +269,30 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param _positionId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
+    // TODO tess3rac7 rename positionId above and below as well accordingly
     function pendingOath(uint256 _pid, uint256 positionId)
         external
         view
         returns (uint256 pending)
     {
         PositionInfo storage position = positionInfo[_pid][positionId];
-        PoolInfo memory pool = poolInfo[_pid];
+
+        PoolInfo storage pool = poolInfo[_pid];
         uint256 accOathPerShare = pool.accOathPerShare;
         uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-        if (_timestamp() > pool.lastRewardTime && lpSupply != 0) {
-            uint256 milliSecs = _timestamp() - pool.lastRewardTime;
-            uint256 oathReward = (milliSecs *
+
+        uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
+        if (millisSinceReward != 0 && lpSupply != 0) {
+            uint256 oathReward = (millisSinceReward *
                 EMISSIONS_PER_MILLISECOND *
                 pool.allocPoint) / totalAllocPoint;
-            accOathPerShare =
-                accOathPerShare +
-                ((oathReward * ACC_OATH_PRECISION) / lpSupply);
+            accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
         }
-        uint256 rawPending = (int256(
+
+        int256 rawPending = int256(
             (position.amount * accOathPerShare) / ACC_OATH_PRECISION
-        ) - position.rewardDebt).toUInt256();
-        pending = _modifyEmissions(rawPending, positionId, _pid);
+        ) - position.rewardDebt;
+        pending = _modifyEmissions(rawPending.toUInt256(), positionId, _pid);
     }
 
     /*

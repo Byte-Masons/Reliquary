@@ -46,8 +46,8 @@ describe("Reliquary", function () {
     })
   })
 
-  describe("PendingRelic", function () {
-    it("PendingRelic should equal ExpectedRelic", async function () {
+  describe("PendingOath", function () {
+    it("PendingOath should equal ExpectedOath", async function () {
       await addPool(this.chef.address, 1, this.lp.address, zeroAddress, this.curve.address);
       await this.lp.approve(this.chef.address, ethers.utils.parseEther("1000"));
       await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther("1"));
