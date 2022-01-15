@@ -71,7 +71,6 @@ async function getPositionInfo(chefAddress, pid, positionId) {
     "amount": userInfo[0].toString(),
     "rewardDebt": userInfo[1].toString(),
     "entry": userInfo[2].toString(),
-    "exempt": userInfo[3]
   };
 }
 

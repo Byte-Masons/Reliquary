@@ -37,16 +37,16 @@ async function main() {
   console.log("rewarderAddress: " +rewarderAddress);
 
   await oathToken.mint(chef.address, ethers.utils.parseEther("100000000000"));
-  await testToken.mint("0x8B4441E79151e3fC5264733A3C5da4fF8EAc16c1", ethers.utils.parseEther("1000000"));
+  await testToken.mint(chef.signer.address, ethers.utils.parseEther("1000000"));
   reaper.sleep(20000);
   await reaper.approveMax(chef.address, testToken.address);
-  await reliquary.createNewPositionAndDeposit(chef.address, "0x8B4441E79151e3fC5264733A3C5da4fF8EAc16c1", 0, ethers.utils.parseEther("5000"));
-  let id = await reliquary.tokenOfOwnerByIndex(chef.address, "0x8B4441E79151e3fC5264733A3C5da4fF8EAc16c1", 0);
+  await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, ethers.utils.parseEther("5000"));
+  let id = await reliquary.tokenOfOwnerByIndex(chef.address, chef.signer.address, 0);
   console.log("NFT IDs");
   console.log(id);
   console.log("parsed ID: "+id.toString());
   let chefOathBalance = await oathToken.balanceOf(chef.address);
-  let userOathBalance = await oathToken.balanceOf("0x8B4441E79151e3fC5264733A3C5da4fF8EAc16c1");
+  let userOathBalance = await oathToken.balanceOf(chef.signer.address);
   console.log("chef balance: " +chefOathBalance);
   console.log("user balance: " +userOathBalance);
   let positionInfo = await reliquary.getPositionInfo(chef.address, 0, id);
