@@ -300,8 +300,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
     function massUpdatePools(uint256[] calldata pids) external {
-        uint256 len = pids.length;
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < pids.length; i++) {
             updatePool(pids[i]);
         }
     }
@@ -313,19 +312,23 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     */
     function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
-        if (_timestamp() > pool.lastRewardTime) {
+        uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
+
+        if (millisSinceReward != 0) {
             uint256 lpSupply = lpToken[pid].balanceOf(address(this));
-            if (lpSupply > 0) {
-                uint256 milliSecs = _timestamp() - pool.lastRewardTime;
-                uint256 oathReward = (milliSecs *
+
+            if (lpSupply != 0) {
+                uint256 oathReward = (millisSinceReward *
                     EMISSIONS_PER_MILLISECOND *
                     pool.allocPoint) / totalAllocPoint;
-                pool.accOathPerShare =
-                    pool.accOathPerShare +
-                    (((oathReward * ACC_OATH_PRECISION) / lpSupply));
+                pool.accOathPerShare +=
+                    (oathReward * ACC_OATH_PRECISION) /
+                    lpSupply;
             }
+
             pool.lastRewardTime = _timestamp();
             poolInfo[pid] = pool;
+
             emit LogUpdatePool(
                 pid,
                 pool.lastRewardTime,
@@ -335,6 +338,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         }
     }
 
+    // TODO tess3rac7 "createRelicAndDeposit"?
     function createPositionAndDeposit(
         address to,
         uint256 pid,
@@ -345,6 +349,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         return id;
     }
 
+    // TODO tess3rac7 should this function be public or internal?
     function createNewPosition(address to)
         public
         nonReentrant
@@ -360,7 +365,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param amount token amount to deposit.
      + @param positionId NFT ID of the receiver of `amount` deposit benefit.
     */
-    // this should still be public?
+    // Q: TODO tess3rac7 this should still be public?
+    // A: for now since same relic for multiple pools, but will update
     function deposit(
         uint256 pid,
         uint256 amount,
