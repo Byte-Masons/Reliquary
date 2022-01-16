@@ -310,7 +310,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public returns (PoolInfo memory pool) {
+    function updatePool(uint256 pid) public nonReentrant returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
@@ -370,10 +370,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         uint256 positionId
-    )
-        public
-        nonReentrant
-    {
+    ) public {
         require(amount != 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
@@ -413,7 +410,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         uint256 positionId
-    ) public nonReentrant {
+    ) public {
         address to = ownerOf(positionId);
         require(
             to == msg.sender,
@@ -447,7 +444,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of OATH rewards.
     */
-    function harvest(uint256 pid, uint256 positionId) public nonReentrant {
+    function harvest(uint256 pid, uint256 positionId) public {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
         PoolInfo memory pool = updatePool(pid);
@@ -495,7 +492,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         uint256 positionId
-    ) public nonReentrant {
+    ) public {
         address to = ownerOf(positionId);
         require(
             to == msg.sender,
