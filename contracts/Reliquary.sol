@@ -548,13 +548,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         public
         nonReentrant
     {
+        address to = ownerOf(positionId);
         require(
-            ownerOf(positionId) == msg.sender,
+            to == msg.sender,
             "you do not own this position"
         );
         PositionInfo storage position = positionInfo[pid][positionId];
         uint256 amount = position.amount;
-        address to = ownerOf(positionId);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         position.amount = 0;
         position.rewardDebt = 0;
