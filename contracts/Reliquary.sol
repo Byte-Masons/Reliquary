@@ -496,15 +496,15 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 amount,
         uint256 positionId
     ) public nonReentrant {
+        address to = ownerOf(positionId);
         require(
-            ownerOf(positionId) == msg.sender,
+            to == msg.sender,
             "you do not own this position"
         );
         require(amount != 0, "withdrawing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         PositionInfo storage position = positionInfo[pid][positionId];
-        address to = ownerOf(positionId);
         int256 accumulatedOath = int256(
             (position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION
         );
@@ -512,7 +512,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             .toUInt256();
         uint256 _curvedOath = _modifyEmissions(_pendingOath, positionId, pid);
 
-        OATH.safeTransfer(to, _curvedOath);
+        if (_curvedOath != 0) {
+            OATH.safeTransfer(to, _curvedOath);
+        }
         _updateEntry(pid, amount, positionId);
 
         position.rewardDebt =
