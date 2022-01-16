@@ -374,7 +374,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         public
         nonReentrant
     {
-        require(amount > 0, "depositing 0 amount");
+        require(amount != 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
         PositionInfo storage position = positionInfo[pid][positionId];
@@ -419,7 +419,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             to == msg.sender,
             "you do not own this position"
         );
-        require(amount > 0, "withdrawing 0 amount");
+        require(amount != 0, "withdrawing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         _updateEntry(pid, amount, positionId);
@@ -500,7 +500,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             ownerOf(positionId) == msg.sender,
             "you do not own this position"
         );
-        require(amount > 0, "withdrawing 0 amount");
+        require(amount != 0, "withdrawing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         PositionInfo storage position = positionInfo[pid][positionId];
