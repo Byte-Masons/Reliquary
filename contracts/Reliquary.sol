@@ -414,8 +414,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 amount,
         uint256 positionId
     ) public nonReentrant {
+        address to = ownerOf(positionId);
         require(
-            ownerOf(positionId) == msg.sender,
+            to == msg.sender,
             "you do not own this position"
         );
         require(amount > 0, "withdrawing 0 amount");
@@ -423,7 +424,6 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         _updateEntry(pid, amount, positionId);
         PositionInfo storage position = positionInfo[pid][positionId];
-        address to = ownerOf(positionId);
 
         // Effects
         position.rewardDebt =
