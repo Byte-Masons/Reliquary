@@ -352,7 +352,6 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     // TODO tess3rac7 should this function be public or internal?
     function createNewPosition(address to)
         public
-        nonReentrant
         returns (uint256)
     {
         uint256 id = mint(to);
@@ -371,7 +370,10 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         uint256 positionId
-    ) public {
+    )
+        public
+        nonReentrant
+    {
         require(amount > 0, "depositing 0 amount");
         PoolInfo memory pool = updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
