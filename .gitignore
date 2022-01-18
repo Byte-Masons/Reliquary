@@ -1,5 +1,16 @@
-artifacts/
-cache/
+# general
+node_modules
+.env
 secrets.json
-node_modules/
-artifacts/
+
+#Hardhat files
+cache
+artifacts
+
+#Solidity coverage
+coverage
+coverage.json
+
+#Typechain
+typechain
+types
