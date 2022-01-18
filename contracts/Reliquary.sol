@@ -598,12 +598,12 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 positionId,
         uint256 pid
     ) internal view returns (uint256) {
-        Position memory position = _calculateDistanceFromMean(positionId, pid);
+        (uint256 distance, Placement placement) = _calculateDistanceFromMean(positionId, pid);
 
-        if (position.placement == Placement.ABOVE) {
-            return (amount * (BASIS_POINTS + position.distance)) / BASIS_POINTS;
-        } else if (position.placement == Placement.BELOW) {
-            return (amount * (BASIS_POINTS - position.distance)) / BASIS_POINTS;
+        if (placement == Placement.ABOVE) {
+            return (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
+        } else if (placement == Placement.BELOW) {
+            return (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
         } else {
             return amount;
         }
@@ -618,20 +618,20 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     function _calculateDistanceFromMean(uint256 positionId, uint256 pid)
         internal
         view
-        returns (Position memory)
+        returns (uint256, Placement)
     {
         uint256 position = curved(pid, positionId);
         uint256 mean = _calculateMean(pid);
 
         if (position < mean) {
             return
-                Position(
+                (
                     ((mean - position) * BASIS_POINTS) / mean,
                     Placement.BELOW
                 );
         } else {
             return
-                Position(
+                (
                     ((position - mean) * BASIS_POINTS) / mean,
                     Placement.ABOVE
                 );
