@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-// EXPERIMENTAL - NO NEED TO AUDIT THIS FILE
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 contract Sigmoid {
     int256 constant HORIZONTAL_STRETCH = 1e7;
