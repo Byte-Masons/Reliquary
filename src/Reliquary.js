@@ -87,9 +87,9 @@ async function addPool(chefAddress, allocPoint, lpToken, rewarder, curve) {
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, rewarder, curve, overwriteRewarder, overwriteCurve) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, overwriteRewarder, overwriteCurve) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pic, rewarder, overwrite);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, overwriteRewarder, overwriteCurve);
   let receipt = await tx.wait();
   return receipt;
 }

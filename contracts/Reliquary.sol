@@ -237,7 +237,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 _pid,
         uint256 _allocPoint,
         IRewarder _rewarder,
-        address _curve,
+        ICurve _curve,
         bool overwriteRewarder,
         bool overwriteCurve
     ) public onlyOwner {
@@ -252,14 +252,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         }
 
         if (overwriteCurve) {
-            poolInfo[_pid].curveAddress = _curve;
+            poolInfo[_pid].curveAddress = address(_curve);
         }
 
         emit LogPoolModified(
             _pid,
             _allocPoint,
             overwriteRewarder ? _rewarder : rewarder[_pid],
-            overwriteCurve ? _curve : poolInfo[_pid].curveAddress
+            overwriteCurve ? address(_curve) : poolInfo[_pid].curveAddress
         );
     }
 
