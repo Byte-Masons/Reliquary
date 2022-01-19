@@ -292,7 +292,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         int256 rawPending = int256(
             (position.amount * accOathPerShare) / ACC_OATH_PRECISION
         ) - position.rewardDebt;
-        pending = _modifyEmissions(rawPending.toUInt256(), positionId, _pid);
+        pending = _calculateEmissions(rawPending.toUInt256(), positionId, _pid);
     }
 
     /*
@@ -438,7 +438,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         );
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt)
             .toUInt256();
-        uint256 _curvedOath = _modifyEmissions(_pendingOath, positionId, pid);
+        uint256 _curvedOath = _calculateEmissions(_pendingOath, positionId, pid);
 
         // Effects
         position.rewardDebt = accumulatedOath;
@@ -491,7 +491,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         );
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt)
             .toUInt256();
-        uint256 _curvedOath = _modifyEmissions(_pendingOath, positionId, pid);
+        uint256 _curvedOath = _calculateEmissions(_pendingOath, positionId, pid);
 
         if (_curvedOath != 0) {
             OATH.safeTransfer(to, _curvedOath);
@@ -577,19 +577,19 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param pid The index of the pool. See `poolInfo`.
     */
 
-    function _modifyEmissions(
+    function _calculateEmissions(
         uint256 amount,
         uint256 positionId,
         uint256 pid
-    ) internal view returns (uint256 modified) {
+    ) internal view returns (uint256 emissions) {
         (uint256 distance, Placement placement) = _calculateDistanceFromMean(positionId, pid);
 
         if (placement == Placement.ABOVE) {
-            modified = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
+            emissions = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
         } else if (placement == Placement.BELOW) {
-            modified = (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
+            emissions = (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
         } else {
-            modified = amount;
+            emissions = amount;
         }
     }
 
