@@ -343,10 +343,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         address to,
         uint256 pid,
         uint256 amount
-    ) public returns (uint256) {
-        uint256 id = mint(to);
+    ) public returns (uint256 id) {
+        id = mint(to);
         deposit(pid, amount, id);
-        return id;
     }
 
     /*
@@ -561,14 +560,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     function curved(uint256 _pid, uint256 positionId)
         public
         view
-        returns (uint256)
+        returns (uint256 _curved)
     {
         PositionInfo storage position = positionInfo[_pid][positionId];
         PoolInfo memory pool = poolInfo[_pid];
 
         uint256 maturity = _timestamp() - position.entry;
 
-        return ICurve(pool.curveAddress).curve(maturity);
+        _curved = ICurve(pool.curveAddress).curve(maturity);
     }
 
     /*
@@ -582,15 +581,15 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 amount,
         uint256 positionId,
         uint256 pid
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 modified) {
         (uint256 distance, Placement placement) = _calculateDistanceFromMean(positionId, pid);
 
         if (placement == Placement.ABOVE) {
-            return (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
+            modified = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
         } else if (placement == Placement.BELOW) {
-            return (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
+            modified = (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
         } else {
-            return amount;
+            modified = amount;
         }
     }
 
@@ -603,23 +602,17 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     function _calculateDistanceFromMean(uint256 positionId, uint256 pid)
         internal
         view
-        returns (uint256, Placement)
+        returns (uint256 distance, Placement placement)
     {
         uint256 position = curved(pid, positionId);
         uint256 mean = _calculateMean(pid);
 
         if (position < mean) {
-            return
-                (
-                    ((mean - position) * BASIS_POINTS) / mean,
-                    Placement.BELOW
-                );
+            distance = ((mean - position) * BASIS_POINTS) / mean;
+            placement = Placement.BELOW;
         } else {
-            return
-                (
-                    ((position - mean) * BASIS_POINTS) / mean,
-                    Placement.ABOVE
-                );
+            distance = ((position - mean) * BASIS_POINTS) / mean;
+            placement = Placement.ABOVE;
         }
     }
 
@@ -629,10 +622,10 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @return the Y value based on X maturity in the context of the curve
     */
 
-    function _calculateMean(uint256 pid) internal view returns (uint256) {
+    function _calculateMean(uint256 pid) internal view returns (uint256 mean) {
         PoolInfo memory pool = poolInfo[pid];
         uint256 maturity = _timestamp() - pool.averageEntry;
-        return ICurve(pool.curveAddress).curve(maturity);
+        mean = ICurve(pool.curveAddress).curve(maturity);
     }
 
     /*
@@ -646,7 +639,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         Kind kind
-    ) internal returns (bool) {
+    ) internal returns (bool success) {
         PoolInfo storage pool = poolInfo[pid];
         // _totalDeposits feels a bit misleading especially when we have "deposit" and
         // "withdraw" being treated as first class citizens in the context of this contract
@@ -678,7 +671,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount,
         uint256 positionId
-    ) internal returns (bool) {
+    ) internal returns (bool success) {
         PositionInfo storage position = positionInfo[pid][positionId];
         if (position.amount == 0) {
             position.entry = _timestamp();
@@ -696,14 +689,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @return the amount of pool tokens held by the contract
     */
 
-    function _totalDeposits(uint256 pid) internal view returns (uint256) {
-        return IERC20(lpToken[pid]).balanceOf(address(this));
+    function _totalDeposits(uint256 pid) internal view returns (uint256 total) {
+        total = IERC20(lpToken[pid]).balanceOf(address(this));
     }
 
     // Converting timestamp to miliseconds so precision isn't lost when we mutate the
     // user's entry time.
 
-    function _timestamp() internal view returns (uint256) {
-        return block.timestamp * 1000;
+    function _timestamp() internal view returns (uint256 timestamp) {
+        timestamp = block.timestamp * 1000;
     }
 }
