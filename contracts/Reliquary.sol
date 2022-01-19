@@ -344,17 +344,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 pid,
         uint256 amount
     ) public returns (uint256) {
-        uint256 id = createNewPosition(to);
-        deposit(pid, amount, id);
-        return id;
-    }
-
-    // TODO tess3rac7 should this function be public or internal?
-    function createNewPosition(address to)
-        public
-        returns (uint256)
-    {
         uint256 id = mint(to);
+        deposit(pid, amount, id);
         return id;
     }
 

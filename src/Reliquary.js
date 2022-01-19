@@ -121,13 +121,6 @@ async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
   return receipt;
 }
 
-async function createNewPosition(chefAddress, to, pid, amount) {
-  let chef = await returnChef(chefAddress);
-  let id = await chef.createNewPosition(to, pid, amount);
-  await id.wait();
-  return id;
-}
-
 async function deposit(chefAddress, pid, amount, positionId) {
   let chef = await returnChef(chefAddress);
   let tx = await chef.deposit(pid, amount, positionId);
@@ -209,7 +202,6 @@ module.exports = {
   massUpdatePools,
   updatePool,
   createNewPositionAndDeposit,
-  createNewPosition,
   deposit,
   withdraw,
   harvest,
