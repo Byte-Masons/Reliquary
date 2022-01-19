@@ -368,27 +368,21 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
 
-        // Effects
-        //position.amount = position.amount + amount;
-        //position.rewardDebt = position.rewardDebt + (int256(amount * pool.accOathPerShare / ACC_OATH_PRECISION));
-
-        // Interactions
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(pid, to, to, 0, position.amount);
         }
 
-        uint256 _before = lpToken[pid].balanceOf(address(this));
-        //_updateEntry(pid, amount, positionId);
+        uint256 before = lpToken[pid].balanceOf(address(this));
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        uint256 _after = lpToken[pid].balanceOf(address(this)) - _before;
-        _updateEntry(pid, _after, positionId);
-        position.amount = position.amount + _after;
+        uint256 transferredAmount = lpToken[pid].balanceOf(address(this)) - before;
+        _updateEntry(pid, transferredAmount, positionId);
+        position.amount += transferredAmount;
         position.rewardDebt =
             position.rewardDebt +
-            (int256((_after * pool.accOathPerShare) / ACC_OATH_PRECISION));
+            (int256((transferredAmount * pool.accOathPerShare) / ACC_OATH_PRECISION));
 
-        emit Deposit(msg.sender, pid, amount, to, positionId);
+        emit Deposit(msg.sender, pid, transferredAmount, to, positionId);
     }
 
     /*
