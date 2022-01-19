@@ -418,9 +418,11 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             _rewarder.onOathReward(pid, msg.sender, to, 0, position.amount);
         }
 
+        uint256 before = _totalDeposits(pid);
         lpToken[pid].safeTransfer(to, amount);
+        uint256 amountLessInPool = before - _totalDeposits(pid);
 
-        emit Withdraw(msg.sender, pid, amount, to, positionId);
+        emit Withdraw(msg.sender, pid, amountLessInPool, to, positionId);
     }
 
     /*
