@@ -279,7 +279,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
         PoolInfo storage pool = poolInfo[_pid];
         uint256 accOathPerShare = pool.accOathPerShare;
-        uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+        uint256 lpSupply = _totalDeposits(_pid);
 
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
         if (millisSinceReward != 0 && lpSupply != 0) {
@@ -315,7 +315,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
         if (millisSinceReward != 0) {
-            uint256 lpSupply = lpToken[pid].balanceOf(address(this));
+            uint256 lpSupply = _totalDeposits(pid);
 
             if (lpSupply != 0) {
                 uint256 oathReward = (millisSinceReward *
@@ -373,9 +373,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             _rewarder.onOathReward(pid, to, to, 0, position.amount);
         }
 
-        uint256 before = lpToken[pid].balanceOf(address(this));
+        uint256 before = _totalDeposits(pid);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        uint256 transferredAmount = lpToken[pid].balanceOf(address(this)) - before;
+        uint256 transferredAmount = _totalDeposits(pid) - before;
         _updateEntry(pid, transferredAmount, positionId);
         position.amount += transferredAmount;
         position.rewardDebt =
