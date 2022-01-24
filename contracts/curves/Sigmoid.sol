@@ -9,14 +9,11 @@ contract Sigmoid {
     int256 constant VERTICAL_SHIFT = 0; // care must be taken not to allow negative y-values
 
     function curve(uint256 maturity) external pure returns (uint256) {
-        int256 denom = sqrt(
-            (int256(maturity) - HORIZONTAL_SHIFT)**2 + HORIZONTAL_STRETCH**2
-        );
+        int256 denom = sqrt((int256(maturity) - HORIZONTAL_SHIFT)**2 + HORIZONTAL_STRETCH**2);
 
         return
             uint256(
-                (VERTICAL_STRETCH *
-                    ((int256(maturity) - HORIZONTAL_SHIFT) + denom)) / // denom is added to place lower bound at 0
+                (VERTICAL_STRETCH * ((int256(maturity) - HORIZONTAL_SHIFT) + denom)) / // denom is added to place lower bound at 0
                     denom +
                     VERTICAL_SHIFT
             );
