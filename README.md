@@ -27,9 +27,22 @@ their movement in and out, the pool as a whole seeks to achieve 'zero-sum' behav
 interaction.
 
 
+## Installation
+This is a `Hardhat` project which requires a specific node version. We have provided an `.nvmrc` file which shows the current required version of node. You can install manually or via [nvm](https://github.com/nvm-sh/nvm) by using the command.
+```bash
+nvm use
+```
+
+
+All dependencies are managed by `npm`, you can install the project using the command
+```bash
+npm install
+```
+
+
 ## Testing
 
-We have `hardhat` test coverage in the file `test/ReliquaryTest.ts`, you will need to ensure the contracts have been compiled before running so please use:
+We have `hardhat` test coverage in the file `test/ReliquaryTest.ts`, you will need to ensure the contracts have been compiled before running so please use the commands:
 
 ```bash
 npm run build
