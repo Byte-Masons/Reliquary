@@ -49,3 +49,9 @@ npm run build
 npm run test
 ```
 
+## Chef tester
+We also have an `End to End` test script that tests the MasterChef works as intended. 
+
+```bash
+npx hardhat run scripts/ChefTester.js
+```
