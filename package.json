@@ -1,7 +1,7 @@
 {
-  "name": "reaper-proving-grounds",
-  "version": "1.0.0",
-  "description": "testing framework for Reaper vaults",
+  "name": "reliquary",
+  "version": "0.1.0",
+  "description": "Modified MasterchefV2 contract with curve based emissions",
   "main": "index.js",
   "scripts": {
     "clean": "npx hardhat clean",
