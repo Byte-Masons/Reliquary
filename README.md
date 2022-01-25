@@ -26,3 +26,13 @@ and withdrawals agnostic to the user performing the deposit or withdrawal. While
 their movement in and out, the pool as a whole seeks to achieve 'zero sum' behavior regardless of the context of each
 interaction.
 
+
+## Testing
+
+We have `hardhat` test coverage in the file `test/ReliquaryTest.ts`, you will need to ensure the contracts have been compiled before running so please use:
+
+```bash
+npm run build
+npm run test
+```
+
