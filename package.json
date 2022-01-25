@@ -12,7 +12,7 @@
     "deploy:production": "npx hardhat run --network opera scripts/deploy.ts",
     "test": "npx hardhat test"
   },
-  "author": "bebis",
+  "author": "0xBebis",
   "license": "ISC",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.10",
