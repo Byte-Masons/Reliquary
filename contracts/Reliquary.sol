@@ -348,7 +348,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Withdraw LP tokens from Shrine.
+     + @notice Withdraw LP tokens from Reliquary.
      + @param pid The index of the pool. See `poolInfo`.
      + @param amount LP token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens.
@@ -361,15 +361,17 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
+
         updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
-        _updateEntry(pid, amount, positionId);
+
         PoolInfo storage pool = poolInfo[pid];
         PositionInfo storage position = positionInfo[pid][positionId];
 
         // Effects
-        position.rewardDebt = position.rewardDebt - (int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION));
-        position.amount = position.amount - amount;
+        position.rewardDebt -= int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.amount -= amount;
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+        _updateEntry(pid, amount, positionId);
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
@@ -377,11 +379,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             _rewarder.onOathReward(pid, msg.sender, to, 0, position.amount);
         }
 
-        uint256 before = _poolBalance(pid);
         lpToken[pid].safeTransfer(to, amount);
-        uint256 amountLessInPool = before - _poolBalance(pid);
 
-        emit Withdraw(msg.sender, pid, amountLessInPool, to, positionId);
+        emit Withdraw(msg.sender, pid, amount, to, positionId);
     }
 
     /*
