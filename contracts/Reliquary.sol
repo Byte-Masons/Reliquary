@@ -327,8 +327,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     ) public {
         require(amount != 0, "depositing 0 amount");
         updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.DEPOSIT);
         _updateEntry(pid, amount, positionId);
+        _updateAverageEntry(pid, amount, Kind.DEPOSIT);
 
         PoolInfo storage pool = poolInfo[pid];
         PositionInfo storage position = positionInfo[pid][positionId];
@@ -370,8 +370,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         // Effects
         position.rewardDebt -= int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         position.amount -= amount;
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
         _updateEntry(pid, amount, positionId);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
 
         // Interactions
         IRewarder _rewarder = rewarder[pid];
@@ -385,16 +385,19 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Harvest proceeds for transaction sender to `to`.
+     + @notice Harvest proceeds for transaction sender to owner of `positionId`.
      + @param pid The index of the pool. See `poolInfo`.
      + @param positionId NFT ID of the receiver of OATH rewards.
     */
     function harvest(uint256 pid, uint256 positionId) public {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
+
         updatePool(pid);
+
         PoolInfo storage pool = poolInfo[pid];
         PositionInfo storage position = positionInfo[pid][positionId];
+
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
         uint256 _curvedOath = _calculateEmissions(_pendingOath, positionId, pid);
@@ -416,14 +419,10 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     }
 
     /*
-     + @notice Withdraw LP tokens from MCV2 and harvest proceeds for transaction sender to `to`.
+     + @notice Withdraw LP tokens and harvest proceeds for transaction sender to owner of `positionId`.
      + @param pid The index of the pool. See `poolInfo`.
      + @param amount token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens and OATH rewards.
-     +
-     + NOTE: We broke the effects / interactions pattern so that we don't affect the user's curve
-     + while still sending them the proper harvest amount before we modify their average entry time.
-     + This is a UX decision, and is covered by the nonReentrant modifier.
     */
     function withdrawAndHarvest(
         uint256 pid,
@@ -433,8 +432,9 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
+
         updatePool(pid);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+
         PoolInfo storage pool = poolInfo[pid];
         PositionInfo storage position = positionInfo[pid][positionId];
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
@@ -444,10 +444,11 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         if (_curvedOath != 0) {
             OATH.safeTransfer(to, _curvedOath);
         }
-        _updateEntry(pid, amount, positionId);
 
         position.rewardDebt = accumulatedOath - int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        position.amount = position.amount - amount;
+        position.amount -= amount;
+        _updateEntry(pid, amount, positionId);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
