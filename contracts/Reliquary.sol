@@ -469,12 +469,14 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     function emergencyWithdraw(uint256 pid, uint256 positionId) public nonReentrant {
         address to = ownerOf(positionId);
         require(to == msg.sender, "you do not own this position");
+
         PositionInfo storage position = positionInfo[pid][positionId];
         uint256 amount = position.amount;
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+
         position.amount = 0;
         position.rewardDebt = 0;
-        position.entry = 0;
+        _updateEntry(pid, amount, positionId);
+        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
