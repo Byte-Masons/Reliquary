@@ -328,25 +328,23 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         require(amount != 0, "depositing 0 amount");
         updatePool(pid);
         _updateAverageEntry(pid, amount, Kind.DEPOSIT);
+        _updateEntry(pid, amount, positionId);
+
         PoolInfo storage pool = poolInfo[pid];
         PositionInfo storage position = positionInfo[pid][positionId];
         address to = ownerOf(positionId);
+
+        position.amount += amount;
+        position.rewardDebt += int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         IRewarder _rewarder = rewarder[pid];
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(pid, to, to, 0, position.amount);
         }
 
-        uint256 before = _poolBalance(pid);
         lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
-        uint256 transferredAmount = _poolBalance(pid) - before;
-        _updateEntry(pid, transferredAmount, positionId);
-        position.amount += transferredAmount;
-        position.rewardDebt =
-            position.rewardDebt +
-            (int256((transferredAmount * pool.accOathPerShare) / ACC_OATH_PRECISION));
 
-        emit Deposit(msg.sender, pid, transferredAmount, to, positionId);
+        emit Deposit(msg.sender, pid, amount, to, positionId);
     }
 
     /*
