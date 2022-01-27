@@ -1,4 +1,4 @@
-import {Oath, EighthRoot} from './../types';
+import {Oath, NFTDescriptor, EighthRoot} from './../types';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {network, ethers, waffle, artifacts} from 'hardhat';
 import {expect} from 'chai';
@@ -18,8 +18,14 @@ const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: stri
   return contract;
 };
 
+const deployNFTDescriptor = async (deployer: Signer) => {
+  const artifact: Artifact = await artifacts.readArtifact('NFTDescriptor');
+  const contract: NFTDescriptor = <NFTDescriptor>await deployContract(deployer, artifact);
+  return contract;
+};
+
 const deployEighthRootCurve = async (deployer: Signer) => {
-  const artifact: Artifact = await artifacts.readArtifact('EighthRoot');
+  const artifact: Artifact = await artifacts.readArtifact('Sigmoid');
   const contract: EighthRoot = <EighthRoot>await deployContract(deployer, artifact);
   return contract;
 };
@@ -34,7 +40,8 @@ describe('Reliquary', function () {
 
     curve = await deployEighthRootCurve(owner);
 
-    this.chef = await deployChef(oath.address);
+    const nftDescriptor: NFTDescriptor = await deployNFTDescriptor(owner);
+    this.chef = await deployChef(oath.address, nftDescriptor.address);
     await oath.mint(this.chef.address, ethers.utils.parseEther('100000000'));
     //const Rewarder = await ethers.getContractFactory("RewarderMock");
     //this.rewarder = await Rewarder.deploy(1, oath.address, this.chef.address);
@@ -75,6 +82,14 @@ describe('Reliquary', function () {
       await this.chef.updatePool(0);
       await network.provider.send('evm_mine');
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+      const imageB64: String = String(
+        Buffer.from((
+        await this.chef.tokenURI(firstOwnedToken)).
+        replace('data:application/json;base64,', ''),
+        'base64').toString().
+        split(',').pop());
+      const html: String = Buffer.from(imageB64.substr(0, imageB64.length - 2), 'base64').toString();
+      console.log(html);
       const pendingOath = await this.chef.pendingOath(0, firstOwnedToken);
       expect(pendingOath).to.equal(ethers.BigNumber.from('3155760200000000000')); //(31557600 + 2) * 100000000000
     });

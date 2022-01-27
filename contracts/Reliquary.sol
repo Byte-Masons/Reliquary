@@ -12,6 +12,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+interface INFTDescriptor {
+    function constructTokenURI(
+        uint256 tokenId,
+        string memory underlying,
+        uint256 poolId,
+        uint256 amount,
+        uint256 pendingOath,
+        uint256 entry,
+        address curveAddress
+    ) external pure returns (string memory);
+}
+
 // TODO tess3rac7 can consider migrating from Ownable to AccessControl
 
 /*
@@ -99,6 +111,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
+    /// @notice Address of the `NFTDescriptor` which generates the `tokenURI`.
+    INFTDescriptor public nftDescriptor;
     /// @notice Info of each MCV2 pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each MCV2 pool.
@@ -159,8 +173,16 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     event LogInit();
 
     /// @param _oath The OATH token contract address.
-    constructor(IERC20 _oath) {
+    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor) {
         OATH = _oath;
+        nftDescriptor = _nftDescriptor;
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
+        //NOTE: must use test values until Relics are linked to only one pool
+        require (_exists(tokenId));
+        PositionInfo memory position = positionInfo[0][tokenId];
+        return nftDescriptor.constructTokenURI(tokenId, "test", 0, position.amount, pendingOath(0, tokenId), position.entry, poolInfo[0].curveAddress);
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -251,7 +273,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @return pending OATH reward for a given position owner.
     */
     // TODO tess3rac7 rename positionId above and below as well accordingly
-    function pendingOath(uint256 _pid, uint256 positionId) external view returns (uint256 pending) {
+    function pendingOath(uint256 _pid, uint256 positionId) public view returns (uint256 pending) {
         PositionInfo storage position = positionInfo[_pid][positionId];
 
         PoolInfo storage pool = poolInfo[_pid];
