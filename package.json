@@ -10,7 +10,8 @@
     "deploy": "npx hardhat run --network localhost scripts/deploy.ts",
     "deploy:staging": "npx hardhat run --network test scripts/deploy.ts",
     "deploy:production": "npx hardhat run --network opera scripts/deploy.ts",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "prepare": "husky install"
   },
   "author": "0xBebis",
   "license": "ISC",
@@ -37,7 +38,8 @@
     "solhint-plugin-prettier": "^0.0.5",
     "ts-node": "^10.4.0",
     "typechain": "^7.0.0",
-    "typescript": "^4.5.4"
+    "typescript": "^4.5.4",
+    "husky": "^7.0.0"
   },
   "dependencies": {
     "@ethersproject/address": "^5.4.0",
