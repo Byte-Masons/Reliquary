@@ -17,11 +17,11 @@ import 'hardhat-deploy-ethers';
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
-      forking: {
-        url: 'https://rpc.ftm.tools/',
-        blockNumber: 11238828,
+      //forking: {
+        //url: 'https://rpc.ftm.tools/',
+        //blockNumber: 11238828,
         // accounts: [reaperAccount]
-      },
+      //},
     },
     test: {
       url: 'https://rpc.testnet.fantom.network/',
