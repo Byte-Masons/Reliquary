@@ -35,8 +35,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + // TODO tess3rac7 "position" used in two different contexts below, reconcile
  +
  + @notice Deposits are tracked by position instead of by user, and mapped to an individual
- + NFT as opposed to an EOA. This allows for increased composability without affecting
- + accounting logic too much, and users can exit their position without withdrawing
+ + NFT as opposed to an Externally Owned Account (EOA). This allows for increased composability without
+ + affecting accounting logic too much, and users can exit their position without withdrawing
  + their liquidity oShriner sacrificing their position's maturity.
  +
  + // TODO tess3rac7 typo above ^ needs fixing
@@ -163,6 +163,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         OATH = _oath;
     }
 
+    // todo jaetask We should rename "MCV2" here, this is the first time this term is used to describe a Pool
     /// @notice Returns the number of MCV2 pools.
     function poolLength() public view returns (uint256 pools) {
         pools = poolInfo.length;
@@ -172,26 +173,27 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @notice Add a new pool for the specified LP.
      +         Can only be called by the owner.
      +
-     + @param allocPoint the allocation points for the new pool
+     + @param _allocPoint the allocation points for the new pool
      + @param _lpToken address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
+     + @param _curve ICurve // todo description of a curve
     */
     function addPool(
-        uint256 allocPoint,
-        IERC20 _lpToken,
+        uint256 _allocPoint,
+        IERC20 _lpToken, // todo jaetask if we also accept single tokens here, the variable should not be called _lpToken
         IRewarder _rewarder,
         ICurve _curve
     ) public onlyOwner {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
 
-        totalAllocPoint += allocPoint;
+        totalAllocPoint += _allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
 
         poolInfo.push(
             PoolInfo({
-                allocPoint: allocPoint,
+                allocPoint: _allocPoint,
                 lastRewardTime: _timestamp(),
                 accOathPerShare: 0,
                 averageEntry: 0,
@@ -200,7 +202,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         );
         hasBeenAdded[address(_lpToken)] = true;
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(_curve));
+        emit LogPoolAddition((lpToken.length - 1), _allocPoint, _lpToken, _rewarder, address(_curve));
     }
 
     /*
@@ -211,16 +213,16 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param _allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param _curve Address of the curve library
-     + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
-     + @param overwriteCurve True if _curve should be set. Otherwise `_curve` is ignored.
+     + @param _shouldOverwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
+     + @param _shouldOverwriteCurve True if _curve should be set. Otherwise `_curve` is ignored.
     */
     function modifyPool(
         uint256 _pid,
         uint256 _allocPoint,
         IRewarder _rewarder,
         ICurve _curve,
-        bool overwriteRewarder,
-        bool overwriteCurve
+        bool _shouldOverwriteRewarder,
+        bool _shouldOverwriteCurve
     ) public onlyOwner {
         require(_pid < poolInfo.length, "set: pool does not exist");
 
@@ -228,19 +230,19 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         totalAllocPoint += _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint;
 
-        if (overwriteRewarder) {
+        if (_shouldOverwriteRewarder) {
             rewarder[_pid] = _rewarder;
         }
 
-        if (overwriteCurve) {
+        if (_shouldOverwriteCurve) {
             poolInfo[_pid].curveAddress = address(_curve);
         }
 
         emit LogPoolModified(
             _pid,
             _allocPoint,
-            overwriteRewarder ? _rewarder : rewarder[_pid],
-            overwriteCurve ? address(_curve) : poolInfo[_pid].curveAddress
+            _shouldOverwriteRewarder ? _rewarder : rewarder[_pid],
+            _shouldOverwriteCurve ? address(_curve) : poolInfo[_pid].curveAddress
         );
     }
 
@@ -251,8 +253,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @return pending OATH reward for a given position owner.
     */
     // TODO tess3rac7 rename positionId above and below as well accordingly
-    function pendingOath(uint256 _pid, uint256 positionId) external view returns (uint256 pending) {
-        PositionInfo storage position = positionInfo[_pid][positionId];
+    function pendingOath(uint256 _pid, uint256 _positionId) external view returns (uint256 pending) {
+        PositionInfo storage position = positionInfo[_pid][_positionId];
 
         PoolInfo storage pool = poolInfo[_pid];
         uint256 accOathPerShare = pool.accOathPerShare;
@@ -265,30 +267,30 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         }
 
         int256 rawPending = int256((position.amount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt;
-        pending = _calculateEmissions(rawPending.toUInt256(), positionId, _pid);
+        pending = _calculateEmissions(rawPending.toUInt256(), _positionId, _pid);
     }
 
     /*
      + @notice Update reward variables for all pools. Be careful of gas spending!
-     + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
+     + @param _poolIds Pool IDs of all to be updated. Make sure to update all active pools.
     */
-    function massUpdatePools(uint256[] calldata pids) external {
-        for (uint256 i = 0; i < pids.length; i++) {
-            updatePool(pids[i]);
+    function massUpdatePools(uint256[] calldata _poolIds) external {
+        for (uint256 i = 0; i < _poolIds.length; i++) {
+            updatePool(_poolIds[i]);
         }
     }
 
     /*
      + @notice Update reward variables of the given pool.
-     + @param pid The index of the pool. See `poolInfo`.
+     + @param _pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public nonReentrant {
-        PoolInfo storage pool = poolInfo[pid];
+    function updatePool(uint256 _pid) public nonReentrant {
+        PoolInfo storage pool = poolInfo[_pid];
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
         if (millisSinceReward != 0) {
-            uint256 lpSupply = _poolBalance(pid);
+            uint256 lpSupply = _poolBalance(_pid);
 
             if (lpSupply != 0) {
                 uint256 oathReward = (millisSinceReward * EMISSIONS_PER_MILLISECOND * pool.allocPoint) /
@@ -298,18 +300,18 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
             pool.lastRewardTime = _timestamp();
 
-            emit LogUpdatePool(pid, pool.lastRewardTime, lpSupply, pool.accOathPerShare);
+            emit LogUpdatePool(_pid, pool.lastRewardTime, lpSupply, pool.accOathPerShare);
         }
     }
 
     // TODO tess3rac7 "createRelicAndDeposit"?
     function createPositionAndDeposit(
-        address to,
-        uint256 pid,
-        uint256 amount
+        address _to,
+        uint256 _pid,
+        uint256 _amount
     ) public returns (uint256 id) {
-        id = mint(to);
-        deposit(pid, amount, id);
+        id = mint(_to);
+        deposit(_pid, _amount, id);
     }
 
     /*
@@ -353,6 +355,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
      + @param amount LP token amount to withdraw.
      + @param positionId NFT ID of the receiver of the tokens.
     */
+    // todo jaetask inconsistent variable naming convention, should be `_<someName>`
     function withdraw(
         uint256 pid,
         uint256 amount,
