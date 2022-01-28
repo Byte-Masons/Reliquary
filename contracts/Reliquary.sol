@@ -424,17 +424,17 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     /*
      + @notice Withdraw LP tokens and harvest proceeds for transaction sender to owner of `_positionId`.
      + @param _pid The index of the pool. See `poolInfo`.
-     + @param amount token amount to withdraw.
+     + @param _amount token amount to withdraw.
      + @param _positionId NFT ID of the receiver of the tokens and OATH rewards.
     */
     function withdrawAndHarvest(
         uint256 _pid,
-        uint256 amount,
+        uint256 _amount,
         uint256 _positionId
     ) public {
         address to = ownerOf(_positionId);
         require(to == msg.sender, "you do not own this position");
-        require(amount != 0, "withdrawing 0 amount");
+        require(_amount != 0, "withdrawing 0 amount");
 
         updatePool(_pid);
 
@@ -448,19 +448,19 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             OATH.safeTransfer(to, _curvedOath);
         }
 
-        position.rewardDebt = accumulatedOath - int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        position.amount -= amount;
-        _updateEntry(_pid, amount, _positionId);
-        _updateAverageEntry(_pid, amount, Kind.WITHDRAW);
+        position.rewardDebt = accumulatedOath - int256((_amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.amount -= _amount;
+        _updateEntry(_pid, _amount, _positionId);
+        _updateAverageEntry(_pid, _amount, Kind.WITHDRAW);
 
         IRewarder _rewarder = rewarder[_pid];
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(_pid, msg.sender, to, _curvedOath, position.amount);
         }
 
-        lpToken[_pid].safeTransfer(to, amount);
+        lpToken[_pid].safeTransfer(to, _amount);
 
-        emit Withdraw(msg.sender, _pid, amount, to, _positionId);
+        emit Withdraw(msg.sender, _pid, _amount, to, _positionId);
         emit Harvest(msg.sender, _pid, _curvedOath, _positionId);
     }
 
@@ -508,24 +508,24 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /*
      + @notice operates on the position's MasterChef emissions
-     + @param amount OATH amount to modify
+     + @param _amount OATH amount to modify
      + @param _positionId the position that's being modified
      + @param _pid The index of the pool. See `poolInfo`.
     */
 
     function _calculateEmissions(
-        uint256 amount,
+        uint256 _amount,
         uint256 _positionId,
         uint256 _pid
     ) internal view returns (uint256 emissions) {
         (uint256 distance, Placement placement) = _calculateDistanceFromMean(_positionId, _pid);
 
         if (placement == Placement.ABOVE) {
-            emissions = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
+            emissions = (_amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
         } else if (placement == Placement.BELOW) {
-            emissions = (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
+            emissions = (_amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
         } else {
-            emissions = amount;
+            emissions = _amount;
         }
     }
 
@@ -567,13 +567,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     /*
      + @notice updates the average entry time of each token in the pool
      + @param _pid The index of the pool. See `poolInfo`.
-     + @param amount the amount of tokens being accounted for
+     + @param _amount the amount of tokens being accounted for
      + @param kind the action being performed (deposit / withdrawal)
     */
 
     function _updateAverageEntry(
         uint256 _pid,
-        uint256 amount,
+        uint256 _amount,
         Kind kind
     ) internal returns (bool success) {
         PoolInfo storage pool = poolInfo[_pid];
@@ -582,7 +582,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             pool.averageEntry = _timestamp();
             return true;
         } else {
-            uint256 weight = (amount * 1e18) / lpSupply;
+            uint256 weight = (_amount * 1e18) / lpSupply;
             uint256 maturity = _timestamp() - pool.averageEntry;
             if (kind == Kind.DEPOSIT) {
                 pool.averageEntry += ((maturity * weight) / 1e18);
@@ -596,13 +596,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
     /*
      + @notice updates the user's entry time based on the weight of their deposit or withdrawal
      + @param _pid The index of the pool. See `poolInfo`.
-     + @param amount the amount of the deposit / withdrawal
+     + @param _amount the amount of the deposit / withdrawal
      + @param _positionId the NFT ID of the position being updated
     */
 
     function _updateEntry(
         uint256 _pid,
-        uint256 amount,
+        uint256 _amount,
         uint256 _positionId
     ) internal returns (bool success) {
         PositionInfo storage position = positionInfo[_pid][_positionId];
@@ -610,7 +610,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
             position.entry = _timestamp();
             return true;
         }
-        uint256 weight = (amount * BASIS_POINTS) / position.amount;
+        uint256 weight = (_amount * BASIS_POINTS) / position.amount;
         uint256 maturity = _timestamp() - position.entry;
         position.entry += ((maturity * weight) / BASIS_POINTS);
         return true;
