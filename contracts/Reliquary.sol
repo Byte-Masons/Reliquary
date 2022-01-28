@@ -518,7 +518,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 _amount,
         uint256 _positionId
     ) internal view returns (uint256 emissions) {
-        (uint256 distance, Placement placement) = _calculateDistanceFromMean(_positionId, _pid);
+        (uint256 distance, Placement placement) = _calculateDistanceFromMean(_pid, _positionId);
 
         if (placement == Placement.ABOVE) {
             emissions = (_amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
@@ -531,11 +531,11 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /*
      + @notice calculates how far the user's position maturity is from the average
-     + @param _positionId NFT ID of the position being assessed
      + @param _pid The index of the pool. See `poolInfo`.
+     + @param _positionId NFT ID of the position being assessed
     */
 
-    function _calculateDistanceFromMean(uint256 _positionId, uint256 _pid)
+    function _calculateDistanceFromMean(uint256 _pid, uint256 _positionId)
         internal
         view
         returns (uint256 distance, Placement placement)
