@@ -316,75 +316,75 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /*
      + @notice Deposit LP tokens to Reliquary for OATH allocation.
-     + @param pid The index of the pool. See `poolInfo`.
-     + @param amount token amount to deposit.
-     + @param positionId NFT ID of the receiver of `amount` deposit benefit.
+     + @param _pid The index of the pool. See `poolInfo`.
+     + @param _amount token amount to deposit.
+     + @param _positionId NFT ID of the receiver of `_amount` deposit benefit.
     */
     // Q: TODO tess3rac7 this should still be public?
     // A: for now since same relic for multiple pools, but will update
     function deposit(
-        uint256 pid,
-        uint256 amount,
-        uint256 positionId
+        uint256 _pid,
+        uint256 _amount,
+        uint256 _positionId
     ) public {
-        require(amount != 0, "depositing 0 amount");
-        updatePool(pid);
-        _updateEntry(pid, amount, positionId);
-        _updateAverageEntry(pid, amount, Kind.DEPOSIT);
+        require(_amount != 0, "depositing 0 amount");
+        updatePool(_pid);
+        _updateEntry(_pid, _amount, _positionId);
+        _updateAverageEntry(_pid, _amount, Kind.DEPOSIT);
 
-        PoolInfo storage pool = poolInfo[pid];
-        PositionInfo storage position = positionInfo[pid][positionId];
-        address to = ownerOf(positionId);
+        PoolInfo storage pool = poolInfo[_pid];
+        PositionInfo storage position = positionInfo[_pid][_positionId];
+        address to = ownerOf(_positionId);
 
-        position.amount += amount;
-        position.rewardDebt += int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.amount += _amount;
+        position.rewardDebt += int256((_amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
-        IRewarder _rewarder = rewarder[pid];
+        IRewarder _rewarder = rewarder[_pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(pid, to, to, 0, position.amount);
+            _rewarder.onOathReward(_pid, to, to, 0, position.amount);
         }
 
-        lpToken[pid].safeTransferFrom(msg.sender, address(this), amount);
+        lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
 
-        emit Deposit(msg.sender, pid, amount, to, positionId);
+        emit Deposit(msg.sender, _pid, _amount, to, _positionId);
     }
 
     /*
      + @notice Withdraw LP tokens from Reliquary.
-     + @param pid The index of the pool. See `poolInfo`.
-     + @param amount LP token amount to withdraw.
-     + @param positionId NFT ID of the receiver of the tokens.
+     + @param _pid The index of the pool. See `poolInfo`.
+     + @param _amount LP token amount to withdraw.
+     + @param _positionId NFT ID of the receiver of the tokens.
     */
     // todo jaetask inconsistent variable naming convention, should be `_<someName>`
     function withdraw(
-        uint256 pid,
-        uint256 amount,
-        uint256 positionId
+        uint256 _pid,
+        uint256 _amount,
+        uint256 _positionId
     ) public {
-        address to = ownerOf(positionId);
+        address to = ownerOf(_positionId);
         require(to == msg.sender, "you do not own this position");
-        require(amount != 0, "withdrawing 0 amount");
+        require(_amount != 0, "withdrawing 0 amount");
 
-        updatePool(pid);
+        updatePool(_pid);
 
-        PoolInfo storage pool = poolInfo[pid];
-        PositionInfo storage position = positionInfo[pid][positionId];
+        PoolInfo storage pool = poolInfo[_pid];
+        PositionInfo storage position = positionInfo[_pid][_positionId];
 
         // Effects
-        position.rewardDebt -= int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        position.amount -= amount;
-        _updateEntry(pid, amount, positionId);
-        _updateAverageEntry(pid, amount, Kind.WITHDRAW);
+        position.rewardDebt -= int256((_amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.amount -= _amount;
+        _updateEntry(_pid, _amount, _positionId);
+        _updateAverageEntry(_pid, _amount, Kind.WITHDRAW);
 
         // Interactions
-        IRewarder _rewarder = rewarder[pid];
+        IRewarder _rewarder = rewarder[_pid];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(pid, msg.sender, to, 0, position.amount);
+            _rewarder.onOathReward(_pid, msg.sender, to, 0, position.amount);
         }
 
-        lpToken[pid].safeTransfer(to, amount);
+        lpToken[_pid].safeTransfer(to, _amount);
 
-        emit Withdraw(msg.sender, pid, amount, to, positionId);
+        emit Withdraw(msg.sender, _pid, _amount, to, _positionId);
     }
 
     /*
