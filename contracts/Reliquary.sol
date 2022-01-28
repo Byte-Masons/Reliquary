@@ -267,7 +267,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         }
 
         int256 rawPending = int256((position.amount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt;
-        pending = _calculateEmissions(rawPending.toUInt256(), _positionId, _pid);
+        pending = _calculateEmissions(_pid, rawPending.toUInt256(), _positionId);
     }
 
     /*
@@ -403,7 +403,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, _positionId, _pid);
+        uint256 _curvedOath = _calculateEmissions(_pid, _pendingOath, _positionId);
 
         // Effects
         position.rewardDebt = accumulatedOath;
@@ -442,7 +442,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         PositionInfo storage position = positionInfo[_pid][_positionId];
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, _positionId, _pid);
+        uint256 _curvedOath = _calculateEmissions(_pid, _pendingOath, _positionId);
 
         if (_curvedOath != 0) {
             OATH.safeTransfer(to, _curvedOath);
@@ -508,15 +508,15 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     /*
      + @notice operates on the position's MasterChef emissions
+     + @param _pid The index of the pool. See `poolInfo`.
      + @param _amount OATH amount to modify
      + @param _positionId the position that's being modified
-     + @param _pid The index of the pool. See `poolInfo`.
     */
 
     function _calculateEmissions(
+        uint256 _pid,
         uint256 _amount,
-        uint256 _positionId,
-        uint256 _pid
+        uint256 _positionId
     ) internal view returns (uint256 emissions) {
         (uint256 distance, Placement placement) = _calculateDistanceFromMean(_positionId, _pid);
 
