@@ -9,6 +9,7 @@ import 'hardhat-gas-reporter';
 
 import 'hardhat-deploy';
 import 'hardhat-deploy-ethers';
+import 'solidity-coverage';
 
 // require("./secrets.json");
 
@@ -18,9 +19,9 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       //forking: {
-        //url: 'https://rpc.ftm.tools/',
-        //blockNumber: 11238828,
-        // accounts: [reaperAccount]
+      //url: 'https://rpc.ftm.tools/',
+      //blockNumber: 11238828,
+      // accounts: [reaperAccount]
       //},
     },
     test: {
