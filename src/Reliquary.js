@@ -64,9 +64,9 @@ async function viewRewarder(chefAddress, pid) {
   return rewarder;
 }
 
-async function getPositionInfo(chefAddress, pid, positionId) {
+async function getPositionInfo(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let userInfo = await chef.positionInfo(pid, positionId);
+  let userInfo = await chef.positionInfo(positionId);
   return {
     "amount": userInfo[0].toString(),
     "rewardDebt": userInfo[1].toString(),
@@ -94,9 +94,9 @@ async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, overwri
   return receipt;
 }
 
-async function pendingOath(chefAddress, pid, positionId) {
+async function pendingOath(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let pending = await chef.pendingOath(pid, positionId);
+  let pending = await chef.pendingOath(positionId);
   return pending;
 }
 
@@ -116,49 +116,49 @@ async function updatePool(chefAddress, pid) {
 
 async function createNewPositionAndDeposit(chefAddress, to, pid, amount) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.createPositionAndDeposit(to, pid, amount);
+  let tx = await chef.createRelicAndDeposit(to, pid, amount);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function deposit(chefAddress, pid, amount, positionId) {
+async function deposit(chefAddress, amount, positionId) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.deposit(pid, amount, positionId);
+  let tx = await chef.deposit(amount, positionId);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function withdraw(chefAddress, pid, amount, positionId) {
+async function withdraw(chefAddress, amount, positionId) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.withdraw(pid, amount, positionId);
+  let tx = await chef.withdraw(amount, positionId);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function harvest(chefAddress, pid, positionId) {
+async function harvest(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.harvest(pid, positionId);
+  let tx = await chef.harvest(positionId);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function withdrawAndHarvest(chefAddress, pid, amount, positionId) {
+async function withdrawAndHarvest(chefAddress, amount, positionId) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.harvest(pid, amount, positionId);
+  let tx = await chef.harvest(amount, positionId);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function emergencyWithdraw(chefAddress, pid, positionId) {
+async function emergencyWithdraw(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.emergencyWithdraw(pid, positionId);
+  let tx = await chef.emergencyWithdraw(positionId);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function curved(chefAddress, positionId, pid) {
+async function curved(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let curvedValue = await chef.curved(positionId, pid);
+  let curvedValue = await chef.curved(positionId);
   await curvedValue.wait();
   return curvedValue;
 }
