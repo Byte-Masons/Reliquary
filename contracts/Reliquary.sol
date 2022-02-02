@@ -338,12 +338,12 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         _updateAverageEntry(position.poolId, amount, Kind.DEPOSIT);
 
         PoolInfo storage pool = poolInfo[position.poolId];
-        address to = ownerOf(positionId);
 
         position.amount += amount;
         position.rewardDebt += int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         IRewarder _rewarder = rewarder[position.poolId];
+        address to = ownerOf(positionId);
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(position.poolId, to, to, 0, position.amount);
         }
