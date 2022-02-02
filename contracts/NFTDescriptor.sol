@@ -8,11 +8,9 @@ import './interfaces/ICurve.sol';
 library NFTDescriptor {
     using Strings for uint256;
 
-    uint256 private constant TOTAL_TIME_SHOWN = 365 days;
-    uint256 private constant NUM_BARS = 20;
+    uint256 private constant NUM_LINES = 20;
     uint256 private constant CANVAS_WIDTH = 290;
     uint256 private constant CANVAS_HEIGHT = 500;
-    uint256 private constant BAR_WIDTH = CANVAS_WIDTH / NUM_BARS;
 
     function constructTokenURI(
         uint256 tokenId,
@@ -37,7 +35,7 @@ library NFTDescriptor {
                 entry,
                 curveAddress
             );
-        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress)));
+        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress, entry)));
 
         return
             string(
@@ -90,32 +88,36 @@ library NFTDescriptor {
         );
     }
 
-    function generateSVGImage(address curveAddress) internal pure returns (string memory svg) {
+    function generateSVGImage(address curveAddress, uint256 entry) internal pure returns (string memory svg) {
         svg = string(
             abi.encodePacked(
-                '<svg width="290" height="500" viewBox="0 0 290 500" xmlns="http://www.w3.org/2000/svg"',
+                '<svg width="291" height="499" style="background-color:black" viewBox="0 0 290 500" xmlns="http://www.w3.org/2000/svg"',
                 " xmlns:xlink='http://www.w3.org/1999/xlink'>",
-                generateBars(curveAddress),
+                generatePath(curveAddress, entry),
                 '</svg>'
             )
         );
     }
 
-    function generateBars(address curveAddress) internal pure returns (string memory bars) {
-        for (uint256 i; i < NUM_BARS; i++) {
-            uint256 barHeight = ICurve(curveAddress).curve(TOTAL_TIME_SHOWN * i / NUM_BARS);
-            bars = string(abi.encodePacked(
-                bars,
-                string(
-                    abi.encodePacked(
-                        '<rect x="', (BAR_WIDTH * i).toString(),
-                        '" y="', (CANVAS_HEIGHT - barHeight).toString(),
-                        '" width="', BAR_WIDTH.toString(),
-                        '" height="', barHeight.toString(),
-                        '" style="fill:rgb(0,0,0)" />'
-                    )
-                )
+    function generatePath(address curveAddress, uint256 entry) internal pure returns (string memory path) {
+        uint256 startY = CANVAS_HEIGHT - ICurve(curveAddress).curve(0);
+        path = string(abi.encodePacked(
+            '<path d="M0,', startY.toString()
+        ));
+
+        uint256 totalTimeShown = entry > 365 days ? entry : 365 days;
+        for (uint256 i = 1; i <= NUM_LINES; i++) {
+            uint256 x = CANVAS_WIDTH * i / NUM_LINES;
+            uint256 y = CANVAS_HEIGHT - ICurve(curveAddress).curve(totalTimeShown * i / NUM_LINES);
+            path = string(abi.encodePacked(
+                path,
+                ' L', x.toString(), ',', y.toString()
             ));
         }
+
+        path = string(abi.encodePacked(
+            path,
+            ' L', CANVAS_WIDTH.toString(), ',', startY.toString(), ' Z" fill="white" stroke-width="0" />'
+        ));
     }
 }
