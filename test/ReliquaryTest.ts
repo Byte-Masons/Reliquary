@@ -69,13 +69,13 @@ describe('Reliquary', function () {
     it('PendingOath should equal ExpectedOath', async function () {
       await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
-      await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
+      await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
       await network.provider.send('evm_increaseTime', [31557600]);
       await network.provider.send('evm_mine');
       await this.chef.updatePool(0);
       await network.provider.send('evm_mine');
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
-      const pendingOath = await this.chef.pendingOath(0, firstOwnedToken);
+      const pendingOath = await this.chef.pendingOath(firstOwnedToken);
       expect(pendingOath).to.equal(ethers.BigNumber.from('3155760200000000000')); //(31557600 + 2) * 100000000000
     });
   });
@@ -123,13 +123,13 @@ describe('Reliquary', function () {
     it('Depositing 1', async function () {
       await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, 10);
-      await expect(this.chef.createPositionAndDeposit(alice.address, 0, 1))
+      await expect(this.chef.createRelicAndDeposit(alice.address, 0, 1))
         .to.emit(this.chef, 'Deposit')
         .withArgs(owner.address, 0, 1, alice.address, 0);
     });
 
     it('Depositing into non-existent pool should fail', async function () {
-      await expect(this.chef.createPositionAndDeposit(alice.address, 1001, 1)).to.be.reverted;
+      await expect(this.chef.createRelicAndDeposit(alice.address, 1001, 1)).to.be.reverted;
     });
   });
 
@@ -137,9 +137,9 @@ describe('Reliquary', function () {
     it('Withdraw 1', async function () {
       await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, 10);
-      await this.chef.createPositionAndDeposit(alice.address, 0, 1);
+      await this.chef.createRelicAndDeposit(alice.address, 0, 1);
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
-      await expect(this.chef.connect(alice).withdraw(0, 1, firstOwnedToken))
+      await expect(this.chef.connect(alice).withdraw(1, firstOwnedToken))
         .to.emit(this.chef, 'Withdraw')
         .withArgs(alice.address, 0, 1, alice.address, firstOwnedToken);
     });
@@ -149,12 +149,12 @@ describe('Reliquary', function () {
     it('Should give back the correct amount of RELIC', async function () {
       await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
-      await this.chef.createPositionAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
+      await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
       await network.provider.send('evm_increaseTime', [31557600]);
       await network.provider.send('evm_mine');
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
 
-      await this.chef.connect(alice).harvest(0, firstOwnedToken);
+      await this.chef.connect(alice).harvest(firstOwnedToken);
       const balance = await oath.balanceOf(alice.address);
       expect(balance).to.equal(ethers.BigNumber.from('3155760100000000000')); // (31557600 + 1) * 100000000000
     });
@@ -164,7 +164,7 @@ describe('Reliquary', function () {
     it('Should emit event EmergencyWithdraw', async function () {
       await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, 10);
-      await this.chef.createPositionAndDeposit(alice.address, 0, 1);
+      await this.chef.createRelicAndDeposit(alice.address, 0, 1);
     });
   });
 });
