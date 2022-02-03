@@ -19,7 +19,7 @@ library NFTDescriptor {
         uint256 poolId,
         uint256 amount,
         uint256 pendingOath,
-        uint256 entry,
+        uint256 maturity,
         address curveAddress
     ) public pure returns (string memory) {
         string memory name = string(
@@ -33,10 +33,10 @@ library NFTDescriptor {
                 poolId,
                 amount,
                 pendingOath,
-                entry,
+                maturity,
                 curveAddress
             );
-        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress, entry)));
+        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress, maturity)));
 
         return
             string(
@@ -65,7 +65,7 @@ library NFTDescriptor {
         uint256 poolId,
         uint256 amount,
         uint256 pendingOath,
-        uint256 entry,
+        uint256 maturity,
         address curveAddress
     ) internal pure returns (string memory) {
         return
@@ -81,27 +81,27 @@ library NFTDescriptor {
                 amount.toString(),
                 '\\nPending Oath: ',
                 pendingOath.toString(),
-                '\\nEntry Time: ',
-                entry.toString(),
+                '\\nMaturity: ',
+                maturity.toString(),
                 '\\nCurrent Reward Multiplier: ',
-                ICurve(curveAddress).curve(entry).toString()
+                ICurve(curveAddress).curve(maturity).toString()
             )
         );
     }
 
-    function generateSVGImage(address curveAddress, uint256 entry) internal pure returns (string memory svg) {
+    function generateSVGImage(address curveAddress, uint256 maturity) internal pure returns (string memory svg) {
         svg = string(
             abi.encodePacked(
                 '<svg width="290" height="500" viewBox="0 0 290 500" style="background-color:black" xmlns="http://www.w3.org/2000/svg"',
                 " xmlns:xlink='http://www.w3.org/1999/xlink'>",
-                generateBars(curveAddress, entry),
+                generateBars(curveAddress, maturity),
                 '</svg>'
             )
         );
     }
 
-    function generateBars(address curveAddress, uint256 entry) internal pure returns (string memory bars) {
-        uint256 totalTimeShown = entry > 365 days ? entry : 365 days;
+    function generateBars(address curveAddress, uint256 maturity) internal pure returns (string memory bars) {
+        uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS);
             bars = string(abi.encodePacked(

@@ -173,7 +173,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         require (_exists(tokenId));
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        return nftDescriptor.constructTokenURI(tokenId, "test", position.poolId, position.amount, pendingOath(tokenId), position.entry, pool.curveAddress);
+	uint256 maturity = (_timestamp() - position.entry) / 1000;
+        return nftDescriptor.constructTokenURI(tokenId, "test", position.poolId, position.amount, pendingOath(tokenId), maturity, pool.curveAddress);
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -517,7 +518,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         PositionInfo storage position = positionForId[positionId];
         PoolInfo memory pool = poolInfo[position.poolId];
 
-        uint256 maturity = _timestamp() - position.entry;
+        uint256 maturity = (_timestamp() - position.entry) / 1000;
 
         _curved = ICurve(pool.curveAddress).curve(maturity);
     }
@@ -571,7 +572,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
 
     function _calculateMean(uint256 pid) internal view returns (uint256 mean) {
         PoolInfo memory pool = poolInfo[pid];
-        uint256 maturity = _timestamp() - pool.averageEntry;
+        uint256 maturity = (_timestamp() - pool.averageEntry) / 1000;
         mean = ICurve(pool.curveAddress).curve(maturity);
     }
 

@@ -161,7 +161,7 @@ describe('Reliquary', function () {
   });
 
   describe('Harvest', function () {
-    it('Should give back the correct amount of RELIC', async function () {
+    it('Should give back the correct amount of OATH', async function () {
       await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address);
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
