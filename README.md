@@ -1,4 +1,7 @@
 # Reliquary
+
+![Reliquary](header.png "Reliquary")
+
 > Designed and Written by [Justin Bebis](https://twitter.com/0xBebis_) with help from Zokunei, [Goober](https://twitter.com/0xGoober), and the rest of the [Byte Masons](https://twitter.com/ByteMasons) crew
 ---
 Reliquary is a modified [MasterchefV2](https://docs.sushi.com/products/masterchef-v2) contract that is designed to:

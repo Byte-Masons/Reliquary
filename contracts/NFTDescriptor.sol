@@ -8,7 +8,6 @@ import './interfaces/ICurve.sol';
 library NFTDescriptor {
     using Strings for uint256;
 
-    uint256 private constant TOTAL_TIME_SHOWN = 365 days;
     uint256 private constant NUM_BARS = 20;
     uint256 private constant CANVAS_WIDTH = 290;
     uint256 private constant CANVAS_HEIGHT = 500;
@@ -37,7 +36,7 @@ library NFTDescriptor {
                 entry,
                 curveAddress
             );
-        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress)));
+        string memory image = Base64.encode(bytes(generateSVGImage(curveAddress, entry)));
 
         return
             string(
@@ -90,20 +89,21 @@ library NFTDescriptor {
         );
     }
 
-    function generateSVGImage(address curveAddress) internal pure returns (string memory svg) {
+    function generateSVGImage(address curveAddress, uint256 entry) internal pure returns (string memory svg) {
         svg = string(
             abi.encodePacked(
-                '<svg width="290" height="500" viewBox="0 0 290 500" xmlns="http://www.w3.org/2000/svg"',
+                '<svg width="290" height="500" viewBox="0 0 290 500" style="background-color:black" xmlns="http://www.w3.org/2000/svg"',
                 " xmlns:xlink='http://www.w3.org/1999/xlink'>",
-                generateBars(curveAddress),
+                generateBars(curveAddress, entry),
                 '</svg>'
             )
         );
     }
 
-    function generateBars(address curveAddress) internal pure returns (string memory bars) {
+    function generateBars(address curveAddress, uint256 entry) internal pure returns (string memory bars) {
+        uint256 totalTimeShown = entry > 365 days ? entry : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
-            uint256 barHeight = ICurve(curveAddress).curve(TOTAL_TIME_SHOWN * i / NUM_BARS);
+            uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS);
             bars = string(abi.encodePacked(
                 bars,
                 string(
@@ -112,7 +112,7 @@ library NFTDescriptor {
                         '" y="', (CANVAS_HEIGHT - barHeight).toString(),
                         '" width="', BAR_WIDTH.toString(),
                         '" height="', barHeight.toString(),
-                        '" style="fill:rgb(0,0,0)" />'
+                        '" style="fill:rgb(255,255,255)" />'
                     )
                 )
             ));
