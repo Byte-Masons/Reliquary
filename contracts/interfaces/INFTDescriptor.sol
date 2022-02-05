@@ -9,7 +9,7 @@ interface INFTDescriptor {
         uint256 poolId,
         uint256 amount,
         uint256 pendingOath,
-        uint256 entry,
+        uint256 maturity,
         address curveAddress
     ) external pure returns (string memory);
 }

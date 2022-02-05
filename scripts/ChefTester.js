@@ -6,7 +6,8 @@ const {tokens, testnet, mainnet} = require('../Addresses.json');
 async function main() {
   let oathToken = await reaper.deployTestToken('RELIC', 'RELIC');
   let testToken = await reaper.deployTestToken('USDC', 'USDC');
-  let chef = await reliquary.deployChef(oathToken.address);
+  let descriptor = await reliquary.deployDescriptor();
+  let chef = await reliquary.deployChef(oathToken.address, descriptor.address);
   let rewarder = await reliquary.deployRewarder(1000000, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);
@@ -23,6 +24,7 @@ async function main() {
     testToken.address,
     '0x0000000000000000000000000000000000000000',
     curve.address,
+    'USDC'
   );
   reaper.sleep(10000);
 
@@ -54,12 +56,17 @@ async function main() {
   let userOathBalance = await oathToken.balanceOf(chef.signer.address);
   console.log('chef balance: ' + chefOathBalance);
   console.log('user balance: ' + userOathBalance);
-  let positionInfo = await reliquary.getPositionInfo(chef.address, 0, id);
+  let positionInfo = await reliquary.getPositionInfo(chef.address, id);
   console.log('Position Info:');
   console.log(positionInfo);
 
   reaper.sleep(30000);
   await reliquary.updatePool(chef.address, 0);
+  const json = Buffer.from((await chef.tokenURI(id)).replace('data:application/json;base64,', ''), 'base64').toString();
+  console.log(json);
+  const imageB64 = String(json.split(',').pop());
+  const html = Buffer.from(imageB64.substr(0, imageB64.length - 2), 'base64').toString();
+  console.log(html);
   let poolInfo2 = await reliquary.viewPoolInfo(chef.address, 0);
   console.log(poolInfo2);
   let pendingOath = await reliquary.pendingOath(chef.address, 0, id);

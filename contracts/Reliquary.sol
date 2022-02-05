@@ -75,6 +75,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 allocPoint;
         uint256 averageEntry;
         address curveAddress;
+        string name;
     }
 
     /*
@@ -157,9 +158,10 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 allocPoint,
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
-        address indexed curve
+        address indexed curve,
+        string name
     );
-    event LogPoolModified(uint256 indexed pid, uint256 allocPoint, IRewarder indexed rewarder, address indexed curve);
+    event LogPoolModified(uint256 indexed pid, uint256 allocPoint, IRewarder indexed rewarder, address indexed curve, string name);
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
     event LogInit();
 
@@ -174,7 +176,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
 	uint256 maturity = (_timestamp() - position.entry) / 1000;
-        return nftDescriptor.constructTokenURI(tokenId, "test", position.poolId, position.amount, pendingOath(tokenId), maturity, pool.curveAddress);
+        return nftDescriptor.constructTokenURI(tokenId, pool.name, position.poolId, position.amount, pendingOath(tokenId), maturity, pool.curveAddress);
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -195,7 +197,8 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
-        ICurve curve
+        ICurve curve,
+        string memory name
     ) public onlyOwner {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
@@ -210,12 +213,13 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
                 lastRewardTime: _timestamp(),
                 accOathPerShare: 0,
                 averageEntry: 0,
-                curveAddress: address(curve)
+                curveAddress: address(curve),
+                name: name
             })
         );
         hasBeenAdded[address(_lpToken)] = true;
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(curve));
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(curve), name);
     }
 
     /*
@@ -234,28 +238,30 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 allocPoint,
         IRewarder _rewarder,
         ICurve curve,
-        bool overwriteRewarder,
-        bool overwriteCurve
+        string memory name,
+        bool overwriteRewarder
     ) public onlyOwner {
         require(pid < poolInfo.length, "set: pool does not exist");
+        require(address(curve) != address(0), "invalid curve address");
 
-        totalAllocPoint -= poolInfo[pid].allocPoint;
+        PoolInfo storage pool = poolInfo[pid];
+        totalAllocPoint -= pool.allocPoint;
         totalAllocPoint += allocPoint;
-        poolInfo[pid].allocPoint = allocPoint;
+        pool.allocPoint = allocPoint;
 
         if (overwriteRewarder) {
             rewarder[pid] = _rewarder;
         }
 
-        if (overwriteCurve) {
-            poolInfo[pid].curveAddress = address(curve);
-        }
+        pool.curveAddress = address(curve);
+        pool.name = name;
 
         emit LogPoolModified(
             pid,
             allocPoint,
             overwriteRewarder ? _rewarder : rewarder[pid],
-            overwriteCurve ? address(curve) : poolInfo[pid].curveAddress
+            address(curve),
+            name
         );
     }
 
@@ -556,10 +562,10 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         uint256 mean = _calculateMean(positionInfo.poolId);
 
         if (position < mean) {
-            distance = ((mean - position) * BASIS_POINTS) / mean;
+            distance = (mean - position) * BASIS_POINTS;
             placement = Placement.BELOW;
         } else {
-            distance = ((position - mean) * BASIS_POINTS) / mean;
+            distance = (position - mean) * BASIS_POINTS;
             placement = Placement.ABOVE;
         }
     }

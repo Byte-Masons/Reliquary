@@ -12,6 +12,12 @@ async function deployChef(oathAddress, nftDescriptorAddress) {
   return chef;
 }
 
+async function deployDescriptor() {
+  let NFTDescriptor = await ethers.getContractFactory("NFTDescriptor");
+  let descriptor = await NFTDescriptor.deploy();
+  return descriptor;
+}
+
 async function returnChef(chefAddress) {
   let Reliquary = await ethers.getContractFactory("Reliquary");
   let chef = await Reliquary.attach(chefAddress);
@@ -66,11 +72,12 @@ async function viewRewarder(chefAddress, pid) {
 
 async function getPositionInfo(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let userInfo = await chef.positionInfo(positionId);
+  let userInfo = await chef.positionForId(positionId);
   return {
     "amount": userInfo[0].toString(),
     "rewardDebt": userInfo[1].toString(),
     "entry": userInfo[2].toString(),
+    "poolId": userInfo[3].toString()
   };
 }
 
@@ -80,16 +87,16 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(chefAddress, allocPoint, lpToken, rewarder, curve) {
+async function addPool(chefAddress, allocPoint, lpToken, rewarder, curve, name) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.addPool(allocPoint, lpToken, rewarder, curve);
+  let tx = await chef.addPool(allocPoint, lpToken, rewarder, curve, name);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, overwriteRewarder, overwriteCurve) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, name, overwriteRewarder) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, overwriteRewarder, overwriteCurve);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, name, overwriteRewarder);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -184,6 +191,7 @@ async function totalPositions(chefAddress) {
 module.exports = {
   debug,
   deployChef,
+  deployDescriptor,
   deployRewarder,
   deployCurve,
   tokenOfOwnerByIndex,

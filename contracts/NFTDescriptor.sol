@@ -76,7 +76,7 @@ library NFTDescriptor {
                 ' pool. ',
                 'The owner of this NFT can modify or redeem the position.\\n',
                 '\\nPool ID: ',
-                poolId,
+                poolId.toString(),
                 '\\nAmount Deposited: ',
                 amount.toString(),
                 '\\nPending Oath: ',
