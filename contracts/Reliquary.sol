@@ -9,11 +9,9 @@ import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
 import "./libraries/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-// TODO tess3rac7 can consider migrating from Ownable to AccessControl
 
 /*
  + NOTE: Maybe make BASE_OATH_PER_BLOCK an upgradable function call so we can curve that too
@@ -42,9 +40,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  +
  + // TODO tess3rac7 typo above ^ needs fixing
 */
-contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
+contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
+
+    /**
+     * @notice Access control roles.
+     */
+    bytes32 public constant OPERATOR = keccak256("OPERATOR");
 
     // TODO tess3rac7 is there a better term than PositionInfo? RelicInfo?
     /*
@@ -161,22 +164,39 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         address indexed curve,
         string name
     );
-    event LogPoolModified(uint256 indexed pid, uint256 allocPoint, IRewarder indexed rewarder, address indexed curve, string name);
+    event LogPoolModified(
+        uint256 indexed pid,
+        uint256 allocPoint,
+        IRewarder indexed rewarder,
+        address indexed curve,
+        string name
+    );
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
     event LogInit();
 
     /// @param _oath The OATH token contract address.
     constructor(IERC20 _oath, INFTDescriptor _nftDescriptor) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+
         OATH = _oath;
         nftDescriptor = _nftDescriptor;
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
-        require (_exists(tokenId));
+        require(_exists(tokenId));
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
-	uint256 maturity = (_timestamp() - position.entry) / 1000;
-        return nftDescriptor.constructTokenURI(tokenId, pool.name, position.poolId, position.amount, pendingOath(tokenId), maturity, pool.curveAddress);
+        uint256 maturity = (_timestamp() - position.entry) / 1000;
+        return
+            nftDescriptor.constructTokenURI(
+                tokenId,
+                pool.name,
+                position.poolId,
+                position.amount,
+                pendingOath(tokenId),
+                maturity,
+                pool.curveAddress
+            );
     }
 
     /// @notice Returns the number of MCV2 pools.
@@ -199,7 +219,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         IRewarder _rewarder,
         ICurve curve,
         string memory name
-    ) public onlyOwner {
+    ) public onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
 
@@ -240,7 +260,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         ICurve curve,
         string memory name,
         bool overwriteRewarder
-    ) public onlyOwner {
+    ) public onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
         require(address(curve) != address(0), "invalid curve address");
 
@@ -256,13 +276,7 @@ contract Reliquary is Relic, Ownable, Multicall, ReentrancyGuard {
         pool.curveAddress = address(curve);
         pool.name = name;
 
-        emit LogPoolModified(
-            pid,
-            allocPoint,
-            overwriteRewarder ? _rewarder : rewarder[pid],
-            address(curve),
-            name
-        );
+        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), name);
     }
 
     /*
