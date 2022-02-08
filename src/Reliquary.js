@@ -1,25 +1,25 @@
 function debug(arguments) {
   let argumentTypes;
-  for(let i=0; i<arguments.length; i++) {
+  for (let i = 0; i < arguments.length; i++) {
     argumentTypes.push(typeof arguments[i]);
   }
   return argumentTypes;
 }
 
 async function deployChef(oathAddress, nftDescriptorAddress) {
-  let Reliquary = await ethers.getContractFactory("Reliquary");
+  let Reliquary = await ethers.getContractFactory('Reliquary');
   let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress);
   return chef;
 }
 
 async function deployDescriptor() {
-  let NFTDescriptor = await ethers.getContractFactory("NFTDescriptor");
+  let NFTDescriptor = await ethers.getContractFactory('NFTDescriptor');
   let descriptor = await NFTDescriptor.deploy();
   return descriptor;
 }
 
 async function returnChef(chefAddress) {
-  let Reliquary = await ethers.getContractFactory("Reliquary");
+  let Reliquary = await ethers.getContractFactory('Reliquary');
   let chef = await Reliquary.attach(chefAddress);
   return chef;
 }
@@ -28,19 +28,19 @@ async function getGlobalInfo(chefAddress) {
   let chef = await returnChef(chefAddress);
   let globalInfo = {
     totalAllocPoint: await chef.totalAllocPoint(),
-    chefToken: await chef.OATH()
-  }
+    chefToken: await chef.OATH(),
+  };
   return globalInfo;
 }
 
 async function deployRewarder(multiplier, token, chefAddress) {
-  let Rewarder = await ethers.getContractFactory("RewarderMock");
+  let Rewarder = await ethers.getContractFactory('RewarderMock');
   let rewarder = await Rewarder.deploy(multiplier, token, chefAddress);
   return rewarder;
 }
 
 async function deployCurve() {
-  let Curve = await ethers.getContractFactory("EighthRoot");
+  let Curve = await ethers.getContractFactory('EighthRoot');
   let curve = await Curve.deploy();
   return curve;
 }
@@ -49,12 +49,12 @@ async function viewPoolInfo(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
   let poolInfo = await chef.poolInfo(pid);
   let obj = {
-    "accOathPerShare": poolInfo[0].toString(),
-    "lastRewardTime": poolInfo[1].toString(),
-    "allocPoint": poolInfo[2].toString(),
-    "averageEntry": poolInfo[3].toString(),
-    "curveAddress": poolInfo[4]
-  }
+    accOathPerShare: poolInfo[0].toString(),
+    lastRewardTime: poolInfo[1].toString(),
+    allocPoint: poolInfo[2].toString(),
+    averageEntry: poolInfo[3].toString(),
+    curveAddress: poolInfo[4],
+  };
   return obj;
 }
 
@@ -74,10 +74,10 @@ async function getPositionInfo(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
   let userInfo = await chef.positionForId(positionId);
   return {
-    "amount": userInfo[0].toString(),
-    "rewardDebt": userInfo[1].toString(),
-    "entry": userInfo[2].toString(),
-    "poolId": userInfo[3].toString()
+    amount: userInfo[0].toString(),
+    rewardDebt: userInfo[1].toString(),
+    entry: userInfo[2].toString(),
+    poolId: userInfo[3].toString(),
   };
 }
 
@@ -87,9 +87,9 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(chefAddress, allocPoint, lpToken, rewarder, curve, name) {
+async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.addPool(allocPoint, lpToken, rewarder, curve, name);
+  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -109,7 +109,7 @@ async function pendingOath(chefAddress, positionId) {
 
 async function massUpdatePools(chefAddress, pids) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.massUpdatePools(pids)
+  let tx = await chef.massUpdatePools(pids);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -215,5 +215,5 @@ module.exports = {
   harvest,
   withdrawAndHarvest,
   emergencyWithdraw,
-  curved
-}
+  curved,
+};

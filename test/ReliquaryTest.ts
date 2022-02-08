@@ -8,7 +8,7 @@ import {Signer} from 'ethers';
 
 const {deployChef, getPoolCount, addPool} = require('../src/Reliquary.js');
 
-let owner: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress;
+let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
 let lp: Oath, oath: Oath;
 let curve: EighthRoot;
 
@@ -32,16 +32,19 @@ const deployEighthRootCurve = async (deployer: Signer) => {
 
 describe('Reliquary', function () {
   beforeEach(async function () {
-    [owner, alice, bob] = await ethers.getSigners();
+    [superAdmin, alice, bob, operator] = await ethers.getSigners();
 
-    oath = await deployOath(owner, 'Oath', 'OATH');
-    lp = await deployOath(owner, 'LP Token', 'LPT');
-    await lp.mint(owner.address, ethers.utils.parseEther('1000'));
+    oath = await deployOath(superAdmin, 'Oath', 'OATH');
+    lp = await deployOath(superAdmin, 'LP Token', 'LPT');
+    await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
-    curve = await deployEighthRootCurve(owner);
+    curve = await deployEighthRootCurve(superAdmin);
 
-    const nftDescriptor: NFTDescriptor = await deployNFTDescriptor(owner);
+    const nftDescriptor: NFTDescriptor = await deployNFTDescriptor(superAdmin);
     this.chef = await deployChef(oath.address, nftDescriptor.address);
+
+    const operatorRole: String = await this.chef.OPERATOR();
+    await this.chef.grantRole(operatorRole, operator.address);
     await oath.mint(this.chef.address, ethers.utils.parseEther('100000000'));
     //const Rewarder = await ethers.getContractFactory("RewarderMock");
     //this.rewarder = await Rewarder.deploy(1, oath.address, this.chef.address);
@@ -49,24 +52,45 @@ describe('Reliquary', function () {
 
   describe('PoolLength', function () {
     it('PoolLength should execute', async function () {
-      await addPool(this.chef.address, 100, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        100,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       expect(await getPoolCount(this.chef.address)).to.be.equal(1);
     });
   });
 
   describe('ModifyPool', function () {
     it('Should emit event LogPoolModified', async function () {
-      await addPool(this.chef.address, 100, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
-      await expect(this.chef.modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false)).to.emit(
-        this.chef,
-        'LogPoolModified',
+      await addPool(
+        operator,
+        this.chef.address,
+        100,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
       );
-      await expect(this.chef.modifyPool(0, 100, oath.address, curve.address, 'LP Token', true))
+      await expect(
+        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false),
+      ).to.emit(this.chef, 'LogPoolModified');
+      await expect(this.chef.connect(operator).modifyPool(0, 100, oath.address, curve.address, 'LP Token', true))
         .to.emit(this.chef, 'LogPoolModified')
         .withArgs(0, 100, oath.address, curve.address, 'LP Token');
     });
 
     it('Should revert if invalid pool', async function () {
+      await expect(
+        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false),
+      ).to.be.reverted;
+    });
+
+    it('Should revert if role not authorized', async function () {
       await expect(this.chef.modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false)).to.be
         .reverted;
     });
@@ -74,7 +98,15 @@ describe('Reliquary', function () {
 
   describe('PendingOath', function () {
     it('PendingOath should equal ExpectedOath', async function () {
-      await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        1,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
       await network.provider.send('evm_increaseTime', [31557600]);
@@ -89,7 +121,15 @@ describe('Reliquary', function () {
 
   describe('MassUpdatePools', function () {
     it('Should call updatePool', async function () {
-      await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        1,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await network.provider.send('evm_mine');
       await expect(this.chef.massUpdatePools([0])).to.emit(this.chef, 'LogUpdatePool');
     });
@@ -101,7 +141,9 @@ describe('Reliquary', function () {
 
   describe('AddPool', function () {
     it('Should add pool with reward token multiplier', async function () {
-      await expect(this.chef.addPool(10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token'))
+      await expect(
+        this.chef.connect(operator).addPool(10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token'),
+      )
         .to.emit(this.chef, 'LogPoolAddition')
         .withArgs(0, 10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
     });
@@ -109,7 +151,15 @@ describe('Reliquary', function () {
 
   describe('UpdatePool', function () {
     it('Should emit event LogUpdatePool', async function () {
-      await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        1,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await network.provider.send('evm_mine');
       await expect(this.chef.updatePool(0))
         .to.emit(this.chef, 'LogUpdatePool')
@@ -128,11 +178,19 @@ describe('Reliquary', function () {
 
   describe('Deposit', function () {
     it('Depositing 1', async function () {
-      await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        10,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await lp.approve(this.chef.address, 10);
       await expect(this.chef.createRelicAndDeposit(alice.address, 0, 1))
         .to.emit(this.chef, 'Deposit')
-        .withArgs(owner.address, 0, 1, alice.address, 0);
+        .withArgs(superAdmin.address, 0, 1, alice.address, 0);
     });
 
     it('Depositing into non-existent pool should fail', async function () {
@@ -142,7 +200,15 @@ describe('Reliquary', function () {
 
   describe('Withdraw', function () {
     it('Withdraw 1', async function () {
-      await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        10,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
@@ -154,7 +220,15 @@ describe('Reliquary', function () {
 
   describe('Harvest', function () {
     it('Should give back the correct amount of OATH', async function () {
-      await addPool(this.chef.address, 1, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        1,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
       await network.provider.send('evm_increaseTime', [31557600]);
@@ -169,7 +243,15 @@ describe('Reliquary', function () {
 
   describe('EmergencyWithdraw', function () {
     it('Should emit event EmergencyWithdraw', async function () {
-      await addPool(this.chef.address, 10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+      await addPool(
+        operator,
+        this.chef.address,
+        10,
+        lp.address,
+        ethers.constants.AddressZero,
+        curve.address,
+        'LP Token',
+      );
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);
     });

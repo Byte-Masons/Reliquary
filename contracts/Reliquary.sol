@@ -47,7 +47,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /**
      * @notice Access control roles.
      */
-    bytes32 public constant GOVERNANCE = keccak256("GOVERNANCE");
+    bytes32 public constant OPERATOR = keccak256("OPERATOR");
 
     // TODO tess3rac7 is there a better term than PositionInfo? RelicInfo?
     /*
@@ -219,7 +219,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         IRewarder _rewarder,
         ICurve curve,
         string memory name
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
 
@@ -260,7 +260,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         ICurve curve,
         string memory name,
         bool overwriteRewarder
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
         require(address(curve) != address(0), "invalid curve address");
 
