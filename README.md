@@ -18,19 +18,19 @@ random curve, you can codify the user behaviors you'd like to promote.
 Things to watch out for:
 
 Because we bind the curve to a standard emission rate, it will be set by the earliest entrants of your pool. This means
-that initial depositors will set the curve and usually receive the maximum amount possible at any given time.
-This is fine behavior for the most part, as it ensures new competition for emissions doesn't hurt your early entrants,
-but in some cases you may want to promote equanamity.
-
+that initial depositors will receive the maximum amount possible at any given time. This is fine behavior for the most part,
+as it ensures new competition for emissions doesn't hurt your early entrants, but in some cases you may want to promote equanamity.
 To achieve this, you need simply design a curve that is relatively flat at the start - our sigmoid works just fine for this.
 Bell curves or simple linear graphs can accomplish the same. We have considered adding it to our yield aggregator's front-end
-before making direct UI deposits available so that the curve can be set collectively by Reaper users. Consider these things
-when designing your emission strategy.
+before making direct UI deposits available so that the curve can be set collectively by Reaper users.
 
 Also, something to note is the total average recorded in the pool is moved up and down the curve based on deposits
 and withdrawals agnostic to the user performing the deposit or withdrawal. While users are individually penalized for
 their movement in and out, the pool as a whole seeks to achieve 'zero-sum' behavior regardless of the context of each
 interaction. This will rarely cause issues, but is worth remembering when doing customer service.
+
+Please reach out to zokunei@bytemasons.com to report bugs or other funky behavior. We will proceed with various stages of production
+testing in the coming weeks.
 
 
 ## Installation
