@@ -6,16 +6,10 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(oathAddress, nftDescriptorAddress) {
+async function deployChef(oathAddress) {
   let Reliquary = await ethers.getContractFactory('Reliquary');
-  let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress);
+  let chef = await Reliquary.deploy(oathAddress);
   return chef;
-}
-
-async function deployDescriptor() {
-  let NFTDescriptor = await ethers.getContractFactory('NFTDescriptor');
-  let descriptor = await NFTDescriptor.deploy();
-  return descriptor;
 }
 
 async function returnChef(chefAddress) {
@@ -191,7 +185,6 @@ async function totalPositions(chefAddress) {
 module.exports = {
   debug,
   deployChef,
-  deployDescriptor,
   deployRewarder,
   deployCurve,
   tokenOfOwnerByIndex,

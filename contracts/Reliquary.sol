@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
 import "./interfaces/ICurve.sol";
-import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
+import "./NFTDescriptor.sol";
 import "./libraries/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
@@ -40,7 +40,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  +
  + // TODO tess3rac7 typo above ^ needs fixing
 */
-contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
@@ -106,8 +106,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
-    /// @notice Address of the `NFTDescriptor` which generates the `tokenURI`.
-    INFTDescriptor public nftDescriptor;
     /// @notice Info of each MCV2 pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each MCV2 pool.
@@ -175,11 +173,10 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     event LogInit();
 
     /// @param _oath The OATH token contract address.
-    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor) {
+    constructor(IERC20 _oath) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         OATH = _oath;
-        nftDescriptor = _nftDescriptor;
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
@@ -187,16 +184,18 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 maturity = (_timestamp() - position.entry) / 1000;
-        return
-            nftDescriptor.constructTokenURI(
-                tokenId,
-                pool.name,
-                position.poolId,
-                position.amount,
-                pendingOath(tokenId),
-                maturity,
-                pool.curveAddress
-            );
+        return constructTokenURI(
+            ConstructTokenURIParams({
+                tokenId: tokenId,
+                underlying: pool.name,
+                underlyingAddress: address(lpToken[position.poolId]),
+                poolId: position.poolId,
+                amount: position.amount,
+                pendingOath: pendingOath(tokenId),
+                maturity: maturity,
+                curveAddress: pool.curveAddress
+            })
+        );
     }
 
     /// @notice Returns the number of MCV2 pools.

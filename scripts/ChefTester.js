@@ -6,19 +6,22 @@ const {tokens, testnet, mainnet} = require('../Addresses.json');
 async function main() {
   let oathToken = await reaper.deployTestToken('RELIC', 'RELIC');
   let testToken = await reaper.deployTestToken('USDC', 'USDC');
-  let descriptor = await reliquary.deployDescriptor();
-  let chef = await reliquary.deployChef(oathToken.address, descriptor.address);
+  let chef = await reliquary.deployChef(oathToken.address);
   let rewarder = await reliquary.deployRewarder(1000000, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);
   console.log('testOath: ' + oathToken.address);
-  let curve = await reliquary.deployCurve();
+  let Curve = await ethers.getContractFactory('Sigmoid');
+  let curve = await Curve.deploy();
 
   let globalInfo = await reliquary.getGlobalInfo(chef.address);
   console.log('global variables');
   console.log(globalInfo);
 
+  const operatorRole = await chef.OPERATOR();
+  await chef.grantRole(operatorRole, chef.signer.address);
   await reliquary.addPool(
+    chef.signer,
     chef.address,
     500,
     testToken.address,
@@ -26,7 +29,7 @@ async function main() {
     curve.address,
     'USDC'
   );
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
 
   let globalInfo2 = await reliquary.getGlobalInfo(chef.address);
   console.log('global variables');
@@ -45,7 +48,7 @@ async function main() {
 
   await oathToken.mint(chef.address, ethers.utils.parseEther('100000000000'));
   await testToken.mint(chef.signer.address, ethers.utils.parseEther('1000000'));
-  reaper.sleep(20000);
+  //reaper.sleep(20000);
   await reaper.approveMax(chef.address, testToken.address);
   await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, ethers.utils.parseEther('5000'));
   let id = await reliquary.tokenOfOwnerByIndex(chef.address, chef.signer.address, 0);
@@ -60,7 +63,9 @@ async function main() {
   console.log('Position Info:');
   console.log(positionInfo);
 
-  reaper.sleep(30000);
+  //reaper.sleep(30000);
+  await network.provider.send('evm_increaseTime', [31557600 * 1.5]);
+  await network.provider.send('evm_mine');
   await reliquary.updatePool(chef.address, 0);
   const json = Buffer.from((await chef.tokenURI(id)).replace('data:application/json;base64,', ''), 'base64').toString();
   console.log(json);

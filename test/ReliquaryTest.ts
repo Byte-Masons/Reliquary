@@ -18,12 +18,6 @@ const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: stri
   return contract;
 };
 
-const deployNFTDescriptor = async (deployer: Signer) => {
-  const artifact: Artifact = await artifacts.readArtifact('NFTDescriptor');
-  const contract: NFTDescriptor = <NFTDescriptor>await deployContract(deployer, artifact);
-  return contract;
-};
-
 const deployEighthRootCurve = async (deployer: Signer) => {
   const artifact: Artifact = await artifacts.readArtifact('Sigmoid');
   const contract: EighthRoot = <EighthRoot>await deployContract(deployer, artifact);
@@ -40,8 +34,7 @@ describe('Reliquary', function () {
 
     curve = await deployEighthRootCurve(superAdmin);
 
-    const nftDescriptor: NFTDescriptor = await deployNFTDescriptor(superAdmin);
-    this.chef = await deployChef(oath.address, nftDescriptor.address);
+    this.chef = await deployChef(oath.address);
 
     const operatorRole: String = await this.chef.OPERATOR();
     await this.chef.grantRole(operatorRole, operator.address);
