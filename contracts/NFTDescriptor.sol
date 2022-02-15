@@ -139,10 +139,8 @@ contract NFTDescriptor {
                 '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg"',
                 " xmlns:xlink='http://www.w3.org/1999/xlink'>",
                 '<style>',
-                "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');",
+                "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');",
                 '.bit { text-anchor: middle; dominant-baseline: middle; font-family: "Press Start 2P", "Courier New", Courier, monospace; fill: white }',
-                '.head { font-size: 12 }',
-                '.body { font-size: 8 }',
                 '.art { image-rendering: pixelated }',
                 '</style>',
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
@@ -164,12 +162,12 @@ contract NFTDescriptor {
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
-                '<text x="50%" y="18" class="bit head">', underlying, ' POOL</text>',
-                '<text x="50%" y="279" class="bit head">', underlying, '</text>',
-                '<text x="50%" y="300" class="bit body">AMOUNT: ', amount,
-                '</text><text x="50%" y="330" class="bit body">MATURITY: ', maturity,
-                '</text><text x="50%" y="315" class="bit body">PENDING: ', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit body">NFT ID: ', tokenId, '</text>'
+                '<text x="50%" y="18" class="bit" style="font-size: 12">', underlying, ' POOL</text>',
+                '<text x="50%" y="279" class="bit" style="font-size: 12">', underlying, '</text>',
+                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT: ', amount,
+                '</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY: ', maturity,
+                '</text><text x="50%" y="315" class="bit" style="font-size: 8">PENDING: ', pendingOath,
+                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">NFT ID: ', tokenId, '</text>'
             )
         );
     }

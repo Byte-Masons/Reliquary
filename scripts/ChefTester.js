@@ -67,6 +67,7 @@ async function main() {
   await network.provider.send('evm_increaseTime', [31557600 * 1.5]);
   await network.provider.send('evm_mine');
   await reliquary.updatePool(chef.address, 0);
+  console.log(await chef.tokenURI(id));
   const json = Buffer.from((await chef.tokenURI(id)).replace('data:application/json;base64,', ''), 'base64').toString();
   console.log(json);
   const imageB64 = String(json.split(',').pop());
