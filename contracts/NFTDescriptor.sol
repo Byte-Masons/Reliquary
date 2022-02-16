@@ -136,12 +136,12 @@ contract NFTDescriptor {
         uint256 level = params.currentMultiplier >= 80 ? 5 : params.currentMultiplier / 20 + 1;
         svg = string(
             abi.encodePacked(
-                '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg"',
-                " xmlns:xlink='http://www.w3.org/1999/xlink'>",
+                '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
                 '<style>',
                 "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');",
                 '.bit { text-anchor: middle; dominant-baseline: middle; font-family: "Press Start 2P", "Courier New", Courier, monospace; fill: white }',
                 '.art { image-rendering: pixelated }',
+                '.shape { shape-rendering: crispEdges }',
                 '</style>',
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
                 generateImageText(params.underlying, params.amount, params.maturity.toString(), params.pendingOath, params.tokenId),
@@ -184,9 +184,10 @@ contract NFTDescriptor {
                     abi.encodePacked(
                         '<rect x="', (BAR_WIDTH * i + BAR_X_OFFSET).toString(),
                         '" y="', (CANVAS_HEIGHT - barHeight + BAR_Y_OFFSET).toString(),
+                        '" class="shape',
                         '" width="', BAR_WIDTH.toString(),
                         '" height="', barHeight.toString(),
-                        '" style="fill:#fff" />'
+                        '" style="fill:#fff"/>'
                     )
                 )
             ));
