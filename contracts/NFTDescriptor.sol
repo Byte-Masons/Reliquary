@@ -14,9 +14,9 @@ contract NFTDescriptor {
     using Strings for uint256;
 
     uint256 private constant NUM_BARS = 20;
-    uint256 private constant CANVAS_WIDTH = 190;
-    uint256 private constant CANVAS_HEIGHT = 150;
-    uint256 private constant BAR_WIDTH = CANVAS_WIDTH / NUM_BARS;
+    uint256 private constant GRAPH_WIDTH = 190;
+    uint256 private constant GRAPH_HEIGHT = 150;
+    uint256 private constant BAR_WIDTH = GRAPH_WIDTH / NUM_BARS;
     uint256 private constant BAR_X_OFFSET = 60;
     uint256 private constant BAR_Y_OFFSET = 50;
     // testing account, not ipfs to be used in production
@@ -46,8 +46,8 @@ contract NFTDescriptor {
     function constructTokenURI(ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
         string memory poolId = params.poolId.toString();
-        string memory amount = (params.amount / 10 ** IERC20Decimals(params.underlyingAddress).decimals()).toString();
-        string memory pendingOath = (params.pendingOath / 1e18).toString();
+        string memory amount = generateDecimalString(params.amount, IERC20Decimals(params.underlyingAddress).decimals());
+        string memory pendingOath = generateDecimalString(params.pendingOath, 18);
         uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
 
         string memory name = string(
@@ -152,7 +152,6 @@ contract NFTDescriptor {
     }
 
     //TODO: different descriptions for single assets and LPs
-    // and display decimals instead of rounding to whole number
     function generateImageText (
         string memory underlying,
         string memory amount,
@@ -162,12 +161,12 @@ contract NFTDescriptor {
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
-                '<text x="50%" y="18" class="bit" style="font-size: 12">', underlying, ' POOL</text>',
-                '<text x="50%" y="279" class="bit" style="font-size: 12">', underlying, '</text>',
-                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT: ', amount,
-                '</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY: ', maturity,
-                '</text><text x="50%" y="315" class="bit" style="font-size: 8">PENDING: ', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">NFT ID: ', tokenId, '</text>'
+                '<text x="50%" y="18" class="bit" style="font-size: 12">', underlying,
+                ' POOL</text><text x="50%" y="279" class="bit" style="font-size: 12">', underlying,
+                '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amount,
+                '</text><text x="50%" y="315" class="bit" style="font-size: 8">PENDING:', pendingOath,
+                '</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY:', maturity,
+                '</text><text x="50%" y="345" class="bit" style="font-size: 8">NFT ID:', tokenId, '</text>'
             )
         );
     }
@@ -176,14 +175,14 @@ contract NFTDescriptor {
     function generateBars(address curveAddress, uint256 maturity) internal pure returns (string memory bars) {
         uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
-            //TODO: make barHeight percentage of CANVAS_HEIGHT
+            //TODO: make barHeight percentage of GRAPH_HEIGHT
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS);
             bars = string(abi.encodePacked(
                 bars,
                 string(
                     abi.encodePacked(
                         '<rect x="', (BAR_WIDTH * i + BAR_X_OFFSET).toString(),
-                        '" y="', (CANVAS_HEIGHT - barHeight + BAR_Y_OFFSET).toString(),
+                        '" y="', (GRAPH_HEIGHT - barHeight + BAR_Y_OFFSET).toString(),
                         '" class="shape',
                         '" width="', BAR_WIDTH.toString(),
                         '" height="', barHeight.toString(),
@@ -192,5 +191,42 @@ contract NFTDescriptor {
                 )
             ));
         }
+    }
+
+    function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory) {
+        if (num == 0) {
+            return '0';
+        }
+
+        uint256 numLength;
+        uint256 result;
+        do {
+            result = num / 10 ** (++numLength);
+        } while (result != 0);
+
+        bool lessThanOne = numLength <= decimals;
+        uint256 bufferLength = lessThanOne ? decimals + 2 : numLength + 1;
+        bytes memory buffer = new bytes(bufferLength);
+
+        if (lessThanOne) {
+            buffer[0] = '0';
+            buffer[1] = '.';
+            for (uint256 i = 0; i < decimals - numLength; i++) {
+                buffer[i + 2] = '0';
+            }
+        }
+        uint256 index = bufferLength - 1;
+        while (num != 0) {
+            if (!lessThanOne && index == bufferLength - decimals - 1) {
+                buffer[index--] = '.';
+            }
+            buffer[index] = bytes1(uint8(48 + num % 10));
+            num /= 10;
+            if (index != 0) {
+                index--;
+            }
+        }
+
+        return string(buffer);
     }
 }
