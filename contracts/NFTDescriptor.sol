@@ -165,7 +165,7 @@ contract NFTDescriptor {
                 ' POOL</text><text x="50%" y="279" class="bit" style="font-size: 12">', underlying,
                 '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amount,
                 '</text><text x="50%" y="315" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                '</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY:', maturity,
+                ' OATH</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY:', maturity,
                 '</text><text x="50%" y="345" class="bit" style="font-size: 8">NFT ID:', tokenId, '</text>'
             )
         );
@@ -205,7 +205,17 @@ contract NFTDescriptor {
         } while (result != 0);
 
         bool lessThanOne = numLength <= decimals;
-        uint256 bufferLength = lessThanOne ? decimals + 2 : numLength + 1;
+        uint256 bufferLength;
+        if (lessThanOne) {
+            bufferLength = decimals + 2;
+        } else if (numLength > 19) {
+            uint256 difference = numLength - 19;
+            decimals -= difference > decimals ? decimals : difference;
+            num /= 10 ** difference;
+            bufferLength = 20;
+        } else {
+            bufferLength = numLength + 1;
+        }
         bytes memory buffer = new bytes(bufferLength);
 
         if (lessThanOne) {
