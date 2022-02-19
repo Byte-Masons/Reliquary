@@ -18,7 +18,7 @@ contract NFTDescriptor {
     uint256 private constant GRAPH_HEIGHT = 150;
     uint256 private constant BAR_WIDTH = GRAPH_WIDTH / NUM_BARS;
     // testing account, not ipfs to be used in production
-    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmTKP9VW5kuizib5jfEwVZb5z42xvpyrp9XSB8Ptxkk5Gy/';
+    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
     struct ConstructTokenURIParams {
         uint256 tokenId;
@@ -144,7 +144,7 @@ contract NFTDescriptor {
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
                 generateImageText(params.underlying, params.amount, params.maturity.toString(), params.pendingOath, params.tokenId),
                 '<svg x="60" y="50" width="190" height="150">',
-                generateBars(params.curveAddress, params.maturity),
+                generateBars(params.curveAddress, params.maturity, params.currentMultiplier),
                 '</svg></svg>'
             )
         );
@@ -170,11 +170,9 @@ contract NFTDescriptor {
         );
     }
 
-    //TODO: draw indicator of current position
-    function generateBars(address curveAddress, uint256 maturity) internal pure returns (string memory bars) {
+    function generateBars(address curveAddress, uint256 maturity, uint256 currentMultiplier) internal pure returns (string memory bars) {
         uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
-            //TODO: make barHeight percentage of GRAPH_HEIGHT
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS) * GRAPH_HEIGHT / 100;
             bars = string(abi.encodePacked(
                 bars,
@@ -186,6 +184,11 @@ contract NFTDescriptor {
                 '" style="fill:#fff"/>'
             ));
         }
+        bars = string(abi.encodePacked(
+            bars,
+            '<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - 15) * maturity / totalTimeShown).toString(),
+            '" y="', (GRAPH_HEIGHT - currentMultiplier * GRAPH_HEIGHT / 100 - 6).toString(), '" height="11" width="12" class="art"/>'
+        ));
     }
 
     function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory) {
