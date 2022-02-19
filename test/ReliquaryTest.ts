@@ -52,7 +52,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       expect(await getPoolCount(this.chef.address)).to.be.equal(1);
     });
@@ -67,24 +67,24 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await expect(
-        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false),
+        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, false, false),
       ).to.emit(this.chef, 'LogPoolModified');
-      await expect(this.chef.connect(operator).modifyPool(0, 100, oath.address, curve.address, 'LP Token', true))
+      await expect(this.chef.connect(operator).modifyPool(0, 100, oath.address, curve.address, false, true))
         .to.emit(this.chef, 'LogPoolModified')
-        .withArgs(0, 100, oath.address, curve.address, 'LP Token');
+        .withArgs(0, 100, oath.address, curve.address, false);
     });
 
     it('Should revert if invalid pool', async function () {
       await expect(
-        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false),
+        this.chef.connect(operator).modifyPool(0, 100, ethers.constants.AddressZero, curve.address, false, false),
       ).to.be.reverted;
     });
 
     it('Should revert if role not authorized', async function () {
-      await expect(this.chef.modifyPool(0, 100, ethers.constants.AddressZero, curve.address, 'LP Token', false)).to.be
+      await expect(this.chef.modifyPool(0, 100, ethers.constants.AddressZero, curve.address, false, false)).to.be
         .reverted;
     });
   });
@@ -98,7 +98,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
@@ -121,7 +121,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await network.provider.send('evm_mine');
       await expect(this.chef.massUpdatePools([0])).to.emit(this.chef, 'LogUpdatePool');
@@ -135,10 +135,10 @@ describe('Reliquary', function () {
   describe('AddPool', function () {
     it('Should add pool with reward token multiplier', async function () {
       await expect(
-        this.chef.connect(operator).addPool(10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token'),
+        this.chef.connect(operator).addPool(10, lp.address, ethers.constants.AddressZero, curve.address, false),
       )
         .to.emit(this.chef, 'LogPoolAddition')
-        .withArgs(0, 10, lp.address, ethers.constants.AddressZero, curve.address, 'LP Token');
+        .withArgs(0, 10, lp.address, ethers.constants.AddressZero, curve.address, false);
     });
   });
 
@@ -151,7 +151,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await network.provider.send('evm_mine');
       await expect(this.chef.updatePool(0))
@@ -178,7 +178,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await lp.approve(this.chef.address, 10);
       await expect(this.chef.createRelicAndDeposit(alice.address, 0, 1))
@@ -200,7 +200,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);
@@ -220,7 +220,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
@@ -243,7 +243,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-        'LP Token',
+        false,
       );
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);

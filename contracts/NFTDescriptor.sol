@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
+import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/ICurve.sol';
 
-interface IERC20Decimals is IERC20 {
+interface IERC20Values {
+    function symbol() external view returns (string memory);
     function decimals() external view returns (uint8);
 }
 
@@ -22,7 +23,7 @@ contract NFTDescriptor {
 
     struct ConstructTokenURIParams {
         uint256 tokenId;
-        string underlying;
+        bool isLP;
         address underlyingAddress;
         uint256 poolId;
         uint256 amount;
@@ -43,19 +44,32 @@ contract NFTDescriptor {
 
     function constructTokenURI(ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
+        string memory underlying;
+        if (params.isLP) {
+            IUniswapV2Pair lp = IUniswapV2Pair(params.underlyingAddress);
+            underlying = string(
+                abi.encodePacked(
+                    IERC20Values(lp.token0()).symbol(),
+                    '-',
+                    IERC20Values(lp.token1()).symbol()
+                )
+            );
+        } else {
+            underlying = IERC20Values(params.underlyingAddress).symbol();
+        }
         string memory poolId = params.poolId.toString();
-        string memory amount = generateDecimalString(params.amount, IERC20Decimals(params.underlyingAddress).decimals());
+        string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlyingAddress).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
         uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
 
         string memory name = string(
             abi.encodePacked(
-                'Relic #', tokenId, ': ', params.underlying
+                'Relic #', tokenId, ': ', underlying
             )
         );
         string memory description =
             generateDescription(
-                params.underlying,
+                underlying,
                 poolId,
                 amount,
                 pendingOath,
@@ -68,7 +82,7 @@ contract NFTDescriptor {
                     generateSVGImage(
                         GenerateSVGParams({
                             tokenId: tokenId,
-                            underlying: params.underlying,
+                            underlying: underlying,
                             amount: amount,
                             pendingOath: pendingOath,
                             maturity: params.maturity,

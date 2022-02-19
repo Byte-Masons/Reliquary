@@ -48,6 +48,7 @@
     "@ethersproject/solidity": "^5.4.0",
     "@openzeppelin/contracts": "^4.4.2",
     "@uniswap/sdk": "^3.0.3",
+    "@uniswap/v2-core": "^1.0.1",
     "base64-sol": "1.0.1",
     "install": "^0.13.0",
     "npm": "^7.20.3"

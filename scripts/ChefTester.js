@@ -27,7 +27,7 @@ async function main() {
     testToken.address,
     '0x0000000000000000000000000000000000000000',
     curve.address,
-    'USDC'
+    false
   );
   //reaper.sleep(10000);
 

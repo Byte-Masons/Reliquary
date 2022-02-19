@@ -78,7 +78,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         uint256 allocPoint;
         uint256 averageEntry;
         address curveAddress;
-        string name;
+        bool isLP;
     }
 
     /*
@@ -160,14 +160,14 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
         address indexed curve,
-        string name
+        bool isLP
     );
     event LogPoolModified(
         uint256 indexed pid,
         uint256 allocPoint,
         IRewarder indexed rewarder,
         address indexed curve,
-        string name
+        bool isLP
     );
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
     event LogInit();
@@ -187,7 +187,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         return constructTokenURI(
             ConstructTokenURIParams({
                 tokenId: tokenId,
-                underlying: pool.name,
+                isLP: pool.isLP,
                 underlyingAddress: address(lpToken[position.poolId]),
                 poolId: position.poolId,
                 amount: position.amount,
@@ -217,7 +217,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         IERC20 _lpToken,
         IRewarder _rewarder,
         ICurve curve,
-        string memory name
+        bool isLP
     ) public onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
@@ -233,12 +233,12 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
                 accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(curve),
-                name: name
+                isLP: isLP
             })
         );
         hasBeenAdded[address(_lpToken)] = true;
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(curve), name);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(curve), isLP);
     }
 
     /*
@@ -257,7 +257,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         uint256 allocPoint,
         IRewarder _rewarder,
         ICurve curve,
-        string memory name,
+        bool isLP,
         bool overwriteRewarder
     ) public onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
@@ -273,9 +273,9 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         }
 
         pool.curveAddress = address(curve);
-        pool.name = name;
+        pool.isLP = isLP;
 
-        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), name);
+        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), isLP);
     }
 
     /*
