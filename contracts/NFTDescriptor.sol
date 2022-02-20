@@ -32,36 +32,17 @@ contract NFTDescriptor {
         address curveAddress;
     }
 
-    struct GenerateSVGParams {
-        string tokenId;
-        string underlying;
-        string amount;
-        string pendingOath;
-        uint256 maturity;
-        address curveAddress;
-        uint256 currentMultiplier;
-    }
-
     function constructTokenURI(ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
-        string memory underlying;
-        if (params.isLP) {
-            IUniswapV2Pair lp = IUniswapV2Pair(params.underlyingAddress);
-            underlying = string(
-                abi.encodePacked(
-                    IERC20Values(lp.token0()).symbol(),
-                    '-',
-                    IERC20Values(lp.token1()).symbol()
-                )
-            );
-        } else {
-            underlying = IERC20Values(params.underlyingAddress).symbol();
-        }
         string memory poolId = params.poolId.toString();
-        string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlyingAddress).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
         uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
 
+        (string memory underlying, string memory amount, string memory tags) = generateTextFromToken(
+            params.underlyingAddress,
+            params.isLP,
+            params.amount
+        );
         string memory name = string(
             abi.encodePacked(
                 'Relic #', tokenId, ': ', underlying
@@ -76,19 +57,26 @@ contract NFTDescriptor {
                 params.maturity,
                 currentMultiplier
             );
+        address curveAddress = params.curveAddress;
+        uint256 maturity = params.maturity;
         string memory image =
             Base64.encode(
                 bytes(
-                    generateSVGImage(
-                        GenerateSVGParams({
-                            tokenId: tokenId,
-                            underlying: underlying,
-                            amount: amount,
-                            pendingOath: pendingOath,
-                            maturity: params.maturity,
-                            curveAddress: params.curveAddress,
-                            currentMultiplier: currentMultiplier
-                        })
+                    string(
+                        abi.encodePacked(
+                            generateSVGImage(
+                                tokenId,
+                                tags,
+                                pendingOath,
+                                maturity,
+                                currentMultiplier
+                            ),
+                            generateBars(
+                                curveAddress,
+                                maturity,
+                                currentMultiplier
+                            )
+                        )
                     )
                 )
             );
@@ -144,8 +132,14 @@ contract NFTDescriptor {
         );
     }
 
-    function generateSVGImage(GenerateSVGParams memory params) internal pure returns (string memory svg) {
-        uint256 level = params.currentMultiplier >= 80 ? 5 : params.currentMultiplier / 20 + 1;
+    function generateSVGImage(
+        string memory tokenId,
+        string memory tags,
+        string memory pendingOath,
+        uint256 maturity,
+        uint256 currentMultiplier
+    ) internal pure returns (string memory svg) {
+        uint256 level = currentMultiplier >= 80 ? 5 : currentMultiplier / 20 + 1;
         svg = string(
             abi.encodePacked(
                 '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -156,30 +150,58 @@ contract NFTDescriptor {
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
-                generateImageText(params.underlying, params.amount, params.maturity.toString(), params.pendingOath, params.tokenId),
-                '<svg x="60" y="50" width="190" height="150">',
-                generateBars(params.curveAddress, params.maturity, params.currentMultiplier),
-                '</svg></svg>'
+                generateImageText(tokenId, pendingOath, maturity.toString()),
+                tags,
+                '<svg x="60" y="50" width="190" height="150">'
             )
         );
     }
 
-    //TODO: different descriptions for single assets and LPs
-    function generateImageText (
-        string memory underlying,
-        string memory amount,
-        string memory maturity,
-        string memory pendingOath,
-        string memory tokenId
-    ) internal pure returns (string memory text) {
+    function generateImageText(string memory tokenId, string memory pendingOath, string memory maturity) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
-                '<text x="50%" y="18" class="bit" style="font-size: 12">', underlying,
-                ' POOL</text><text x="50%" y="279" class="bit" style="font-size: 12">', underlying,
-                '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amount,
-                '</text><text x="50%" y="315" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="330" class="bit" style="font-size: 8">MATURITY:', maturity,
-                '</text><text x="50%" y="345" class="bit" style="font-size: 8">NFT ID:', tokenId, '</text>'
+                '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
+                '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
+                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity
+            )
+        );
+    }
+
+    function generateTextFromToken(
+        address underlyingAddress,
+        bool isLP,
+        uint256 amount
+    ) internal view returns (string memory underlying, string memory amountString, string memory tags) {
+        amountString = generateDecimalString(amount, IERC20Values(underlyingAddress).decimals());
+        if (isLP) {
+            IUniswapV2Pair lp = IUniswapV2Pair(underlyingAddress);
+            IERC20Values token0 = IERC20Values(lp.token0());
+            IERC20Values token1 = IERC20Values(lp.token1());
+            string memory token0Symbol = token0.symbol();
+            string memory token1Symbol = token1.symbol();
+            underlying = string(abi.encodePacked(token0Symbol, '-', token1Symbol));
+
+            (uint256 reserves0, uint256 reserves1, ) = lp.getReserves();
+            uint256 amount0 = amount * reserves0 * 1e18 / lp.totalSupply();
+            uint256 amount1 = amount * reserves1 * 1e18 / lp.totalSupply();
+            tags = string(
+                abi.encodePacked(
+                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">', token0Symbol, ':', generateDecimalString(amount0, token0.decimals()),
+                    '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1Symbol, ':', generateDecimalString(amount1, token1.decimals())
+                )
+            );
+        } else {
+            underlying = IERC20Values(underlyingAddress).symbol();
+            tags = string(
+                abi.encodePacked(
+                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
+                )
+            );
+        }
+        tags = string(
+            abi.encodePacked(
+                tags,
+                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', underlying, '</text>'
             )
         );
     }
@@ -201,7 +223,8 @@ contract NFTDescriptor {
         bars = string(abi.encodePacked(
             bars,
             '<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - 15) * maturity / totalTimeShown).toString(),
-            '" y="', (GRAPH_HEIGHT - currentMultiplier * GRAPH_HEIGHT / 100 - 6).toString(), '" height="11" width="12" class="art"/>'
+            '" y="', (GRAPH_HEIGHT - currentMultiplier * GRAPH_HEIGHT / 100 - 6).toString(), '" height="11" width="12" class="art"/>',
+            '</svg></svg>'
         ));
     }
 
