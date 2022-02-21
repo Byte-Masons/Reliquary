@@ -24,21 +24,16 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + @author Justin Bebis, Zokunei & the Byte Masons team
  + @notice Built on the MasterChefV2 system authored by Sushi's team
  +
- + // TODO tess3rac7 need some more ELI5 here. Define "position," "maturity" first
- +
  + @notice This system is designed to modify Masterchef accounting logic such that
- + behaviors can be programmed on a per-pool basis using a curve library, which
- + modifies emissions based on position maturity and binds it to the base rate
- + using a per-token aggregated average
+ + behaviors can be programmed on a per-pool basis using a curve library. Stake in a
+ + pool, also referred to as "position," is represented by means of an NFT called a 
+ + "Relic." Each position has a "maturity" which captures the age of the position.
+ + The curve associated with a pool modifies emissions based on each position's maturity
+ + and binds it to the base rate using a per-token aggregated average.
  +
- + // TODO tess3rac7 "position" used in two different contexts below, reconcile
- +
- + @notice Deposits are tracked by position instead of by user, and mapped to an individual
- + NFT as opposed to an EOA. This allows for increased composability without affecting
- + accounting logic too much, and users can exit their position without withdrawing
- + their liquidity oShriner sacrificing their position's maturity.
- +
- + // TODO tess3rac7 typo above ^ needs fixing
+ + @notice Deposits are tracked by Relic ID instead of by user. This allows for
+ + increased composability without affecting accounting logic too much, and users can
+ + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
 contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SignedSafeMath for int256;
@@ -49,7 +44,6 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      */
     bytes32 public constant OPERATOR = keccak256("OPERATOR");
 
-    // TODO tess3rac7 is there a better term than PositionInfo? RelicInfo?
     /*
      + @notice Info for each Reliquary position.
      + `amount` LP token amount the position owner has provided.
@@ -81,24 +75,13 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         bool isLP;
     }
 
-    /*
-     + @notice used to determine position's emission modifier
-     + `param` distance the % distance the position is from the curve, in base 10000
-     + `param` placement flag to note whether position is above or below the average maturity
-    */
-    // TODO tess3rac7 this could also use a rename
-    struct Position {
-        uint256 distance;
-        Placement placement;
-    }
-
-    // @notice used to determine whether a position is above or below the average curve
+    // @notice indicates whether a position's modifier is above or below the pool's average
     enum Placement {
         ABOVE,
         BELOW
     }
 
-    // @notice used to determine whether the average entry is increased or decreased
+    // @notice indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
         DEPOSIT,
         WITHDRAW
@@ -106,16 +89,15 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
-    /// @notice Info of each MCV2 pool.
+    /// @notice Info of each Reliquary pool.
     PoolInfo[] public poolInfo;
-    /// @notice Address of the LP token for each MCV2 pool.
+    /// @notice Address of the LP token for each Reliquary pool.
     IERC20[] public lpToken;
-    /// @notice Address of each `IRewarder` contract in MCV2.
+    /// @notice Address of each `IRewarder` contract in Reliquary.
     IRewarder[] public rewarder;
 
     /// @notice Info of each staked position
     mapping(uint256 => PositionInfo) public positionForId;
-    // TODO tess3rac7 maybe rename this mapping as well..
 
     /// @notice ensures the same token isn't added to the contract twice
     mapping(address => bool) public hasBeenAdded;
@@ -132,27 +114,27 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
+        uint256 relicId
     );
     event Withdraw(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
+        uint256 relicId
     );
     event EmergencyWithdraw(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
+        uint256 relicId
     );
     event Harvest(
         address indexed user,
         uint256 indexed pid,
         uint256 amount,
-        uint256 positionId // TODO tess3rac7 can rename as well (if we rename positionId to nftId)
+        uint256 relicId
     );
     event LogPoolAddition(
         uint256 pid,
@@ -198,7 +180,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         );
     }
 
-    /// @notice Returns the number of MCV2 pools.
+    /// @notice Returns the number of Reliquary pools.
     function poolLength() public view returns (uint256 pools) {
         pools = poolInfo.length;
     }
@@ -280,14 +262,13 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
     /*
      + @notice View function to see pending OATH on frontend.
-     + @param positionId ID of the position.
+     + @param _relicId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
-    // TODO tess3rac7 rename positionId above and below as well accordingly
-    function pendingOath(uint256 positionId) public view returns (uint256 pending) {
-        _ensureValidPosition(positionId);
+    function pendingOath(uint256 _relicId) public view returns (uint256 pending) {
+        _ensureValidPosition(_relicId);
 
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 accOathPerShare = pool.accOathPerShare;
         uint256 lpSupply = _poolBalance(position.poolId);
@@ -299,7 +280,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         }
 
         int256 rawPending = int256((position.amount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt;
-        pending = _calculateEmissions(rawPending.toUInt256(), positionId);
+        pending = _calculateEmissions(rawPending.toUInt256(), _relicId);
     }
 
     /*
@@ -350,22 +331,22 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
     /*
      + @notice Deposit LP tokens to Reliquary for OATH allocation.
      + @param _amount token amount to deposit.
-     + @param _positionId NFT ID of the receiver of `amount` deposit benefit.
+     + @param _relicId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 amount, uint256 positionId) external {
-        _ensureValidPosition(positionId);
-        _deposit(amount, positionId);
+    function deposit(uint256 amount, uint256 _relicId) external {
+        _ensureValidPosition(_relicId);
+        _deposit(amount, _relicId);
     }
 
     /*
-     + @dev Internal deposit function that assumes _positionId is valid.
+     + @dev Internal deposit function that assumes _relicId is valid.
     */
-    function _deposit(uint256 amount, uint256 positionId) internal {
+    function _deposit(uint256 amount, uint256 _relicId) internal {
         require(amount != 0, "depositing 0 amount");
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
 
         updatePool(position.poolId);
-        _updateEntry(amount, positionId);
+        _updateEntry(amount, _relicId);
         _updateAverageEntry(position.poolId, amount, Kind.DEPOSIT);
 
         PoolInfo storage pool = poolInfo[position.poolId];
@@ -374,28 +355,28 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         position.rewardDebt += int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         IRewarder _rewarder = rewarder[position.poolId];
-        address to = ownerOf(positionId);
+        address to = ownerOf(_relicId);
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(position.poolId, to, to, 0, position.amount);
         }
 
         lpToken[position.poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(msg.sender, position.poolId, amount, to, positionId);
+        emit Deposit(msg.sender, position.poolId, amount, to, _relicId);
     }
 
     /*
      + @notice Withdraw LP tokens from Reliquary.
      + @param amount LP token amount to withdraw.
-     + @param positionId NFT ID of the receiver of the tokens.
+     + @param _relicId NFT ID of the receiver of the tokens.
     */
-    function withdraw(uint256 amount, uint256 positionId) public {
-        _ensureValidPosition(positionId);
-        address to = ownerOf(positionId);
+    function withdraw(uint256 amount, uint256 _relicId) public {
+        _ensureValidPosition(_relicId);
+        address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
         updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
@@ -403,7 +384,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         // Effects
         position.rewardDebt -= int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         position.amount -= amount;
-        _updateEntry(amount, positionId);
+        _updateEntry(amount, _relicId);
         _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
 
         // Interactions
@@ -414,30 +395,30 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
         lpToken[position.poolId].safeTransfer(to, amount);
         if (position.amount == 0) {
-            burn(positionId);
-            delete (positionForId[positionId]);
+            burn(_relicId);
+            delete (positionForId[_relicId]);
         }
 
-        emit Withdraw(msg.sender, position.poolId, amount, to, positionId);
+        emit Withdraw(msg.sender, position.poolId, amount, to, _relicId);
     }
 
     /*
-     + @notice Harvest proceeds for transaction sender to owner of `positionId`.
-     + @param _positionId NFT ID of the receiver of OATH rewards.
+     + @notice Harvest proceeds for transaction sender to owner of `_relicId`.
+     + @param _relicId NFT ID of the receiver of OATH rewards.
     */
-    function harvest(uint256 positionId) public {
-        _ensureValidPosition(positionId);
-        address to = ownerOf(positionId);
+    function harvest(uint256 _relicId) public {
+        _ensureValidPosition(_relicId);
+        address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
 
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
         updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
 
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, positionId);
+        uint256 _curvedOath = _calculateEmissions(_pendingOath, _relicId);
 
         // Effects
         position.rewardDebt = accumulatedOath;
@@ -452,27 +433,27 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
             _rewarder.onOathReward(position.poolId, msg.sender, to, _curvedOath, position.amount);
         }
 
-        emit Harvest(msg.sender, position.poolId, _curvedOath, positionId);
+        emit Harvest(msg.sender, position.poolId, _curvedOath, _relicId);
     }
 
     /*
-     + @notice Withdraw LP tokens and harvest proceeds for transaction sender to owner of `positionId`.
+     + @notice Withdraw LP tokens and harvest proceeds for transaction sender to owner of `_relicId`.
      + @param amount token amount to withdraw.
-     + @param positionId NFT ID of the receiver of the tokens and OATH rewards.
+     + @param _relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdrawAndHarvest(uint256 amount, uint256 positionId) public {
-        _ensureValidPosition(positionId);
-        address to = ownerOf(positionId);
+    function withdrawAndHarvest(uint256 amount, uint256 _relicId) public {
+        _ensureValidPosition(_relicId);
+        address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
         updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, positionId);
+        uint256 _curvedOath = _calculateEmissions(_pendingOath, _relicId);
 
         if (_curvedOath != 0) {
             OATH.safeTransfer(to, _curvedOath);
@@ -480,7 +461,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
         position.rewardDebt = accumulatedOath - int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         position.amount -= amount;
-        _updateEntry(amount, positionId);
+        _updateEntry(amount, _relicId);
         _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
 
         IRewarder _rewarder = rewarder[position.poolId];
@@ -490,29 +471,29 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
         lpToken[position.poolId].safeTransfer(to, amount);
         if (position.amount == 0) {
-            burn(positionId);
-            delete (positionForId[positionId]);
+            burn(_relicId);
+            delete (positionForId[_relicId]);
         }
 
-        emit Withdraw(msg.sender, position.poolId, amount, to, positionId);
-        emit Harvest(msg.sender, position.poolId, _curvedOath, positionId);
+        emit Withdraw(msg.sender, position.poolId, amount, to, _relicId);
+        emit Harvest(msg.sender, position.poolId, _curvedOath, _relicId);
     }
 
     /*
      + @notice Withdraw without caring about rewards. EMERGENCY ONLY.
-     + @param positionId NFT ID of the receiver of the tokens.
+     + @param _relicId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint256 positionId) public nonReentrant {
-        _ensureValidPosition(positionId);
-        address to = ownerOf(positionId);
+    function emergencyWithdraw(uint256 _relicId) public nonReentrant {
+        _ensureValidPosition(_relicId);
+        address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
 
-        PositionInfo storage position = positionForId[positionId];
+        PositionInfo storage position = positionForId[_relicId];
         uint256 amount = position.amount;
 
         position.amount = 0;
         position.rewardDebt = 0;
-        _updateEntry(amount, positionId);
+        _updateEntry(amount, _relicId);
         _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
 
         IRewarder _rewarder = rewarder[position.poolId];
@@ -522,19 +503,18 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
         // Note: transfer can fail or succeed if `amount` is zero.
         lpToken[position.poolId].safeTransfer(to, amount);
-        burn(positionId);
-        delete (positionForId[positionId]);
+        burn(_relicId);
+        delete (positionForId[_relicId]);
 
-        emit EmergencyWithdraw(msg.sender, position.poolId, amount, to, positionId);
+        emit EmergencyWithdraw(msg.sender, position.poolId, amount, to, _relicId);
     }
 
     /*
-     + @notice pulls MasterChef data and passes it to the curve library
-     + @param positionId - the position whose maturity curve you'd like to see
+     + @notice pulls Reliquary data and passes it to the curve library
+     + @param _relicId - ID of the position whose maturity curve you'd like to see
     */
-
-    function curved(uint256 positionId) public view returns (uint256 _curved) {
-        PositionInfo storage position = positionForId[positionId];
+    function curved(uint256 _relicId) public view returns (uint256 _curved) {
+        PositionInfo storage position = positionForId[_relicId];
         PoolInfo memory pool = poolInfo[position.poolId];
 
         uint256 maturity = (_timestamp() - position.entry) / 1000;
@@ -543,12 +523,12 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
     }
 
     /*
-     + @notice operates on the position's MasterChef emissions
+     + @notice operates on the position's base emissions
      + @param amount OATH amount to modify
-     + @param positionId the position that's being modified
+     + @param _relicId ID of the position that's being modified
     */
-    function _calculateEmissions(uint256 amount, uint256 positionId) internal view returns (uint256 emissions) {
-        (uint256 distance, Placement placement) = _calculateDistanceFromMean(positionId);
+    function _calculateEmissions(uint256 amount, uint256 _relicId) internal view returns (uint256 emissions) {
+        (uint256 distance, Placement placement) = _calculateDistanceFromMean(_relicId);
 
         if (placement == Placement.ABOVE) {
             emissions = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
@@ -561,17 +541,16 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
     /*
      + @notice calculates how far the user's position maturity is from the average
-     + @param positionId NFT ID of the position being assessed
+     + @param _relicId NFT ID of the position being assessed
     */
-
-    function _calculateDistanceFromMean(uint256 positionId)
+    function _calculateDistanceFromMean(uint256 _relicId)
         internal
         view
         returns (uint256 distance, Placement placement)
     {
-        PositionInfo storage positionInfo = positionForId[positionId];
+        PositionInfo storage positionInfo = positionForId[_relicId];
 
-        uint256 position = curved(positionId);
+        uint256 position = curved(_relicId);
         uint256 mean = _calculateMean(positionInfo.poolId);
 
         if (position < mean) {
@@ -627,11 +606,11 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
     /*
      + @notice updates the user's entry time based on the weight of their deposit or withdrawal
      + @param amount the amount of the deposit / withdrawal
-     + @param positionId the NFT ID of the position being updated
+     + @param _relicId the NFT ID of the position being updated
     */
 
-    function _updateEntry(uint256 amount, uint256 positionId) internal returns (bool success) {
-        PositionInfo storage position = positionForId[positionId];
+    function _updateEntry(uint256 amount, uint256 _relicId) internal returns (bool success) {
+        PositionInfo storage position = positionForId[_relicId];
         if (position.amount == 0) {
             position.entry = _timestamp();
             return true;
@@ -662,8 +641,8 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
     /*
      + @dev Existing position is valid iff it has non-zero amount.
     */
-    function _ensureValidPosition(uint256 positionId) internal view {
-        PositionInfo storage position = positionForId[positionId];
+    function _ensureValidPosition(uint256 _relicId) internal view {
+        PositionInfo storage position = positionForId[_relicId];
         require(position.amount != 0, "invalid position ID");
     }
 }
