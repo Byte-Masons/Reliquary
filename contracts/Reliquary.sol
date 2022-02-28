@@ -287,9 +287,9 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
-    function massUpdatePools(uint256[] calldata pids) external {
+    function massUpdatePools(uint256[] calldata pids) external nonReentrant {
         for (uint256 i = 0; i < pids.length; i++) {
-            updatePool(pids[i]);
+            _updatePool(pids[i]);
         }
     }
 
@@ -298,7 +298,14 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public nonReentrant {
+    function updatePool(uint256 pid) external nonReentrant {
+        _updatePool(pid);
+    }
+
+    /*
+     + @dev Internal updatePool function without nonReentrant modifier
+    */
+    function _updatePool(uint256 pid) internal {
         PoolInfo storage pool = poolInfo[pid];
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
@@ -333,7 +340,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @param _amount token amount to deposit.
      + @param _relicId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint256 amount, uint256 _relicId) external {
+    function deposit(uint256 amount, uint256 _relicId) external nonReentrant {
         _ensureValidPosition(_relicId);
         _deposit(amount, _relicId);
     }
@@ -345,7 +352,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         require(amount != 0, "depositing 0 amount");
         PositionInfo storage position = positionForId[_relicId];
 
-        updatePool(position.poolId);
+        _updatePool(position.poolId);
         _updateEntry(amount, _relicId);
         _updateAverageEntry(position.poolId, amount, Kind.DEPOSIT);
 
@@ -370,14 +377,14 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @param amount LP token amount to withdraw.
      + @param _relicId NFT ID of the receiver of the tokens.
     */
-    function withdraw(uint256 amount, uint256 _relicId) public {
+    function withdraw(uint256 amount, uint256 _relicId) public nonReentrant {
         _ensureValidPosition(_relicId);
         address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
         PositionInfo storage position = positionForId[_relicId];
-        updatePool(position.poolId);
+        _updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
 
@@ -406,13 +413,13 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @notice Harvest proceeds for transaction sender to owner of `_relicId`.
      + @param _relicId NFT ID of the receiver of OATH rewards.
     */
-    function harvest(uint256 _relicId) public {
+    function harvest(uint256 _relicId) public nonReentrant {
         _ensureValidPosition(_relicId);
         address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
 
         PositionInfo storage position = positionForId[_relicId];
-        updatePool(position.poolId);
+        _updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
 
@@ -441,14 +448,14 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
      + @param amount token amount to withdraw.
      + @param _relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdrawAndHarvest(uint256 amount, uint256 _relicId) public {
+    function withdrawAndHarvest(uint256 amount, uint256 _relicId) public nonReentrant {
         _ensureValidPosition(_relicId);
         address to = ownerOf(_relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
         PositionInfo storage position = positionForId[_relicId];
-        updatePool(position.poolId);
+        _updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
         int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
