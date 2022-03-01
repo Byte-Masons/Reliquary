@@ -182,8 +182,8 @@ contract NFTDescriptor {
             underlying = string(abi.encodePacked(token0Symbol, '-', token1Symbol));
 
             (uint256 reserves0, uint256 reserves1, ) = lp.getReserves();
-            uint256 amount0 = amount * reserves0 * 1e18 / lp.totalSupply();
-            uint256 amount1 = amount * reserves1 * 1e18 / lp.totalSupply();
+            uint256 amount0 = amount * reserves0 / lp.totalSupply();
+            uint256 amount1 = amount * reserves1 / lp.totalSupply();
             tags = string(
                 abi.encodePacked(
                     '</text><text x="50%" y="300" class="bit" style="font-size: 8">', token0Symbol, ':', generateDecimalString(amount0, token0.decimals()),

@@ -4,13 +4,20 @@ const addresses = require('../Addresses.json');
 const {tokens, testnet, mainnet} = require('../Addresses.json');
 
 async function main() {
-  let oathToken = await reaper.deployTestToken('RELIC', 'RELIC');
+  let oathToken = await reaper.deployTestToken('OATH', 'OATH');
   let testToken = await reaper.deployTestToken('USDC', 'USDC');
+  let UniV2Factory = await ethers.getContractFactory('UniswapV2Factory');
+  let uniV2Factory = await UniV2Factory.deploy('0x0000000000000000000000000000000000000000');
+  await uniV2Factory.createPair(oathToken.address, testToken.address);
+  let pairAddress = await uniV2Factory.getPair(oathToken.address, testToken.address);
+  let Pair = await ethers.getContractFactory('UniswapV2Pair');
+  let pair = await Pair.attach(pairAddress);
   let chef = await reliquary.deployChef(oathToken.address);
   let rewarder = await reliquary.deployRewarder(1000000, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);
   console.log('testOath: ' + oathToken.address);
+  console.log('testLP: ' + pair.address);
   let Curve = await ethers.getContractFactory('Sigmoid');
   let curve = await Curve.deploy();
 
@@ -24,10 +31,10 @@ async function main() {
     chef.signer,
     chef.address,
     500,
-    testToken.address,
+    pair.address,
     '0x0000000000000000000000000000000000000000',
     curve.address,
-    false
+    true
   );
   //reaper.sleep(10000);
 
@@ -47,10 +54,13 @@ async function main() {
   console.log('rewarderAddress: ' + rewarderAddress);
 
   await oathToken.mint(chef.address, ethers.utils.parseEther('100000000000'));
-  await testToken.mint(chef.signer.address, ethers.utils.parseEther('1000000'));
+  await oathToken.mint(pair.address, ethers.utils.parseEther('100.1234'));
+  await testToken.mint(pair.address, ethers.utils.parseEther('1000000'));
+  await pair.mint(chef.signer.address);
+  let pairBalance = await pair.balanceOf(chef.signer.address);
   //reaper.sleep(20000);
-  await reaper.approveMax(chef.address, testToken.address);
-  await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, ethers.utils.parseEther('5000'));
+  await reaper.approveMax(chef.address, pair.address);
+  await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, pairBalance);
   let id = await reliquary.tokenOfOwnerByIndex(chef.address, chef.signer.address, 0);
   console.log('NFT IDs');
   console.log(id);
