@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/utils/Strings.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/ICurve.sol';
+import './interfaces/INFTDescriptor.sol';
 
 interface IERC20Values {
     function symbol() external view returns (string memory);
@@ -21,44 +22,37 @@ contract NFTDescriptor {
     // testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
-    struct ConstructTokenURIParams {
-        uint256 tokenId;
-        bool isLP;
-        address underlyingAddress;
-        uint256 poolId;
-        uint256 amount;
-        uint256 pendingOath;
-        uint256 maturity;
-        address curveAddress;
-    }
-
-    function constructTokenURI(ConstructTokenURIParams memory params) public view returns (string memory) {
+    function constructTokenURI(INFTDescriptor.ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
         string memory poolId = params.poolId.toString();
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
         uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
 
-        (string memory underlying, string memory amount, string memory tags) = generateTextFromToken(
+        (string memory amount, string memory tags) = generateTextFromToken(
             params.underlyingAddress,
             params.isLP,
             params.amount
         );
         string memory name = string(
             abi.encodePacked(
-                'Relic #', tokenId, ': ', underlying
+                'Relic #', tokenId, ': ', params.underlying
             )
         );
         string memory description =
             generateDescription(
-                underlying,
+                params.underlying,
                 poolId,
                 amount,
                 pendingOath,
                 params.maturity,
                 currentMultiplier
             );
-        address curveAddress = params.curveAddress;
-        uint256 maturity = params.maturity;
+        tags = string(
+            abi.encodePacked(
+                tags,
+                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', params.underlying, '</text>'
+            )
+        );
         string memory image =
             Base64.encode(
                 bytes(
@@ -68,12 +62,12 @@ contract NFTDescriptor {
                                 tokenId,
                                 tags,
                                 pendingOath,
-                                maturity,
+                                params.maturity,
                                 currentMultiplier
                             ),
                             generateBars(
-                                curveAddress,
-                                maturity,
+                                params.curveAddress,
+                                params.maturity,
                                 currentMultiplier
                             )
                         )
@@ -171,39 +165,29 @@ contract NFTDescriptor {
         address underlyingAddress,
         bool isLP,
         uint256 amount
-    ) internal view returns (string memory underlying, string memory amountString, string memory tags) {
+    ) internal view returns (string memory amountString, string memory tags) {
         amountString = generateDecimalString(amount, IERC20Values(underlyingAddress).decimals());
         if (isLP) {
             IUniswapV2Pair lp = IUniswapV2Pair(underlyingAddress);
             IERC20Values token0 = IERC20Values(lp.token0());
             IERC20Values token1 = IERC20Values(lp.token1());
-            string memory token0Symbol = token0.symbol();
-            string memory token1Symbol = token1.symbol();
-            underlying = string(abi.encodePacked(token0Symbol, '-', token1Symbol));
 
             (uint256 reserves0, uint256 reserves1, ) = lp.getReserves();
             uint256 amount0 = amount * reserves0 / lp.totalSupply();
             uint256 amount1 = amount * reserves1 / lp.totalSupply();
             tags = string(
                 abi.encodePacked(
-                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">', token0Symbol, ':', generateDecimalString(amount0, token0.decimals()),
-                    '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1Symbol, ':', generateDecimalString(amount1, token1.decimals())
+                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
+                    '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
                 )
             );
         } else {
-            underlying = IERC20Values(underlyingAddress).symbol();
             tags = string(
                 abi.encodePacked(
                     '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
                 )
             );
         }
-        tags = string(
-            abi.encodePacked(
-                tags,
-                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', underlying, '</text>'
-            )
-        );
     }
 
     function generateBars(address curveAddress, uint256 maturity, uint256 currentMultiplier) internal pure returns (string memory bars) {

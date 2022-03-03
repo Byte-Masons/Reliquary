@@ -6,9 +6,9 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(oathAddress) {
+async function deployChef(oathAddress, nftDescriptorAddress) {
   let Reliquary = await ethers.getContractFactory('Reliquary');
-  let chef = await Reliquary.deploy(oathAddress);
+  let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress);
   return chef;
 }
 
@@ -25,6 +25,12 @@ async function getGlobalInfo(chefAddress) {
     chefToken: await chef.OATH(),
   };
   return globalInfo;
+}
+
+async function deployNFTDescriptor() {
+  let NFTDescriptor = await ethers.getContractFactory('NFTDescriptor');
+  let nftDescriptor = await NFTDescriptor.deploy();
+  return nftDescriptor;
 }
 
 async function deployRewarder(multiplier, token, chefAddress) {
@@ -81,16 +87,16 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, isLP) {
+async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, isLP) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, isLP);
+  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, isLP);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, isLP, overwriteRewarder) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, name, isLP, overwriteRewarder) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, isLP, overwriteRewarder);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, name, isLP, overwriteRewarder);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -185,6 +191,7 @@ async function totalPositions(chefAddress) {
 module.exports = {
   debug,
   deployChef,
+  deployNFTDescriptor,
   deployRewarder,
   deployCurve,
   tokenOfOwnerByIndex,

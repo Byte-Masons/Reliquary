@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
 import "./interfaces/ICurve.sol";
+import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
-import "./NFTDescriptor.sol";
 import "./libraries/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
@@ -35,7 +35,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + increased composability without affecting accounting logic too much, and users can
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
-contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
@@ -72,6 +72,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         uint256 allocPoint;
         uint256 averageEntry;
         address curveAddress;
+        string underlying;
         bool isLP;
     }
 
@@ -89,6 +90,8 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
+    /// @notice Address of NFTDescriptor contract.
+    INFTDescriptor public immutable nftDescriptor;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each Reliquary pool.
@@ -155,10 +158,11 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
     event LogInit();
 
     /// @param _oath The OATH token contract address.
-    constructor(IERC20 _oath) {
+    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         OATH = _oath;
+        nftDescriptor = _nftDescriptor;
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
@@ -166,10 +170,11 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 maturity = (_timestamp() - position.entry) / 1000;
-        return constructTokenURI(
-            ConstructTokenURIParams({
+        return nftDescriptor.constructTokenURI(
+            INFTDescriptor.ConstructTokenURIParams({
                 tokenId: tokenId,
                 isLP: pool.isLP,
+                underlying: pool.underlying,
                 underlyingAddress: address(lpToken[position.poolId]),
                 poolId: position.poolId,
                 amount: position.amount,
@@ -199,6 +204,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         IERC20 _lpToken,
         IRewarder _rewarder,
         ICurve curve,
+        string memory underlying,
         bool isLP
     ) public onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
@@ -215,6 +221,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
                 accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(curve),
+                underlying: underlying,
                 isLP: isLP
             })
         );
@@ -239,6 +246,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         uint256 allocPoint,
         IRewarder _rewarder,
         ICurve curve,
+        string memory underlying,
         bool isLP,
         bool overwriteRewarder
     ) public onlyRole(OPERATOR) {
@@ -255,6 +263,7 @@ contract Reliquary is Relic, NFTDescriptor, AccessControlEnumerable, Multicall, 
         }
 
         pool.curveAddress = address(curve);
+        pool.underlying = underlying;
         pool.isLP = isLP;
 
         emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), isLP);

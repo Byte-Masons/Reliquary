@@ -12,7 +12,8 @@ async function main() {
   let pairAddress = await uniV2Factory.getPair(oathToken.address, testToken.address);
   let Pair = await ethers.getContractFactory('UniswapV2Pair');
   let pair = await Pair.attach(pairAddress);
-  let chef = await reliquary.deployChef(oathToken.address);
+  let nftDescriptor = await reliquary.deployNFTDescriptor();
+  let chef = await reliquary.deployChef(oathToken.address, nftDescriptor.address);
   let rewarder = await reliquary.deployRewarder(1000000, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);
@@ -34,6 +35,7 @@ async function main() {
     pair.address,
     '0x0000000000000000000000000000000000000000',
     curve.address,
+    'USDC-OATH',
     true
   );
   //reaper.sleep(10000);
