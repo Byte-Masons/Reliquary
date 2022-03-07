@@ -27,7 +27,7 @@ contract NFTDescriptor {
         string memory poolId = params.poolId.toString();
         string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
-        uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
+        uint256 currentY = ICurve(params.curveAddress).curve(params.maturity);
 
         string memory name = string(
             abi.encodePacked(
@@ -40,8 +40,7 @@ contract NFTDescriptor {
                 poolId,
                 amount,
                 pendingOath,
-                params.maturity,
-                currentMultiplier
+                params.maturity
             );
         string memory image =
             Base64.encode(
@@ -53,7 +52,7 @@ contract NFTDescriptor {
                                 params.poolName,
                                 pendingOath,
                                 params.maturity,
-                                currentMultiplier
+                                currentY
                             ),
                             generateTextFromToken(
                                 params.underlying,
@@ -65,7 +64,7 @@ contract NFTDescriptor {
                             generateBars(
                                 params.curveAddress,
                                 params.maturity,
-                                currentMultiplier
+                                currentY
                             )
                         )
                     )
@@ -99,8 +98,7 @@ contract NFTDescriptor {
         string memory poolId,
         string memory amount,
         string memory pendingOath,
-        uint256 maturity,
-        uint256 currentMultiplier
+        uint256 maturity
     ) internal pure returns (string memory) {
         return
         string(
@@ -116,9 +114,7 @@ contract NFTDescriptor {
                 '\\nPending Oath: ',
                 pendingOath,
                 '\\nMaturity: ',
-                maturity.toString(),
-                '\\nCurrent Reward Multiplier: ',
-                currentMultiplier.toString()
+                maturity.toString()
             )
         );
     }
@@ -128,9 +124,9 @@ contract NFTDescriptor {
         string memory poolName,
         string memory pendingOath,
         uint256 maturity,
-        uint256 currentMultiplier
+        uint256 currentY
     ) internal pure returns (string memory svg) {
-        uint256 level = currentMultiplier >= 80 ? 5 : currentMultiplier / 20 + 1;
+        uint256 level = currentY >= 80 ? 5 : currentY / 20 + 1;
         svg = string(
             abi.encodePacked(
                 '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -186,7 +182,7 @@ contract NFTDescriptor {
         }
     }
 
-    function generateBars(address curveAddress, uint256 maturity, uint256 currentMultiplier) internal pure returns (string memory bars) {
+    function generateBars(address curveAddress, uint256 maturity, uint256 currentY) internal pure returns (string memory bars) {
         bars = '<svg x="60" y="50" width="190" height="150">';
         uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
@@ -203,8 +199,8 @@ contract NFTDescriptor {
         }
         bars = string(abi.encodePacked(
             bars,
-            '<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - 15) * maturity / totalTimeShown).toString(),
-            '" y="', (GRAPH_HEIGHT - currentMultiplier * GRAPH_HEIGHT / 100 - 6).toString(), '" height="11" width="12" class="art"/>',
+            '<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - BAR_WIDTH - 6) * maturity / totalTimeShown).toString(),
+            '" y="', (GRAPH_HEIGHT - currentY * GRAPH_HEIGHT / 100 - 6).toString(), '.5" height="11" width="12" class="art"/>',
             '</svg></svg>'
         ));
     }
