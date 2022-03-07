@@ -43,17 +43,6 @@ contract NFTDescriptor {
                 params.maturity,
                 currentMultiplier
             );
-        string memory tags = string(
-            abi.encodePacked(
-                generateTextFromToken(
-                    params.underlying,
-                    params.isLP,
-                    params.amount,
-                    amount
-                ),
-                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', params.poolName, '</text>'
-            )
-        );
         string memory image =
             Base64.encode(
                 bytes(
@@ -61,11 +50,18 @@ contract NFTDescriptor {
                         abi.encodePacked(
                             generateSVGImage(
                                 tokenId,
-                                tags,
+                                params.poolName,
                                 pendingOath,
                                 params.maturity,
                                 currentMultiplier
                             ),
+                            generateTextFromToken(
+                                params.underlying,
+                                params.isLP,
+                                params.amount,
+                                amount
+                            ),
+                            '</text>',
                             generateBars(
                                 params.curveAddress,
                                 params.maturity,
@@ -129,7 +125,7 @@ contract NFTDescriptor {
 
     function generateSVGImage(
         string memory tokenId,
-        string memory tags,
+        string memory poolName,
         string memory pendingOath,
         uint256 maturity,
         uint256 currentMultiplier
@@ -145,19 +141,18 @@ contract NFTDescriptor {
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
-                generateImageText(tokenId, pendingOath, maturity.toString()),
-                tags,
-                '<svg x="60" y="50" width="190" height="150">'
+                generateImageText(tokenId, poolName, pendingOath, maturity.toString())
             )
         );
     }
 
-    function generateImageText(string memory tokenId, string memory pendingOath, string memory maturity) internal pure returns (string memory text) {
+    function generateImageText(string memory tokenId, string memory poolName, string memory pendingOath, string memory maturity) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
                 '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
+                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', poolName,
                 '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity
+                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity, '</text>'
             )
         );
     }
@@ -178,20 +173,21 @@ contract NFTDescriptor {
             uint256 amount1 = amount * reserves1 / lp.totalSupply();
             tags = string(
                 abi.encodePacked(
-                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
+                    '<text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
                     '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
                 )
             );
         } else {
             tags = string(
                 abi.encodePacked(
-                    '</text><text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
+                    '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
                 )
             );
         }
     }
 
     function generateBars(address curveAddress, uint256 maturity, uint256 currentMultiplier) internal pure returns (string memory bars) {
+        bars = '<svg x="60" y="50" width="190" height="150">';
         uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
         for (uint256 i; i < NUM_BARS; i++) {
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS) * GRAPH_HEIGHT / 100;
