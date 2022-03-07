@@ -25,32 +25,33 @@ contract NFTDescriptor {
     function constructTokenURI(INFTDescriptor.ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
         string memory poolId = params.poolId.toString();
+        string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
         uint256 currentMultiplier = ICurve(params.curveAddress).curve(params.maturity) + 1;
 
-        (string memory amount, string memory tags) = generateTextFromToken(
-            params.underlyingAddress,
-            params.isLP,
-            params.amount
-        );
         string memory name = string(
             abi.encodePacked(
-                'Relic #', tokenId, ': ', params.underlying
+                'Relic #', tokenId, ': ', params.poolName
             )
         );
         string memory description =
             generateDescription(
-                params.underlying,
+                params.poolName,
                 poolId,
                 amount,
                 pendingOath,
                 params.maturity,
                 currentMultiplier
             );
-        tags = string(
+        string memory tags = string(
             abi.encodePacked(
-                tags,
-                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', params.underlying, '</text>'
+                generateTextFromToken(
+                    params.underlying,
+                    params.isLP,
+                    params.amount,
+                    amount
+                ),
+                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', params.poolName, '</text>'
             )
         );
         string memory image =
@@ -98,7 +99,7 @@ contract NFTDescriptor {
     }
 
     function generateDescription(
-        string memory underlying,
+        string memory poolName,
         string memory poolId,
         string memory amount,
         string memory pendingOath,
@@ -109,7 +110,7 @@ contract NFTDescriptor {
         string(
             abi.encodePacked(
                 'This NFT represents a liquidity position in a Reliquary ',
-                underlying,
+                poolName,
                 ' pool. ',
                 'The owner of this NFT can modify or redeem the position.\\n',
                 '\\nPool ID: ',
@@ -162,13 +163,13 @@ contract NFTDescriptor {
     }
 
     function generateTextFromToken(
-        address underlyingAddress,
+        address underlying,
         bool isLP,
-        uint256 amount
-    ) internal view returns (string memory amountString, string memory tags) {
-        amountString = generateDecimalString(amount, IERC20Values(underlyingAddress).decimals());
+        uint256 amount,
+        string memory amountString
+    ) internal view returns (string memory tags) {
         if (isLP) {
-            IUniswapV2Pair lp = IUniswapV2Pair(underlyingAddress);
+            IUniswapV2Pair lp = IUniswapV2Pair(underlying);
             IERC20Values token0 = IERC20Values(lp.token0());
             IERC20Values token1 = IERC20Values(lp.token1());
 
@@ -251,7 +252,7 @@ contract NFTDescriptor {
             }
             buffer[index] = bytes1(uint8(48 + num % 10));
             num /= 10;
-            if (index != 0) {
+            unchecked {
                 index--;
             }
         }

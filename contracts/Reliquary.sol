@@ -72,7 +72,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 allocPoint;
         uint256 averageEntry;
         address curveAddress;
-        string underlying;
+        string name;
         bool isLP;
     }
 
@@ -173,10 +173,10 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         return nftDescriptor.constructTokenURI(
             INFTDescriptor.ConstructTokenURIParams({
                 tokenId: tokenId,
-                isLP: pool.isLP,
-                underlying: pool.underlying,
-                underlyingAddress: address(lpToken[position.poolId]),
                 poolId: position.poolId,
+                isLP: pool.isLP,
+                poolName: pool.name,
+                underlying: address(lpToken[position.poolId]),
                 amount: position.amount,
                 pendingOath: pendingOath(tokenId),
                 maturity: maturity,
@@ -204,7 +204,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         IERC20 _lpToken,
         IRewarder _rewarder,
         ICurve curve,
-        string memory underlying,
+        string memory name,
         bool isLP
     ) public onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
@@ -221,7 +221,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 accOathPerShare: 0,
                 averageEntry: 0,
                 curveAddress: address(curve),
-                underlying: underlying,
+                name: name,
                 isLP: isLP
             })
         );
@@ -246,7 +246,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 allocPoint,
         IRewarder _rewarder,
         ICurve curve,
-        string memory underlying,
+        string memory name,
         bool isLP,
         bool overwriteRewarder
     ) public onlyRole(OPERATOR) {
@@ -263,7 +263,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         pool.curveAddress = address(curve);
-        pool.underlying = underlying;
+        pool.name = name;
         pool.isLP = isLP;
 
         emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), isLP);
