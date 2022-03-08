@@ -15,13 +15,17 @@ interface IERC20Values {
 contract NFTDescriptor {
     using Strings for uint256;
 
+    /// @notice Constants for drawing graph
     uint256 private constant NUM_BARS = 20;
     uint256 private constant GRAPH_WIDTH = 190;
     uint256 private constant GRAPH_HEIGHT = 150;
     uint256 private constant BAR_WIDTH = GRAPH_WIDTH / NUM_BARS;
+
     // testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
+    /// @notice Generate tokenURI as a base64 encoding from live on-chain values
+    /// @param params Struct containing all parameters for this function (avoids stack too deep error)
     function constructTokenURI(INFTDescriptor.ConstructTokenURIParams memory params) public view returns (string memory) {
         string memory tokenId = params.tokenId.toString();
         string memory poolId = params.poolId.toString();
@@ -93,6 +97,12 @@ contract NFTDescriptor {
             );
     }
 
+    /// @notice Generate description of the liquidity position as NFT attribute
+    /// @param poolName Name of pool as provided by operator
+    /// @param poolId ID of pool
+    /// @param amount Amount of underlying tokens deposited in this position
+    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param maturity Weighted average of the maturity deposits into this position
     function generateDescription(
         string memory poolName,
         string memory poolId,
@@ -119,6 +129,12 @@ contract NFTDescriptor {
         );
     }
 
+    /// @notice Generate the first part of the SVG for this NFT
+    /// @param tokenId ID of the NFT/position
+    /// @param poolName Name of pool as provided by operator
+    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param maturity Weighted average of the maturity deposits into this position
+    /// @param currentY Current Y-value given this position's maturity
     function generateSVGImage(
         string memory tokenId,
         string memory poolName,
@@ -142,7 +158,17 @@ contract NFTDescriptor {
         );
     }
 
-    function generateImageText(string memory tokenId, string memory poolName, string memory pendingOath, string memory maturity) internal pure returns (string memory text) {
+    /// @notice Generate the first part of text labels for this NFT image
+    /// @param tokenId ID of the NFT/position
+    /// @param poolName Name of pool as provided by operator
+    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param maturity Weighted average of the maturity deposits into this position
+    function generateImageText(
+        string memory tokenId,
+        string memory poolName,
+        string memory pendingOath,
+        string memory maturity
+    ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
                 '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
@@ -153,6 +179,11 @@ contract NFTDescriptor {
         );
     }
 
+    /// @notice Generate further text labels specific to the underlying token
+    /// @param underlying Address of underlying token for this position
+    /// @param isLP Whether the underlying token is an IUniswapV2Pair LP
+    /// @param amount Amount of underlying tokens deposited in this position
+    /// @param amountString amount as string
     function generateTextFromToken(
         address underlying,
         bool isLP,
@@ -182,6 +213,10 @@ contract NFTDescriptor {
         }
     }
 
+    /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
+    /// @param curveAddress Address of this pool's bonding curve
+    /// @param maturity Weighted average of the maturity deposits into this position
+    /// @param currentY Current Y-value given this position's maturity
     function generateBars(address curveAddress, uint256 maturity, uint256 currentY) internal pure returns (string memory bars) {
         bars = '<svg x="60" y="50" width="190" height="150">';
         uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
@@ -205,6 +240,9 @@ contract NFTDescriptor {
         ));
     }
 
+    /// @notice Generate human-readable string from a number with given decimal places
+    /// @param num A number
+    /// @param decimals Number of decimal places
     function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory) {
         if (num == 0) {
             return '0';

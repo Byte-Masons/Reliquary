@@ -194,8 +194,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @notice Add a new pool for the specified LP.
      +         Can only be called by the owner.
      +
-     + @param allocPoint the allocation points for the new pool
-     + @param _lpToken address of the pooled ERC-20 token
+     + @param allocPoint The allocation points for the new pool
+     + @param _lpToken Address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
      + @param curve Address of the curve library
     */
