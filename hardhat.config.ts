@@ -12,7 +12,7 @@ import 'hardhat-deploy-ethers';
 
 // require("./secrets.json");
 
-// const { devAccount, reaperAccount, testAccount, ftmScan } = require('./secrets.json');
+const { devAccount, reaperAccount, testAccount, ftmScan } = require('./secrets.json');
 
 const config: HardhatUserConfig = {
   networks: {
@@ -25,7 +25,7 @@ const config: HardhatUserConfig = {
     },
     test: {
       url: 'https://rpc.testnet.fantom.network/',
-      // accounts: [testAccount]
+      accounts: [testAccount]
     },
     opera: {
       url: 'https://rpc.ftm.tools/',
@@ -52,9 +52,6 @@ const config: HardhatUserConfig = {
           optimizer: {
             enabled: true,
             runs: 200,
-          },
-          debug: {
-            revertStrings: "strip",
           },
         },
       },

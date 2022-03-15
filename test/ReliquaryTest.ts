@@ -1,4 +1,4 @@
-import {Oath, NFTDescriptor, EighthRoot} from './../types';
+import {Oath, NFTDescriptor, Sigmoid, Constant} from './../types';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {network, ethers, waffle, artifacts} from 'hardhat';
 import {expect} from 'chai';
@@ -10,7 +10,7 @@ const {deployChef, deployNFTDescriptor, getPoolCount, addPool} = require('../src
 
 let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
 let lp: Oath, oath: Oath;
-let curve: EighthRoot;
+let curve: Sigmoid;
 
 const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
   const artifact: Artifact = await artifacts.readArtifact('Oath');
@@ -18,9 +18,15 @@ const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: stri
   return contract;
 };
 
-const deployEighthRootCurve = async (deployer: Signer) => {
+const deployConstantEmissionSetter = async (deployer: Signer) => {
+  const artifact: Artifact = await artifacts.readArtifact('Constant');
+  const contract: Constant = <Constant>await deployContract(deployer, artifact);
+  return contract;
+};
+
+const deploySigmoidCurve = async (deployer: Signer) => {
   const artifact: Artifact = await artifacts.readArtifact('Sigmoid');
-  const contract: EighthRoot = <EighthRoot>await deployContract(deployer, artifact);
+  const contract: Sigmoid = <Sigmoid>await deployContract(deployer, artifact);
   return contract;
 };
 
@@ -32,10 +38,11 @@ describe('Reliquary', function () {
     lp = await deployOath(superAdmin, 'LP Token', 'LPT');
     await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
-    curve = await deployEighthRootCurve(superAdmin);
+    curve = await deploySigmoidCurve(superAdmin);
 
     const nftDescriptor: NFTDescriptor = await deployNFTDescriptor();
-    this.chef = await deployChef(oath.address, nftDescriptor.address);
+    const emissionSetter: Constant = await deployConstantEmissionSetter(superAdmin);
+    this.chef = await deployChef(oath.address, nftDescriptor.address, emissionSetter.address);
 
     const operatorRole: String = await this.chef.OPERATOR();
     await this.chef.grantRole(operatorRole, operator.address);

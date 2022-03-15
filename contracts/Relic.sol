@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 // The NFT
 contract Relic is IERC721, ERC721Enumerable {
-    constructor() ERC721("Shrine Liquidity Position", "RELIC") {}
+    constructor() ERC721("Reliquary Liquidity Position", "RELIC") {}
 
     uint256 private nonce;
 

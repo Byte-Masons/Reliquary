@@ -6,9 +6,9 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(oathAddress, nftDescriptorAddress) {
+async function deployChef(oathAddress, nftDescriptorAddress, emissionSetterAddress) {
   let Reliquary = await ethers.getContractFactory('Reliquary');
-  let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress);
+  let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress, emissionSetterAddress);
   return chef;
 }
 

@@ -17,11 +17,11 @@ contract NFTDescriptor {
 
     /// @notice Constants for drawing graph
     uint256 private constant NUM_BARS = 20;
-    uint256 private constant GRAPH_WIDTH = 190;
+    uint256 private constant GRAPH_WIDTH = 189;
     uint256 private constant GRAPH_HEIGHT = 150;
     uint256 private constant BAR_WIDTH = GRAPH_WIDTH / NUM_BARS;
 
-    // testing account, not ipfs to be used in production
+    // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
@@ -219,7 +219,8 @@ contract NFTDescriptor {
     /// @param currentY Current Y-value given this position's maturity
     function generateBars(address curveAddress, uint256 maturity, uint256 currentY) internal pure returns (string memory bars) {
         bars = '<svg x="60" y="50" width="190" height="150">';
-        uint256 totalTimeShown = maturity > 365 days ? maturity : 365 days;
+	/// TODO: 365 days for mainnet
+        uint256 totalTimeShown = maturity > 7 days ? maturity : 7 days;
         for (uint256 i; i < NUM_BARS; i++) {
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS) * GRAPH_HEIGHT / 100;
             bars = string(abi.encodePacked(

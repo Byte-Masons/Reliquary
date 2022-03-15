@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
 import "./interfaces/ICurve.sol";
+import "./interfaces/IEmissionSetter.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
 import "./libraries/SignedSafeMath.sol";
@@ -13,11 +14,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-/*
- + NOTE: Maybe make BASE_OATH_PER_BLOCK an upgradable function call so we can curve that too
- + NOTE: Add UniV3's NFT metadata standard so marketplace frontends can return json data
- + NOTE: Work on quality of life abstractions and position management
-*/
+/// NOTE: Work on quality of life abstractions and position management
 
 /*
  + @title Reliquary
@@ -76,13 +73,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         bool isLP;
     }
 
-    // @notice indicates whether a position's modifier is above or below the pool's average
+    /// @notice indicates whether a position's modifier is above or below the pool's average
     enum Placement {
         ABOVE,
         BELOW
     }
 
-    // @notice indicates whether tokens are being added to, or removed from, a pool
+    /// @notice indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
         DEPOSIT,
         WITHDRAW
@@ -91,7 +88,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
     /// @notice Address of NFTDescriptor contract.
-    INFTDescriptor public immutable nftDescriptor;
+    INFTDescriptor public nftDescriptor;
+    /// @notice Address of EmissionSetter contract.
+    IEmissionSetter public emissionSetter;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each Reliquary pool.
@@ -108,7 +107,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint;
 
-    uint256 private constant EMISSIONS_PER_MILLISECOND = 1e8;
     uint256 private constant ACC_OATH_PRECISION = 1e12;
     uint256 private constant BASIS_POINTS = 10_000;
 
@@ -158,11 +156,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     event LogInit();
 
     /// @param _oath The OATH token contract address.
-    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor) {
+    /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
+    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor, IEmissionSetter _emissionSetter) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         OATH = _oath;
         nftDescriptor = _nftDescriptor;
+        emissionSetter = _emissionSetter;
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
@@ -183,6 +183,16 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 curveAddress: pool.curveAddress
             })
         );
+    }
+
+    /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
+    function setNFTDescriptor(INFTDescriptor _nftDescriptor) external onlyRole(OPERATOR) {
+        nftDescriptor = _nftDescriptor;
+    }
+
+    /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
+    function setEmissionSetter(IEmissionSetter _emissionSetter) external onlyRole(OPERATOR) {
+        emissionSetter = _emissionSetter;
     }
 
     /// @notice Returns the number of Reliquary pools.
@@ -284,7 +294,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
         if (millisSinceReward != 0 && lpSupply != 0) {
-            uint256 oathReward = (millisSinceReward * EMISSIONS_PER_MILLISECOND * pool.allocPoint) / totalAllocPoint;
+            uint256 oathReward = (millisSinceReward * _baseEmissionsPerMillisecond() * pool.allocPoint) / totalAllocPoint;
             accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
         }
 
@@ -322,7 +332,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             uint256 lpSupply = _poolBalance(pid);
 
             if (lpSupply != 0) {
-                uint256 oathReward = (millisSinceReward * EMISSIONS_PER_MILLISECOND * pool.allocPoint) /
+                uint256 oathReward = (millisSinceReward * _baseEmissionsPerMillisecond() * pool.allocPoint) /
                     totalAllocPoint;
                 pool.accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
             }
@@ -538,6 +548,11 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         _curved = ICurve(pool.curveAddress).curve(maturity);
     }
 
+    /// @notice Gets the base emission rate from external, upgradable contract
+    function _baseEmissionsPerMillisecond() internal view returns (uint256 rate) {
+        rate = emissionSetter.getRate();
+    }
+
     /*
      + @notice operates on the position's base emissions
      + @param amount OATH amount to modify
@@ -580,7 +595,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /*
      + @notice calculates the average position of every token on the curve
-     + @pid pid The index of the pool. See `poolInfo`.
+     + @param pid The index of the pool. See `poolInfo`.
      + @return the Y value based on X maturity in the context of the curve
     */
 

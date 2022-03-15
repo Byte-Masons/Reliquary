@@ -3,8 +3,8 @@
 pragma solidity 0.8.9;
 
 contract Sigmoid {
-    int256 constant HORIZONTAL_STRETCH = 1e7;
-    int256 constant HORIZONTAL_SHIFT = 25e6;
+    int256 constant HORIZONTAL_STRETCH = 192307; // TODO: mainnet 1e7
+    int256 constant HORIZONTAL_SHIFT = 480769; // TODO: mainnet 25e6
     int256 constant VERTICAL_STRETCH = 50;
     int256 constant VERTICAL_SHIFT = 0; // care must be taken not to allow negative y-values
 
