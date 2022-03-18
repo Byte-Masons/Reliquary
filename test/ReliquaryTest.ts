@@ -60,7 +60,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       expect(await getPoolCount(this.chef.address)).to.be.equal(1);
@@ -76,7 +76,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await expect(
@@ -108,7 +108,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
@@ -119,7 +119,7 @@ describe('Reliquary', function () {
       await network.provider.send('evm_mine');
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
       const pendingOath = await this.chef.pendingOath(firstOwnedToken);
-      expect(pendingOath).to.equal(ethers.BigNumber.from('3155760200000000000')); //(31557600 + 2) * 100000000000
+      expect(pendingOath).to.equal(ethers.utils.parseEther('3155760.2')); //(31557600 + 2)secs * 1000ms * 1e14
     });
   });
 
@@ -132,7 +132,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await network.provider.send('evm_mine');
@@ -214,7 +214,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await lp.approve(this.chef.address, 10);
@@ -235,7 +235,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
@@ -246,7 +246,7 @@ describe('Reliquary', function () {
 
       await this.chef.connect(alice).harvest(firstOwnedToken);
       const balance = await oath.balanceOf(alice.address);
-      expect(balance).to.equal(ethers.BigNumber.from('3155760100000000000')); // (31557600 + 1) * 100000000000
+      expect(balance).to.equal(ethers.utils.parseEther('3155760.1')); //(31557600 + 1)secs * 1000ms * 1e14
     });
   });
 
@@ -259,7 +259,7 @@ describe('Reliquary', function () {
         lp.address,
         ethers.constants.AddressZero,
         curve.address,
-	'LP Token',
+        'LP Token',
         false,
       );
       await lp.approve(this.chef.address, 10);

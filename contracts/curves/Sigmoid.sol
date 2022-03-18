@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.13;
 
 contract Sigmoid {
     int256 constant HORIZONTAL_STRETCH = 192307; // TODO: mainnet 1e7

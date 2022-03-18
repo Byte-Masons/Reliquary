@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity 0.8.13;
 pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
@@ -195,6 +195,17 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         emissionSetter = _emissionSetter;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view
+    override(
+        AccessControlEnumerable,
+        ERC721Enumerable,
+        IERC165
+    ) returns (bool) {
+        return interfaceId == type(IERC721Enumerable).interfaceId || 
+            interfaceId == type(IAccessControlEnumerable).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     /// @notice Returns the number of Reliquary pools.
     function poolLength() public view returns (uint256 pools) {
         pools = poolInfo.length;
@@ -325,6 +336,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @dev Internal updatePool function without nonReentrant modifier
     */
     function _updatePool(uint256 pid) internal {
+        require(pid < poolLength());
         PoolInfo storage pool = poolInfo[pid];
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
