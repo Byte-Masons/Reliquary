@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  +
  + @notice This system is designed to modify Masterchef accounting logic such that
  + behaviors can be programmed on a per-pool basis using a curve library. Stake in a
- + pool, also referred to as "position," is represented by means of an NFT called a 
+ + pool, also referred to as "position," is represented by means of an NFT called a
  + "Relic." Each position has a "maturity" which captures the age of the position.
  + The curve associated with a pool modifies emissions based on each position's maturity
  + and binds it to the base rate using a per-token aggregated average.
@@ -166,7 +166,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     }
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
-        require(_exists(tokenId));
+        require(_exists(tokenId), "token does not exist");
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 maturity = (_timestamp() - position.entry) / 1000;
@@ -201,7 +201,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         ERC721Enumerable,
         IERC165
     ) returns (bool) {
-        return interfaceId == type(IERC721Enumerable).interfaceId || 
+        return interfaceId == type(IERC721Enumerable).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
@@ -630,20 +630,41 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         Kind kind
     ) internal returns (bool success) {
         PoolInfo storage pool = poolInfo[pid];
-        uint256 lpSupply = _poolBalance(pid);
-        if (lpSupply == 0) {
-            pool.averageEntry = _timestamp();
-            return true;
+        uint weight = _findWeight(amount, _poolBalance(pid));
+        uint256 maturity = _timestamp() - pool.averageEntry;
+        if (kind == Kind.DEPOSIT) {
+            pool.averageEntry += ((maturity * weight) / 1e18);
         } else {
-            uint256 weight = (amount * 1e18) / lpSupply;
-            uint256 maturity = _timestamp() - pool.averageEntry;
-            if (kind == Kind.DEPOSIT) {
-                pool.averageEntry += ((maturity * weight) / 1e18);
-            } else {
-                pool.averageEntry -= ((maturity * weight) / 1e18);
-            }
-            return true;
+            pool.averageEntry -= ((maturity * weight) / 1e18);
         }
+        return true;
+    }
+
+    // @dev utility function to find weights without any underflows or zero division problems.
+    // @param addedValue new value being added
+    // @param oldValue current amount of x
+
+    function _findWeight(
+      uint addedValue,
+      uint oldValue
+    ) public pure returns (uint) {
+      if (oldValue == 0) {
+        return 1e18;
+      } else {
+        uint weightNew;
+        uint weightOld;
+        if (addedValue < oldValue) {
+          weightNew = addedValue * 1e18 / (addedValue + oldValue);
+          weightOld = 1e18 - weightNew;
+        } else if (oldValue < addedValue) {
+          weightOld = oldValue * 1e18 / (addedValue + oldValue);
+          weightNew = 1e18 - weightOld;
+        } else {
+          weightNew = 1e18 / 2;
+          weightOld = 1e18 / 2;
+        }
+        return weightNew;
+      }
     }
 
     /*

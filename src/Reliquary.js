@@ -188,6 +188,12 @@ async function totalPositions(chefAddress) {
   return supply;
 }
 
+async function tokenURI(chefAddress, positionId) {
+  let chef = await returnChef(chefAddress);
+  let uri = chef.tokenURI(positionId);
+  return uri;
+}
+
 module.exports = {
   debug,
   deployChef,
@@ -216,4 +222,5 @@ module.exports = {
   withdrawAndHarvest,
   emergencyWithdraw,
   curved,
+  tokenURI
 };
