@@ -219,7 +219,7 @@ contract NFTDescriptor {
     /// @param currentY Current Y-value given this position's maturity
     function generateBars(address curveAddress, uint256 maturity, uint256 currentY) internal pure returns (string memory bars) {
         bars = '<svg x="60" y="50" width="190" height="150">';
-	/// TODO: 365 days for mainnet
+        /// TODO: 365 days for mainnet
         uint256 totalTimeShown = maturity > 7 days ? maturity : 7 days;
         for (uint256 i; i < NUM_BARS; i++) {
             uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS) * GRAPH_HEIGHT / 100;

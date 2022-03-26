@@ -6,7 +6,7 @@ import {Artifact} from 'hardhat/types';
 import {deployContract} from 'ethereum-waffle';
 import {Signer} from 'ethers';
 
-const {deployChef, deployNFTDescriptor, getPoolCount, addPool} = require('../src/Reliquary.js');
+const {deployChef, deployNFTDescriptor, getPoolCount, addPool, viewPoolInfo, getPositionInfo} = require('../src/Reliquary.js');
 
 let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
 let lp: Oath, oath: Oath;
@@ -240,13 +240,31 @@ describe('Reliquary', function () {
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
-      await network.provider.send('evm_increaseTime', [31557600]);
+      await network.provider.send('evm_increaseTime', [302400]);
       await network.provider.send('evm_mine');
-      const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+      const nftA = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+      //await this.chef.deposit(ethers.utils.parseEther('100'), nftA);
+      await this.chef.createRelicAndDeposit(bob.address, 0, ethers.utils.parseEther('100'));
+      await network.provider.send('evm_increaseTime', [302400]);
+      await network.provider.send('evm_mine');
+      const nftB = await this.chef.tokenOfOwnerByIndex(bob.address, 0);
 
-      await this.chef.connect(alice).harvest(firstOwnedToken);
-      const balance = await oath.balanceOf(alice.address);
-      expect(balance).to.equal(ethers.utils.parseEther('3155760.1')); //(31557600 + 1)secs * 1000ms * 1e14
+      await this.chef.connect(alice).harvest(nftA);
+      await this.chef.connect(bob).harvest(nftB);
+      const timestamp = parseInt((await network.provider.send('eth_getBlockByNumber', ['latest', false])).timestamp);
+      const averageEntry = Math.floor((await this.chef.poolInfo(0))[3] / 1000);
+      console.log("curve average: ", (await curve.curve(timestamp - averageEntry)).toString());
+      console.log("curveA: ", (await this.chef.curved(nftA)).toString());
+      console.log("curveB: ", (await this.chef.curved(nftB)).toString());
+      const balanceA = await oath.balanceOf(alice.address);
+      const balanceB = await oath.balanceOf(bob.address);
+      console.log("balanceA: ", balanceA.toString());
+      console.log("balanceB: ", balanceB.toString());
+      //expect(balanceA).to.equal(ethers.BigNumber.from('1593502675247524752000000')); //(31557600 + 1)secs * 1000ms * 1e14
+      //expect(balanceB).to.equal(ethers.BigNumber.from('1562257623762376100000000')); //(31557600 + 1)secs * 1000ms * 1e14
+      console.log("positionA: ", await getPositionInfo(this.chef.address, nftA));
+      console.log("positionB: ", await getPositionInfo(this.chef.address, nftB));
+      console.log("poolInfo: ", await viewPoolInfo(this.chef.address, 0));
     });
   });
 

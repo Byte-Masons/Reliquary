@@ -73,12 +73,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         bool isLP;
     }
 
-    /// @notice indicates whether a position's modifier is above or below the pool's average
-    enum Placement {
-        ABOVE,
-        BELOW
-    }
-
     /// @notice indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
         DEPOSIT,
@@ -571,38 +565,19 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param _relicId ID of the position that's being modified
     */
     function _calculateEmissions(uint256 amount, uint256 _relicId) internal view returns (uint256 emissions) {
-        (uint256 distance, Placement placement) = _calculateDistanceFromMean(_relicId);
-
-        if (placement == Placement.ABOVE) {
-            emissions = (amount * (BASIS_POINTS + distance)) / BASIS_POINTS;
-        } else if (placement == Placement.BELOW) {
-            emissions = (amount * (BASIS_POINTS - distance)) / BASIS_POINTS;
-        } else {
-            emissions = amount;
-        }
-    }
-
-    /*
-     + @notice calculates how far the user's position maturity is from the average
-     + @param _relicId NFT ID of the position being assessed
-    */
-    function _calculateDistanceFromMean(uint256 _relicId)
-        internal
-        view
-        returns (uint256 distance, Placement placement)
-    {
         PositionInfo storage positionInfo = positionForId[_relicId];
 
         uint256 position = curved(_relicId);
         uint256 mean = _calculateMean(positionInfo.poolId);
 
+        uint256 weight;
         if (position < mean) {
-            distance = (mean - position) * BASIS_POINTS;
-            placement = Placement.BELOW;
+            weight = BASIS_POINTS - (mean - position) * BASIS_POINTS / mean;
         } else {
-            distance = (position - mean) * BASIS_POINTS;
-            placement = Placement.ABOVE;
+            weight = BASIS_POINTS + (position - mean) * BASIS_POINTS / mean;
         }
+
+        emissions = amount * weight / BASIS_POINTS;
     }
 
     /*
@@ -612,7 +587,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     */
 
     function _calculateMean(uint256 pid) internal view returns (uint256 mean) {
-        PoolInfo memory pool = poolInfo[pid];
+        PoolInfo storage pool = poolInfo[pid];
         uint256 maturity = (_timestamp() - pool.averageEntry) / 1000;
         mean = ICurve(pool.curveAddress).curve(maturity);
     }
@@ -675,13 +650,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     function _updateEntry(uint256 amount, uint256 _relicId) internal returns (bool success) {
         PositionInfo storage position = positionForId[_relicId];
-        if (position.amount == 0) {
-            position.entry = _timestamp();
-            return true;
-        }
-        uint256 weight = (amount * BASIS_POINTS) / position.amount;
+        uint256 weight = _findWeight(amount, position.amount);
         uint256 maturity = _timestamp() - position.entry;
-        position.entry += ((maturity * weight) / BASIS_POINTS);
+        position.entry += maturity * weight / 1e18;
         return true;
     }
 
