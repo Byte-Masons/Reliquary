@@ -4,7 +4,6 @@ pragma solidity 0.8.13;
 pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
-import "./interfaces/ICurve.sol";
 import "./interfaces/IEmissionSetter.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
@@ -22,11 +21,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + @notice Built on the MasterChefV2 system authored by Sushi's team
  +
  + @notice This system is designed to modify Masterchef accounting logic such that
- + behaviors can be programmed on a per-pool basis using a curve library. Stake in a
+ + behaviors can be programmed on a per-pool basis using maturity levels. Stake in a
  + pool, also referred to as "position," is represented by means of an NFT called a
  + "Relic." Each position has a "maturity" which captures the age of the position.
- + The curve associated with a pool modifies emissions based on each position's maturity
- + and binds it to the base rate using a per-token aggregated average.
  +
  + @notice Deposits are tracked by Relic ID instead of by user. This allows for
  + increased composability without affecting accounting logic too much, and users can
@@ -53,6 +50,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         int256 rewardDebt;
         uint256 entry; // position owner's relative entry into the pool.
         uint256 poolId; // ensures that a single Relic is only used for one pool.
+        uint256 level;
     }
 
     /*
@@ -60,23 +58,21 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + `accOathPerShare` Accumulated OATH per share of pool (1 / 1e12)
      + `lastRewardTime` Last timestamp the accumulated OATH was updated
      + `allocPoint` pool's individual allocation - ratio of the total allocation
-     + `averageEntry` average entry time of each share, used to determine pool maturity
      + `curveAddress` math library used to curve emissions
     */
     struct PoolInfo {
         uint256 accOathPerShare;
         uint256 lastRewardTime;
         uint256 allocPoint;
-        uint256 averageEntry;
-        address curveAddress;
+        Level[] levels;
         string name;
         bool isLP;
     }
 
-    /// @notice indicates whether tokens are being added to, or removed from, a pool
-    enum Kind {
-        DEPOSIT,
-        WITHDRAW
+    struct Level {
+        uint256 requiredMaturity;
+        uint256 allocPoint;
+        uint256 balance;
     }
 
     /// @notice Address of OATH contract.
@@ -136,14 +132,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 allocPoint,
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
-        address indexed curve,
+        Level[] levels,
         bool isLP
     );
     event LogPoolModified(
         uint256 indexed pid,
         uint256 allocPoint,
         IRewarder indexed rewarder,
-        address indexed curve,
         bool isLP
     );
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
@@ -174,7 +169,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 amount: position.amount,
                 pendingOath: pendingOath(tokenId),
                 maturity: maturity,
-                curveAddress: pool.curveAddress
+                curveAddress: address(0) // TODO: rework NFTDescriptor
             })
         );
     }
@@ -187,6 +182,15 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
     function setEmissionSetter(IEmissionSetter _emissionSetter) external onlyRole(OPERATOR) {
         emissionSetter = _emissionSetter;
+    }
+
+    function setLevelAllocPoints(uint256[] memory allocPoints, uint256 pid) external onlyRole(OPERATOR) {
+        PoolInfo storage pool = poolInfo[pid];
+        uint256 length = pool.levels.length;
+        require(allocPoints.length == length, "invalid array length");
+        for (uint256 i; i < length; ++i) {
+            pool.levels[i].allocPoint = allocPoints[i];
+        }
     }
 
     function supportsInterface(bytes4 interfaceId) public view
@@ -218,7 +222,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
-        ICurve curve,
+        Level[] memory levels,
         string memory name,
         bool isLP
     ) public onlyRole(OPERATOR) {
@@ -234,15 +238,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 allocPoint: allocPoint,
                 lastRewardTime: _timestamp(),
                 accOathPerShare: 0,
-                averageEntry: 0,
-                curveAddress: address(curve),
+                levels: levels,
                 name: name,
                 isLP: isLP
             })
         );
         hasBeenAdded[address(_lpToken)] = true;
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, address(curve), isLP);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, isLP);
     }
 
     /*
@@ -260,13 +263,11 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 pid,
         uint256 allocPoint,
         IRewarder _rewarder,
-        ICurve curve,
         string memory name,
         bool isLP,
         bool overwriteRewarder
     ) public onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
-        require(address(curve) != address(0), "invalid curve address");
 
         PoolInfo storage pool = poolInfo[pid];
         totalAllocPoint -= pool.allocPoint;
@@ -277,11 +278,10 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             rewarder[pid] = _rewarder;
         }
 
-        pool.curveAddress = address(curve);
         pool.name = name;
         pool.isLP = isLP;
 
-        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], address(curve), isLP);
+        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], isLP);
     }
 
     /*
@@ -303,8 +303,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
         }
 
-        int256 rawPending = int256((position.amount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt;
-        pending = _calculateEmissions(rawPending.toUInt256(), _relicId);
+        uint256 leveledAmount = position.amount * pool.levels[position.level].allocPoint;
+        pending = uint256(int256((leveledAmount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt);
     }
 
     /*
@@ -353,7 +353,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         address to,
         uint256 pid,
         uint256 amount
-    ) public returns (uint256 id) {
+    ) public nonReentrant returns (uint256 id) {
         require(pid < poolInfo.length, "invalid pool ID");
         id = mint(to);
         positionForId[id].poolId = pid;
@@ -379,12 +379,22 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         _updatePool(position.poolId);
         _updateEntry(amount, _relicId);
-        _updateAverageEntry(position.poolId, amount, Kind.DEPOSIT);
 
         PoolInfo storage pool = poolInfo[position.poolId];
 
-        position.amount += amount;
-        position.rewardDebt += int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        uint256 oldAmount = position.amount;
+        uint256 newAmount = oldAmount + amount;
+        position.amount = newAmount;
+        uint256 oldLevel = position.level;
+        uint256 newLevel = _updateLevel(_relicId);
+        if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= oldAmount;
+            pool.levels[newLevel].balance += newAmount;
+        } else {
+            pool.levels[oldLevel].balance += amount;
+        }
+
+        position.rewardDebt += int256((amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         IRewarder _rewarder = rewarder[position.poolId];
         address to = ownerOf(_relicId);
@@ -414,10 +424,20 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         PoolInfo storage pool = poolInfo[position.poolId];
 
         // Effects
-        position.rewardDebt -= int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        position.amount -= amount;
+        uint256 oldAmount = position.amount;
+        uint256 newAmount = oldAmount - amount;
+        position.amount = newAmount;
         _updateEntry(amount, _relicId);
-        _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
+        uint256 oldLevel = position.level;
+        uint256 newLevel = _updateLevel(_relicId);
+        if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= oldAmount;
+            pool.levels[newLevel].balance += newAmount;
+        } else {
+            pool.levels[oldLevel].balance -= amount;
+        }
+
+        position.rewardDebt += int256((amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         // Interactions
         IRewarder _rewarder = rewarder[position.poolId];
@@ -448,24 +468,32 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         PoolInfo storage pool = poolInfo[position.poolId];
 
-        int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        uint256 leveledAmount = position.amount * pool.levels[position.level].allocPoint;
+        int256 accumulatedOath = int256((leveledAmount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, _relicId);
 
         // Effects
-        position.rewardDebt = accumulatedOath;
+        uint256 amount = position.amount;
+        uint256 oldLevel = position.level;
+        uint256 newLevel = _updateLevel(_relicId);
+        if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= amount;
+            pool.levels[newLevel].balance += amount;
+        }
+
+        position.rewardDebt = int256((amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         // Interactions
-        if (_curvedOath != 0) {
-            OATH.safeTransfer(to, _curvedOath);
+        if (_pendingOath != 0) {
+            OATH.safeTransfer(to, _pendingOath);
         }
 
         IRewarder _rewarder = rewarder[position.poolId];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, _curvedOath, position.amount);
+            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
         }
 
-        emit Harvest(msg.sender, position.poolId, _curvedOath, _relicId);
+        emit Harvest(msg.sender, position.poolId, _pendingOath, _relicId);
     }
 
     /*
@@ -483,22 +511,32 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         _updatePool(position.poolId);
 
         PoolInfo storage pool = poolInfo[position.poolId];
-        int256 accumulatedOath = int256((position.amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        uint256 leveledAmount = position.amount * pool.levels[position.level].allocPoint;
+        int256 accumulatedOath = int256((leveledAmount * pool.accOathPerShare) / ACC_OATH_PRECISION);
         uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
-        uint256 _curvedOath = _calculateEmissions(_pendingOath, _relicId);
 
-        if (_curvedOath != 0) {
-            OATH.safeTransfer(to, _curvedOath);
+        if (_pendingOath != 0) {
+            OATH.safeTransfer(to, _pendingOath);
         }
 
-        position.rewardDebt = accumulatedOath - int256((amount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        position.amount -= amount;
+        uint256 oldAmount = position.amount;
+        uint256 newAmount = oldAmount - amount;
+        position.amount = newAmount;
         _updateEntry(amount, _relicId);
-        _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
+        uint256 oldLevel = position.level;
+        uint256 newLevel = _updateLevel(_relicId);
+        if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= oldAmount;
+            pool.levels[newLevel].balance += newAmount;
+        } else {
+            pool.levels[oldLevel].balance -= amount;
+        }
+
+        position.rewardDebt += int256((amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
 
         IRewarder _rewarder = rewarder[position.poolId];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, _curvedOath, position.amount);
+            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
         }
 
         lpToken[position.poolId].safeTransfer(to, amount);
@@ -508,7 +546,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         emit Withdraw(msg.sender, position.poolId, amount, to, _relicId);
-        emit Harvest(msg.sender, position.poolId, _curvedOath, _relicId);
+        emit Harvest(msg.sender, position.poolId, _pendingOath, _relicId);
     }
 
     /*
@@ -522,11 +560,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         PositionInfo storage position = positionForId[_relicId];
         uint256 amount = position.amount;
+        PoolInfo storage pool = poolInfo[position.poolId];
 
         position.amount = 0;
         position.rewardDebt = 0;
         _updateEntry(amount, _relicId);
-        _updateAverageEntry(position.poolId, amount, Kind.WITHDRAW);
+        pool.levels[position.level].balance -= amount;
+        _updateLevel(_relicId);
 
         IRewarder _rewarder = rewarder[position.poolId];
         if (address(_rewarder) != address(0)) {
@@ -541,78 +581,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         emit EmergencyWithdraw(msg.sender, position.poolId, amount, to, _relicId);
     }
 
-    /*
-     + @notice pulls Reliquary data and passes it to the curve library
-     + @param _relicId - ID of the position whose maturity curve you'd like to see
-    */
-    function curved(uint256 _relicId) public view returns (uint256 _curved) {
-        PositionInfo storage position = positionForId[_relicId];
-        PoolInfo memory pool = poolInfo[position.poolId];
-
-        uint256 maturity = (_timestamp() - position.entry) / 1000;
-
-        _curved = ICurve(pool.curveAddress).curve(maturity);
-    }
-
     /// @notice Gets the base emission rate from external, upgradable contract
     function _baseEmissionsPerMillisecond() internal view returns (uint256 rate) {
         rate = emissionSetter.getRate();
-    }
-
-    /*
-     + @notice operates on the position's base emissions
-     + @param amount OATH amount to modify
-     + @param _relicId ID of the position that's being modified
-    */
-    function _calculateEmissions(uint256 amount, uint256 _relicId) internal view returns (uint256 emissions) {
-        PositionInfo storage positionInfo = positionForId[_relicId];
-
-        uint256 position = curved(_relicId);
-        uint256 mean = _calculateMean(positionInfo.poolId);
-
-        uint256 weight;
-        if (position < mean) {
-            weight = BASIS_POINTS - (mean - position) * BASIS_POINTS / mean;
-        } else {
-            weight = BASIS_POINTS + (position - mean) * BASIS_POINTS / mean;
-        }
-
-        emissions = amount * weight / BASIS_POINTS;
-    }
-
-    /*
-     + @notice calculates the average position of every token on the curve
-     + @param pid The index of the pool. See `poolInfo`.
-     + @return the Y value based on X maturity in the context of the curve
-    */
-
-    function _calculateMean(uint256 pid) internal view returns (uint256 mean) {
-        PoolInfo storage pool = poolInfo[pid];
-        uint256 maturity = (_timestamp() - pool.averageEntry) / 1000;
-        mean = ICurve(pool.curveAddress).curve(maturity);
-    }
-
-    /*
-     + @notice updates the average entry time of each token in the pool
-     + @param pid The index of the pool. See `poolInfo`.
-     + @param amount the amount of tokens being accounted for
-     + @param kind the action being performed (deposit / withdrawal)
-    */
-
-    function _updateAverageEntry(
-        uint256 pid,
-        uint256 amount,
-        Kind kind
-    ) internal returns (bool success) {
-        PoolInfo storage pool = poolInfo[pid];
-        uint weight = _findWeight(amount, _poolBalance(pid));
-        uint256 maturity = _timestamp() - pool.averageEntry;
-        if (kind == Kind.DEPOSIT) {
-            pool.averageEntry += ((maturity * weight) / 1e18);
-        } else {
-            pool.averageEntry -= ((maturity * weight) / 1e18);
-        }
-        return true;
     }
 
     // @dev utility function to find weights without any underflows or zero division problems.
@@ -648,12 +619,26 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param _relicId the NFT ID of the position being updated
     */
 
-    function _updateEntry(uint256 amount, uint256 _relicId) internal returns (bool success) {
+    function _updateEntry(uint256 amount, uint256 _relicId) internal {
         PositionInfo storage position = positionForId[_relicId];
         uint256 weight = _findWeight(amount, position.amount);
         uint256 maturity = _timestamp() - position.entry;
         position.entry += maturity * weight / 1e18;
-        return true;
+    }
+
+    function _updateLevel(uint256 _relicId) internal returns (uint256 newLevel) {
+        PositionInfo storage position = positionForId[_relicId];
+        PoolInfo storage pool = poolInfo[position.poolId];
+        uint256 maturity = _timestamp() - position.entry;
+        for (uint256 i = pool.levels.length - 1; i >= 0; --i) {
+            if (maturity >= pool.levels[i].requiredMaturity) {
+                if (position.level != i) {
+                    position.level = i;
+                }
+                newLevel = i;
+                break;
+            }
+        }
     }
 
     /*
@@ -663,7 +648,11 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     */
 
     function _poolBalance(uint256 pid) internal view returns (uint256 total) {
-        total = IERC20(lpToken[pid]).balanceOf(address(this));
+        PoolInfo storage pool = poolInfo[pid];
+        uint256 length = pool.levels.length;
+        for (uint256 i; i < length; ++i) {
+            total += pool.levels[i].balance * pool.levels[i].allocPoint;
+        }
     }
 
     // Converting timestamp to miliseconds so precision isn't lost when we mutate the

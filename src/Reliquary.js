@@ -52,8 +52,8 @@ async function viewPoolInfo(chefAddress, pid) {
     accOathPerShare: poolInfo[0].toString(),
     lastRewardTime: poolInfo[1].toString(),
     allocPoint: poolInfo[2].toString(),
-    averageEntry: poolInfo[3].toString(),
-    curveAddress: poolInfo[4],
+    name: poolInfo[3],
+    isLP: poolInfo[4]
   };
   return obj;
 }
@@ -78,6 +78,7 @@ async function getPositionInfo(chefAddress, positionId) {
     rewardDebt: userInfo[1].toString(),
     entry: userInfo[2].toString(),
     poolId: userInfo[3].toString(),
+    level: userInfo[4].toString()
   };
 }
 
