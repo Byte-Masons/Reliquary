@@ -60,7 +60,7 @@ contract NFTDescriptor {
                             ),
                             generateTextFromToken(
                                 params.underlying,
-                                params.isLP,
+                                params.isPair,
                                 params.amount,
                                 amount
                             ),
@@ -181,16 +181,16 @@ contract NFTDescriptor {
 
     /// @notice Generate further text labels specific to the underlying token
     /// @param underlying Address of underlying token for this position
-    /// @param isLP Whether the underlying token is an IUniswapV2Pair LP
+    /// @param isPair Whether the underlying token is an IUniswapV2Pair LP
     /// @param amount Amount of underlying tokens deposited in this position
     /// @param amountString amount as string
     function generateTextFromToken(
         address underlying,
-        bool isLP,
+        bool isPair,
         uint256 amount,
         string memory amountString
     ) internal view returns (string memory tags) {
-        if (isLP) {
+        if (isPair) {
             IUniswapV2Pair lp = IUniswapV2Pair(underlying);
             IERC20Values token0 = IERC20Values(lp.token0());
             IERC20Values token1 = IERC20Values(lp.token1());
