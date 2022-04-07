@@ -543,23 +543,19 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _findWeight(
       uint addedValue,
       uint oldValue
-    ) public pure returns (uint) {
+    ) public pure returns (uint256 weightNew) {
       if (oldValue == 0) {
         return 1e18;
       } else {
-        uint weightNew;
-        uint weightOld;
+        uint256 weightOld;
         if (addedValue < oldValue) {
           weightNew = addedValue * 1e18 / (addedValue + oldValue);
-          weightOld = 1e18 - weightNew;
         } else if (oldValue < addedValue) {
           weightOld = oldValue * 1e18 / (addedValue + oldValue);
           weightNew = 1e18 - weightOld;
         } else {
           weightNew = 1e18 / 2;
-          weightOld = 1e18 / 2;
         }
-        return weightNew;
       }
     }
 
@@ -606,7 +602,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
     }
 
-    // Converting timestamp to miliseconds so precision isn't lost when we mutate the
+    // Converting timestamp to milliseconds so precision isn't lost when we mutate the
     // user's entry time.
 
     function _timestamp() internal view returns (uint256 timestamp) {
