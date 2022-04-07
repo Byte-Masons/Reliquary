@@ -10,7 +10,7 @@ const {deployChef, deployNFTDescriptor, getPoolCount, addPool, viewPoolInfo, get
 
 let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
 let lp: Oath, oath: Oath;
-let curve = [{ requiredMaturity: 0, allocPoint: 1, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
+let curve = [{ requiredMaturity: 0, allocPoint: 50, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
 
 const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
   const artifact: Artifact = await artifacts.readArtifact('Oath');
@@ -189,7 +189,7 @@ describe('Reliquary', function () {
       await lp.approve(this.chef.address, 10);
       await expect(this.chef.createRelicAndDeposit(alice.address, 0, 1))
         .to.emit(this.chef, 'Deposit')
-        .withArgs(superAdmin.address, 0, 1, alice.address, 0);
+        .withArgs(0, 1, alice.address, 0);
     });
 
     it('Depositing into non-existent pool should fail', async function () {
@@ -214,7 +214,7 @@ describe('Reliquary', function () {
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
       await expect(this.chef.connect(alice).withdrawAndHarvest(1, firstOwnedToken))
         .to.emit(this.chef, 'Withdraw')
-        .withArgs(alice.address, 0, 1, alice.address, firstOwnedToken);
+        .withArgs(0, 1, alice.address, firstOwnedToken);
     });
   });
 

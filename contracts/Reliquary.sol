@@ -101,34 +101,30 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     uint256 private constant BASIS_POINTS = 10_000;
 
     event Deposit(
-        address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 relicId
+        uint256 indexed relicId
     );
     event Withdraw(
-        address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 relicId
+        uint256 indexed relicId
     );
     event EmergencyWithdraw(
-        address indexed user,
         uint256 indexed pid,
         uint256 amount,
         address indexed to,
-        uint256 relicId
+        uint256 indexed relicId
     );
     event Harvest(
-        address indexed user,
         uint256 indexed pid,
         uint256 amount,
-        uint256 relicId
+        uint256 indexed relicId
     );
     event LogPoolAddition(
-        uint256 pid,
+        uint256 indexed pid,
         uint256 allocPoint,
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
@@ -141,8 +137,10 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         IRewarder indexed rewarder,
         bool isLP
     );
+    event LogSetNFTDescriptor(INFTDescriptor indexed nftDescriptorAddress);
+    event LogSetEmissionSetter(IEmissionSetter indexed emissionSetterAddress);
+    event LogUpdateLevel(uint256 indexed relicId, uint256 newLevel);
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
-    event LogInit();
 
     /// @param _oath The OATH token contract address.
     /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
@@ -182,15 +180,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
     function setEmissionSetter(IEmissionSetter _emissionSetter) external onlyRole(OPERATOR) {
         emissionSetter = _emissionSetter;
-    }
-
-    function setLevelAllocPoints(uint256[] memory allocPoints, uint256 pid) external onlyRole(OPERATOR) {
-        PoolInfo storage pool = poolInfo[pid];
-        uint256 length = pool.levels.length;
-        require(allocPoints.length == length, "invalid array length");
-        for (uint256 i; i < length; ++i) {
-            pool.levels[i].allocPoint = allocPoints[i];
-        }
     }
 
     function supportsInterface(bytes4 interfaceId) public view
@@ -412,8 +401,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         lpToken[position.poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(msg.sender, position.poolId, amount, to, _relicId);
-        emit Harvest(msg.sender, position.poolId, _pendingOath, _relicId);
+        emit Deposit(position.poolId, amount, to, _relicId);
+        emit Harvest(position.poolId, _pendingOath, _relicId);
     }
 
     /*
@@ -454,7 +443,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
         }
 
-        emit Harvest(msg.sender, position.poolId, _pendingOath, _relicId);
+        emit Harvest(position.poolId, _pendingOath, _relicId);
     }
 
     /*
@@ -506,8 +495,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             delete (positionForId[_relicId]);
         }
 
-        emit Withdraw(msg.sender, position.poolId, amount, to, _relicId);
-        emit Harvest(msg.sender, position.poolId, _pendingOath, _relicId);
+        emit Withdraw(position.poolId, amount, to, _relicId);
+        emit Harvest(position.poolId, _pendingOath, _relicId);
     }
 
     /*
@@ -539,7 +528,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         burn(_relicId);
         delete (positionForId[_relicId]);
 
-        emit EmergencyWithdraw(msg.sender, position.poolId, amount, to, _relicId);
+        emit EmergencyWithdraw(position.poolId, amount, to, _relicId);
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
@@ -597,6 +586,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                     position.level = i;
                 }
                 newLevel = i;
+                emit LogUpdateLevel(_relicId, newLevel);
                 break;
             }
         }
