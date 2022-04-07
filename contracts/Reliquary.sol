@@ -139,8 +139,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     );
     event LogSetNFTDescriptor(INFTDescriptor indexed nftDescriptorAddress);
     event LogSetEmissionSetter(IEmissionSetter indexed emissionSetterAddress);
-    event LogUpdateLevel(uint256 indexed relicId, uint256 newLevel);
     event LogUpdatePool(uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accOathPerShare);
+    event LevelChanged(uint256 indexed relicId, uint256 newLevel);
 
     /// @param _oath The OATH token contract address.
     /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
@@ -584,9 +584,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             if (maturity >= pool.levels[i].requiredMaturity) {
                 if (position.level != i) {
                     position.level = i;
+                    emit LevelChanged(_relicId, newLevel);
                 }
                 newLevel = i;
-                emit LogUpdateLevel(_relicId, newLevel);
                 break;
             }
         }
