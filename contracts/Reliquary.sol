@@ -7,7 +7,6 @@ import "./Relic.sol";
 import "./interfaces/IEmissionSetter.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "./interfaces/IRewarder.sol";
-import "./libraries/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -30,7 +29,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
 contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard {
-    using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
@@ -38,15 +36,17 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /*
      + @notice Info for each Reliquary position.
-     + `amount` LP token amount the position owner has provided.
-     + `rewardDebt` The amount of OATH entitled to the position owner.
-     + `entry` Used to determine the entry of the position
-     + `poolId` ID of the pool to which this position belongs.
+     + `amount` LP token amount the position owner has provided
+     + `rewardDebt` OATH accumalated before the position's entry or last harvest
+     + `rewardCredit` OATH owed to the user on next harvest
+     + `entry` Used to determine the maturity of the position
+     + `poolId` ID of the pool to which this position belongs
      + `level` Index of this position's level within the pool's array of levels
     */
     struct PositionInfo {
         uint256 amount;
-        int256 rewardDebt;
+        uint256 rewardDebt;
+        uint256 rewardCredit;
         uint256 entry; // position owner's relative entry into the pool.
         uint256 poolId; // ensures that a single Relic is only used for one pool.
         uint256 level;
@@ -308,7 +308,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         uint256 leveledAmount = position.amount * pool.levels[position.level].allocPoint;
-        pending = uint256(int256((leveledAmount * accOathPerShare) / ACC_OATH_PRECISION) - position.rewardDebt);
+        pending = leveledAmount * accOathPerShare / ACC_OATH_PRECISION - position.rewardDebt;
     }
 
     /*
@@ -330,9 +330,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         _updatePool(pid);
     }
 
-    /*
-     + @dev Internal updatePool function without nonReentrant modifier
-    */
+    /// @dev Internal updatePool function without nonReentrant modifier
     function _updatePool(uint256 pid) internal {
         require(pid < poolLength());
         PoolInfo storage pool = poolInfo[pid];
@@ -403,16 +401,16 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        int256 accumulatedOath = int256((leveledAmount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
+        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+        uint256 _pendingOath = accumulatedOath - position.rewardDebt;
 
-        position.rewardDebt = int256((newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
 
-        address to = ownerOf(relicId);
         if (_pendingOath != 0) {
-            OATH.safeTransfer(to, _pendingOath);
+            position.rewardCredit += _pendingOath;
         }
 
+        address to = ownerOf(relicId);
         IRewarder _rewarder = rewarder[position.poolId];
         if (address(_rewarder) != address(0)) {
             _rewarder.onOathReward(position.poolId, to, to, 0, position.amount);
@@ -421,7 +419,58 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         lpToken[position.poolId].safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(position.poolId, amount, to, relicId);
-        emit Harvest(position.poolId, _pendingOath, relicId);
+    }
+
+    /*
+     + @notice Withdraw LP tokens.
+     + @param amount token amount to withdraw.
+     + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
+    */
+    function withdraw(uint256 amount, uint256 relicId) public nonReentrant {
+        _ensureValidPosition(relicId);
+        address to = ownerOf(relicId);
+        require(to == msg.sender, "you do not own this position");
+        require(amount != 0, "withdrawing 0 amount");
+
+        PositionInfo storage position = positionForId[relicId];
+        _updatePool(position.poolId);
+
+        uint256 oldAmount = position.amount;
+        uint256 newAmount = oldAmount - amount;
+        position.amount = newAmount;
+        _updateEntry(amount, relicId);
+        uint256 oldLevel = position.level;
+        uint256 newLevel = _updateLevel(relicId);
+        PoolInfo storage pool = poolInfo[position.poolId];
+        if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= oldAmount;
+            pool.levels[newLevel].balance += newAmount;
+        } else {
+            pool.levels[oldLevel].balance -= amount;
+        }
+
+        uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
+        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+        uint256 _pendingOath = accumulatedOath - position.rewardDebt;
+
+        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
+
+        if (_pendingOath != 0) {
+            position.rewardCredit += _pendingOath;
+        }
+
+        IRewarder _rewarder = rewarder[position.poolId];
+        if (address(_rewarder) != address(0)) {
+            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
+        }
+
+        lpToken[position.poolId].safeTransfer(to, amount);
+        if (position.amount == 0) {
+            burn(relicId);
+            delete (positionForId[relicId]);
+        }
+
+        emit Withdraw(position.poolId, amount, to, relicId);
     }
 
     /*
@@ -447,10 +496,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         uint256 leveledAmount = amount * pool.levels[oldLevel].allocPoint;
-        int256 accumulatedOath = int256((leveledAmount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
+        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+        uint256 rewardCredit = position.rewardCredit;
+        uint256 _pendingOath = accumulatedOath + rewardCredit - position.rewardDebt;
+        if (rewardCredit != 0) {
+            position.rewardCredit = 0;
+        }
 
-        position.rewardDebt = int256((amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.rewardDebt = amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
 
         // Interactions
         if (_pendingOath != 0) {
@@ -494,10 +547,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        int256 accumulatedOath = int256((leveledAmount * pool.accOathPerShare) / ACC_OATH_PRECISION);
-        uint256 _pendingOath = (accumulatedOath - position.rewardDebt).toUInt256();
+        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+        uint256 rewardCredit = position.rewardCredit;
+        uint256 _pendingOath = accumulatedOath + rewardCredit - position.rewardDebt;
+        if (rewardCredit != 0) {
+            position.rewardCredit = 0;
+        }
 
-        position.rewardDebt = int256((newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare) / ACC_OATH_PRECISION);
+        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
 
         if (_pendingOath != 0) {
             OATH.safeTransfer(to, _pendingOath);

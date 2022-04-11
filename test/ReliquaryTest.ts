@@ -212,7 +212,7 @@ describe('Reliquary', function () {
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
-      await expect(this.chef.connect(alice).withdrawAndHarvest(1, firstOwnedToken))
+      await expect(this.chef.connect(alice).withdraw(1, firstOwnedToken))
         .to.emit(this.chef, 'Withdraw')
         .withArgs(0, 1, alice.address, firstOwnedToken);
     });
@@ -235,7 +235,7 @@ describe('Reliquary', function () {
       await network.provider.send('evm_increaseTime', [24 * 60 * 60 * 180]);
       await network.provider.send('evm_mine');
       const nftA = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
-      //await this.chef.connect(alice).withdrawAndHarvest(ethers.utils.parseEther('0.75'), nftA);
+      await this.chef.connect(alice).withdraw(ethers.utils.parseEther('0.75'), nftA);
       //await this.chef.connect(alice).harvest(nftA);
       await lp.transfer(alice.address, ethers.utils.parseEther('1'));
       await lp.connect(alice).approve(this.chef.address, ethers.utils.parseEther('1000'));
