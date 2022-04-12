@@ -347,7 +347,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /// @dev Internal updatePool function without nonReentrant modifier
     function _updatePool(uint256 pid) internal {
-        require(pid < poolLength());
+        require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
         uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
 
