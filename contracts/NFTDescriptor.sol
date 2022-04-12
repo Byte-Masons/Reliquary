@@ -16,10 +16,8 @@ contract NFTDescriptor {
     using Strings for uint256;
 
     /// @notice Constants for drawing graph
-    uint256 private constant NUM_BARS = 20;
-    uint256 private constant GRAPH_WIDTH = 189;
+    uint256 private constant GRAPH_WIDTH = 180;
     uint256 private constant GRAPH_HEIGHT = 150;
-    uint256 private constant BAR_WIDTH = GRAPH_WIDTH / NUM_BARS;
 
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
@@ -31,7 +29,6 @@ contract NFTDescriptor {
         string memory poolId = params.poolId.toString();
         string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
-        uint256 currentY = ICurve(params.curveAddress).curve(params.maturity);
 
         string memory name = string(
             abi.encodePacked(
@@ -56,7 +53,7 @@ contract NFTDescriptor {
                                 params.poolName,
                                 pendingOath,
                                 params.maturity,
-                                currentY
+                                params.level
                             ),
                             generateTextFromToken(
                                 params.underlying,
@@ -66,9 +63,8 @@ contract NFTDescriptor {
                             ),
                             '</text>',
                             generateBars(
-                                params.curveAddress,
-                                params.maturity,
-                                currentY
+                                params.level,
+                                params.levels
                             )
                         )
                     )
@@ -134,15 +130,15 @@ contract NFTDescriptor {
     /// @param poolName Name of pool as provided by operator
     /// @param pendingOath Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
-    /// @param currentY Current Y-value given this position's maturity
+    /// @param level Current maturity level of the position
     function generateSVGImage(
         string memory tokenId,
         string memory poolName,
         string memory pendingOath,
         uint256 maturity,
-        uint256 currentY
+        uint256 level
     ) internal pure returns (string memory svg) {
-        uint256 level = currentY >= 80 ? 5 : currentY / 20 + 1;
+        level = level > 4 ? 5 : level + 1;
         svg = string(
             abi.encodePacked(
                 '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -214,29 +210,30 @@ contract NFTDescriptor {
     }
 
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
-    /// @param curveAddress Address of this pool's bonding curve
-    /// @param maturity Weighted average of the maturity deposits into this position
-    /// @param currentY Current Y-value given this position's maturity
-    function generateBars(address curveAddress, uint256 maturity, uint256 currentY) internal pure returns (string memory bars) {
-        bars = '<svg x="60" y="50" width="190" height="150">';
+    /// @param level Current level of the position
+    /// @param levels The levels for this pool, including their required maturity and alloc points
+    function generateBars(uint256 level, INFTDescriptor.Level[] memory levels) internal pure returns (string memory bars) {
+        uint256 numBars = levels.length;
+        uint256 barWidth = GRAPH_WIDTH * 10 / numBars;
+        string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
+        bars = '<svg x="58" y="50" width="180" height="150">';
         /// TODO: 365 days for mainnet
-        uint256 totalTimeShown = maturity > 7 days ? maturity : 7 days;
-        for (uint256 i; i < NUM_BARS; i++) {
-            uint256 barHeight = ICurve(curveAddress).curve(totalTimeShown * i / NUM_BARS) * GRAPH_HEIGHT / 100;
+        for (uint256 i; i < numBars; i++) {
+            uint256 barHeight = levels[i].allocPoint * GRAPH_HEIGHT / levels[numBars - 1].allocPoint;
             bars = string(abi.encodePacked(
                 bars,
-                '<rect x="', (BAR_WIDTH * i).toString(),
+                '<rect x="', (barWidth * i / 10).toString(), '.', (barWidth * i % 10).toString(),
                 '" y="', (GRAPH_HEIGHT - barHeight).toString(),
                 '" class="shape',
-                '" width="', BAR_WIDTH.toString(),
+                '" width="', barWidthString,
                 '" height="', barHeight.toString(),
-                '" style="fill:#fff"/>'
+                '" style="fill:#', (i == level) ? 'e6de59' : 'fff', '"/>'
             ));
         }
         bars = string(abi.encodePacked(
             bars,
-            '<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - BAR_WIDTH - 6) * maturity / totalTimeShown).toString(),
-            '" y="', (GRAPH_HEIGHT - currentY * GRAPH_HEIGHT / 100 - 6).toString(), '.5" height="11" width="12" class="art"/>',
+            //'<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - barWidth - 6) * maturity / totalTimeShown).toString(),
+            //'" y="', (GRAPH_HEIGHT - currentY * GRAPH_HEIGHT / 100 - 6).toString(), '.5" height="11" width="12" class="art"/>',
             '</svg></svg>'
         ));
     }

@@ -106,7 +106,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     uint256 public totalAllocPoint;
 
     uint256 private constant ACC_OATH_PRECISION = 1e12;
-    uint256 private constant BASIS_POINTS = 10_000;
 
     event Deposit(
         uint256 indexed pid,
@@ -166,9 +165,22 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "token does not exist");
+
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 maturity = (_timestamp() - position.entry) / 1000;
+
+        uint256 length = pool.levels.length;
+        INFTDescriptor.Level[] memory levels = new INFTDescriptor.Level[](length);
+        for (uint256 i; i < length; ++i) {
+            levels[i] = (
+                INFTDescriptor.Level({
+                    requiredMaturity: pool.levels[i].requiredMaturity,
+                    allocPoint: pool.levels[i].allocPoint
+                })
+            );
+        }
+
         return nftDescriptor.constructTokenURI(
             INFTDescriptor.ConstructTokenURIParams({
                 tokenId: tokenId,
@@ -179,7 +191,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 amount: position.amount,
                 pendingOath: pendingOath(tokenId),
                 maturity: maturity,
-                curveAddress: address(0) // TODO: rework NFTDescriptor
+                level: position.level,
+                levels: levels
             })
         );
     }
@@ -308,7 +321,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         uint256 leveledAmount = position.amount * pool.levels[position.level].allocPoint;
-        pending = leveledAmount * accOathPerShare / ACC_OATH_PRECISION - position.rewardDebt;
+        pending = leveledAmount * accOathPerShare / ACC_OATH_PRECISION + position.rewardCredit - position.rewardDebt;
     }
 
     /*
@@ -465,7 +478,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
 
         lpToken[position.poolId].safeTransfer(to, amount);
-        if (position.amount == 0) {
+        if (newAmount == 0) {
             burn(relicId);
             delete (positionForId[relicId]);
         }
@@ -654,7 +667,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _updateLevel(uint256 relicId) internal returns (uint256 newLevel) {
         PositionInfo storage position = positionForId[relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        uint256 maturity = _timestamp() - position.entry;
+        uint256 maturity = (_timestamp() - position.entry) / 1000;
         for (uint256 i = pool.levels.length - 1; i >= 0; --i) {
             if (maturity >= pool.levels[i].requiredMaturity) {
                 if (position.level != i) {
