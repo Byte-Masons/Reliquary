@@ -244,7 +244,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         Level[] memory levels,
         string memory name,
         bool isPair
-    ) public onlyRole(OPERATOR) {
+    ) external onlyRole(OPERATOR) {
         require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
         require(_lpToken != OATH, "same token");
 
@@ -285,7 +285,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         string calldata name,
         bool isPair,
         bool overwriteRewarder
-    ) public onlyRole(OPERATOR) {
+    ) external onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
 
         PoolInfo storage pool = poolInfo[pid];
@@ -376,7 +376,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         address to,
         uint256 pid,
         uint256 amount
-    ) public nonReentrant returns (uint256 id) {
+    ) external nonReentrant returns (uint256 id) {
         require(pid < poolInfo.length, "invalid pool ID");
         id = mint(to);
         positionForId[id].poolId = pid;
@@ -441,7 +441,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param amount token amount to withdraw.
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdraw(uint256 amount, uint256 relicId) public nonReentrant {
+    function withdraw(uint256 amount, uint256 relicId) external nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -492,7 +492,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @notice Harvest proceeds for transaction sender to owner of `relicId`.
      + @param relicId NFT ID of the receiver of OATH rewards.
     */
-    function harvest(uint256 relicId) public nonReentrant {
+    function harvest(uint256 relicId) external nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -538,7 +538,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param amount token amount to withdraw.
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdrawAndHarvest(uint256 amount, uint256 relicId) public nonReentrant {
+    function withdrawAndHarvest(uint256 amount, uint256 relicId) external nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -594,7 +594,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @notice Withdraw without caring about rewards. EMERGENCY ONLY.
      + @param relicId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint256 relicId) public nonReentrant {
+    function emergencyWithdraw(uint256 relicId) external nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -635,7 +635,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _findWeight(
       uint addedValue,
       uint oldValue
-    ) public pure returns (uint256 weightNew) {
+    ) internal pure returns (uint256 weightNew) {
       if (oldValue == 0) {
         weightNew = 1e18;
       } else {
