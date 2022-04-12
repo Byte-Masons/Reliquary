@@ -200,11 +200,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
     function setNFTDescriptor(INFTDescriptor _nftDescriptor) external onlyRole(OPERATOR) {
         nftDescriptor = _nftDescriptor;
+        emit LogSetNFTDescriptor(_nftDescriptor);
     }
 
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
     function setEmissionSetter(IEmissionSetter _emissionSetter) external onlyRole(OPERATOR) {
         emissionSetter = _emissionSetter;
+        emit LogSetEmissionSetter(_emissionSetter);
     }
 
     /// @notice Implement ERC165 to return which interfaces this contract conforms to
@@ -280,7 +282,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 pid,
         uint256 allocPoint,
         IRewarder _rewarder,
-        string memory name,
+        string calldata name,
         bool isPair,
         bool overwriteRewarder
     ) public onlyRole(OPERATOR) {
