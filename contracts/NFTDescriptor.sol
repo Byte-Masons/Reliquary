@@ -4,7 +4,6 @@ pragma solidity 0.8.13;
 import '@openzeppelin/contracts/utils/Strings.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import 'base64-sol/base64.sol';
-import './interfaces/ICurve.sol';
 import './interfaces/INFTDescriptor.sol';
 
 interface IERC20Values {
@@ -65,7 +64,8 @@ contract NFTDescriptor {
                             generateBars(
                                 params.level,
                                 params.levels
-                            )
+                            ),
+                            '</svg></svg>'
                         )
                     )
                 )
@@ -230,15 +230,10 @@ contract NFTDescriptor {
                 '" style="fill:#', (i == level) ? 'e6de59' : 'fff', '"/>'
             ));
         }
-        bars = string(abi.encodePacked(
-            bars,
-            //'<image href="', IPFS, 'skully.png" x="', ((GRAPH_WIDTH - barWidth - 6) * maturity / totalTimeShown).toString(),
-            //'" y="', (GRAPH_HEIGHT - currentY * GRAPH_HEIGHT / 100 - 6).toString(), '.5" height="11" width="12" class="art"/>',
-            '</svg></svg>'
-        ));
     }
 
-    /// @notice Generate human-readable string from a number with given decimal places
+    /// @notice Generate human-readable string from a number with given decimal places.
+    /// Does not work for amounts with more than 18 digits before decimal point.
     /// @param num A number
     /// @param decimals Number of decimal places
     function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory) {
