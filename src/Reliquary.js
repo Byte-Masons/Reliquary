@@ -76,9 +76,10 @@ async function getPositionInfo(chefAddress, positionId) {
   return {
     amount: userInfo[0].toString(),
     rewardDebt: userInfo[1].toString(),
-    entry: userInfo[2].toString(),
-    poolId: userInfo[3].toString(),
-    level: userInfo[4].toString()
+    rewardCredit: userInfo[2].toString(),
+    entry: userInfo[3].toString(),
+    poolId: userInfo[4].toString(),
+    level: userInfo[5].toString()
   };
 }
 

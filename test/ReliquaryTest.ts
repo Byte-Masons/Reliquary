@@ -245,24 +245,20 @@ describe('Reliquary', function () {
       await network.provider.send('evm_mine');
       const nftB = await this.chef.tokenOfOwnerByIndex(bob.address, 0);
 
-      console.log("positionA: ", await getPositionInfo(this.chef.address, nftA));
-      console.log("positionB: ", await getPositionInfo(this.chef.address, nftB));
       await this.chef.connect(alice).harvest(nftA);
       await this.chef.connect(bob).harvest(nftB);
-      const timestamp = parseInt((await network.provider.send('eth_getBlockByNumber', ['latest', false])).timestamp);
-      //const averageEntry = Math.floor((await this.chef.poolInfo(0))[3] / 1000);
-      //console.log("curve average: ", (await curve.curve(timestamp - averageEntry)).toString());
-      //console.log("curveA: ", (await this.chef.curved(nftA)).toString());
-      //console.log("curveB: ", (await this.chef.curved(nftB)).toString());
+      console.log("positionA: ", await getPositionInfo(this.chef.address, nftA));
+      console.log("positionB: ", await getPositionInfo(this.chef.address, nftB));
+      //const timestamp = parseInt((await network.provider.send('eth_getBlockByNumber', ['latest', false])).timestamp);
       const balanceA = await oath.balanceOf(alice.address);
       const balanceB = await oath.balanceOf(bob.address);
       console.log("balanceA: ", balanceA.toString());
       console.log("balanceB: ", balanceB.toString());
-      //expect(balanceA).to.equal(ethers.BigNumber.from('1593502675247524752000000')); //(31557600 + 1)secs * 1000ms * 1e14
-      //expect(balanceB).to.equal(ethers.BigNumber.from('1562257623762376100000000')); //(31557600 + 1)secs * 1000ms * 1e14
       console.log("positionA: ", await getPositionInfo(this.chef.address, nftA));
       console.log("positionB: ", await getPositionInfo(this.chef.address, nftB));
       console.log("poolInfo: ", await viewPoolInfo(this.chef.address, 0));
+
+      expect(balanceA.add(balanceB).div(ethers.utils.parseEther('1'))).to.equal(3110400);
     });
   });
 
