@@ -72,7 +72,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /*
      + @notice Level that determines how maturity is rewarded
-     + `requiredMaturity` The minimum maturity required to reach this Level
+     + `requiredMaturity` The minimum maturity (in milliseconds) required to reach this Level
      + `allocPoint` Level's individual allocation - ratio of the total allocation
      + `balance` Total number of tokens deposited in positions at this Level
      +
@@ -234,6 +234,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param _lpToken Address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
      + @param levels Array of Levels that determine how maturity affects rewards
+     +        NOTE: Must be sorted in ascending order of requiredMaturity,
+     +        and first level must have requiredMaturity of 0
      + @param name Name of pool to be displayed in NFT image
      + @param isPair Whether this pool's token should be displayed as a pair in NFT image
     */
@@ -669,8 +671,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _updateLevel(uint256 relicId) internal returns (uint256 newLevel) {
         PositionInfo storage position = positionForId[relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        uint256 maturity = (_timestamp() - position.entry) / 1000;
-        for (uint256 i = pool.levels.length - 1; i >= 0; --i) {
+        uint256 maturity = _timestamp() - position.entry;
+        for (uint256 i = pool.levels.length - 1; true; i = _uncheckedDec(i)) {
             if (maturity >= pool.levels[i].requiredMaturity) {
                 if (position.level != i) {
                     position.level = i;
@@ -679,6 +681,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 newLevel = i;
                 break;
             }
+        }
+    }
+
+    /// @dev Utility function to bypass underflow checking, saving gas
+    function _uncheckedDec(uint256 i) internal pure returns (uint256) {
+        unchecked {
+            return i - 1;
         }
     }
 
