@@ -334,7 +334,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     */
     function massUpdatePools(uint256[] calldata pids) external {
         for (uint256 i = 0; i < pids.length; i++) {
-            _updatePool(pids[i]);
+            updatePool(pids[i]);
         }
     }
 
@@ -343,12 +343,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) external {
-        _updatePool(pid);
-    }
-
-    /// @dev Internal updatePool function without nonReentrant modifier
-    function _updatePool(uint256 pid) internal {
+    function updatePool(uint256 pid) public {
         require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
         uint256 timestamp = _timestamp();
@@ -402,7 +397,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(amount != 0, "depositing 0 amount");
 
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        updatePool(position.poolId);
         _updateEntry(amount, relicId);
 
         uint256 oldAmount = position.amount;
@@ -451,7 +446,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(amount != 0, "withdrawing 0 amount");
 
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        updatePool(position.poolId);
 
         uint256 oldAmount = position.amount;
         uint256 newAmount = oldAmount - amount;
@@ -501,7 +496,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(to == msg.sender, "you do not own this position");
 
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        updatePool(position.poolId);
 
         // Effects
         uint256 amount = position.amount;
@@ -548,7 +543,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(amount != 0, "withdrawing 0 amount");
 
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        updatePool(position.poolId);
 
         uint256 oldAmount = position.amount;
         uint256 newAmount = oldAmount - amount;
@@ -629,7 +624,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @param relicId The NFT ID of the position being updated
     function updatePosition(uint256 relicId) external {
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        updatePool(position.poolId);
 
         uint256 amount = position.amount;
         uint256 oldLevel = position.level;

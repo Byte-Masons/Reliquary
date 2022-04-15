@@ -232,18 +232,21 @@ describe('Reliquary', function () {
       );
       await lp.approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.createRelicAndDeposit(alice.address, 0, ethers.utils.parseEther('1'));
+      const nftA = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
       await network.provider.send('evm_increaseTime', [24 * 60 * 60 * 180]);
       await network.provider.send('evm_mine');
-      const nftA = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+
       await this.chef.connect(alice).withdraw(ethers.utils.parseEther('0.75'), nftA);
       //await this.chef.connect(alice).harvest(nftA);
+
       await lp.transfer(alice.address, ethers.utils.parseEther('1'));
       await lp.connect(alice).approve(this.chef.address, ethers.utils.parseEther('1000'));
       await this.chef.connect(alice).deposit(ethers.utils.parseEther('1'), nftA);
+
       await this.chef.createRelicAndDeposit(bob.address, 0, ethers.utils.parseEther('100'));
+      const nftB = await this.chef.tokenOfOwnerByIndex(bob.address, 0);
       await network.provider.send('evm_increaseTime', [24 * 60 * 60 * 180]);
       await network.provider.send('evm_mine');
-      const nftB = await this.chef.tokenOfOwnerByIndex(bob.address, 0);
 
       await this.chef.connect(alice).harvest(nftA);
       await this.chef.connect(bob).harvest(nftB);
@@ -254,8 +257,6 @@ describe('Reliquary', function () {
       const balanceB = await oath.balanceOf(bob.address);
       console.log("balanceA: ", balanceA.toString());
       console.log("balanceB: ", balanceB.toString());
-      console.log("positionA: ", await getPositionInfo(this.chef.address, nftA));
-      console.log("positionB: ", await getPositionInfo(this.chef.address, nftB));
       console.log("poolInfo: ", await viewPoolInfo(this.chef.address, 0));
 
       expect(balanceA.add(balanceB).div(ethers.utils.parseEther('1'))).to.equal(3110400);
