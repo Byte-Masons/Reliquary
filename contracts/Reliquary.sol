@@ -333,7 +333,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
     function massUpdatePools(uint256[] calldata pids) external {
-        for (uint256 i = 0; i < pids.length; i++) {
+        for (uint256 i = 0; i < pids.length; i = _uncheckedInc(i)) {
             updatePool(pids[i]);
         }
     }
@@ -705,13 +705,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         }
     }
 
-    /// @dev Utility function to bypass underflow checking, saving gas
-    function _uncheckedDec(uint256 i) internal pure returns (uint256) {
-        unchecked {
-            return i - 1;
-        }
-    }
-
     /*
      + @notice returns The total deposits of the pool's token
      + @param pid The index of the pool. See `poolInfo`.
@@ -720,8 +713,22 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _poolBalance(uint256 pid) internal view returns (uint256 total) {
         PoolInfo storage pool = poolInfo[pid];
         uint256 length = pool.levels.length;
-        for (uint256 i; i < length; ++i) {
+        for (uint256 i; i < length; i = _uncheckedInc(i)) {
             total += pool.levels[i].balance * pool.levels[i].allocPoint;
+        }
+    }
+
+    /// @dev Utility function to bypass overflow checking, saving gas
+    function _uncheckedInc(uint256 i) internal pure returns (uint256) {
+        unchecked {
+            return i + 1;
+        }
+    }
+
+    /// @dev Utility function to bypass underflow checking, saving gas
+    function _uncheckedDec(uint256 i) internal pure returns (uint256) {
+        unchecked {
+            return i - 1;
         }
     }
 
