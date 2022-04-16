@@ -110,8 +110,9 @@ describe('Reliquary', function () {
       await this.chef.updatePool(0);
       await network.provider.send('evm_mine');
       const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+      await this.chef.updatePosition(firstOwnedToken);
       const pendingOath = await this.chef.pendingOath(firstOwnedToken);
-      expect(pendingOath).to.equal(ethers.utils.parseEther('3155760.2')); //(31557600 + 2)secs * 1000ms * 1e14
+      expect(pendingOath.div(ethers.utils.parseEther('1'))).to.equal(3155760); //31557600 secs * 1000ms * 1e14 / 1e18
     });
   });
 

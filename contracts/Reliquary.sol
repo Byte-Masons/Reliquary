@@ -75,7 +75,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + `requiredMaturity` The minimum maturity (in milliseconds) required to reach this Level
      + `allocPoint` Level's individual allocation - ratio of the total allocation
      + `balance` Total number of tokens deposited in positions at this Level
-     +
     */
     struct Level {
         uint256 requiredMaturity;

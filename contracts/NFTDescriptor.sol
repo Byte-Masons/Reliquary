@@ -217,7 +217,6 @@ contract NFTDescriptor {
         uint256 barWidth = GRAPH_WIDTH * 10 / numBars;
         string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
         bars = '<svg x="58" y="50" width="180" height="150">';
-        /// TODO: 365 days for mainnet
         for (uint256 i; i < numBars; i++) {
             uint256 barHeight = levels[i].allocPoint * GRAPH_HEIGHT / levels[numBars - 1].allocPoint;
             bars = string(abi.encodePacked(
