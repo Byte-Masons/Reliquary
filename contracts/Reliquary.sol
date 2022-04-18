@@ -72,7 +72,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /*
      + @notice Level that determines how maturity is rewarded
-     + `requiredMaturity` The minimum maturity (in milliseconds) required to reach this Level
+     + `requiredMaturity` The minimum maturity (in seconds) required to reach this Level
      + `allocPoint` Level's individual allocation - ratio of the total allocation
      + `balance` Total number of tokens deposited in positions at this Level
     */
@@ -167,7 +167,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         PositionInfo storage position = positionForId[tokenId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        uint256 maturity = (_timestamp() - position.entry) / 1000;
+        uint256 maturity = block.timestamp - position.entry;
 
         uint256 length = pool.levels.length;
         INFTDescriptor.Level[] memory levels = new INFTDescriptor.Level[](length);
@@ -256,7 +256,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         poolInfo.push(
             PoolInfo({
                 allocPoint: allocPoint,
-                lastRewardTime: _timestamp(),
+                lastRewardTime: block.timestamp,
                 accOathPerShare: 0,
                 levels: levels,
                 name: name,
@@ -317,9 +317,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 accOathPerShare = pool.accOathPerShare;
         uint256 lpSupply = _poolBalance(position.poolId);
 
-        uint256 millisSinceReward = _timestamp() - pool.lastRewardTime;
-        if (millisSinceReward != 0 && lpSupply != 0) {
-            uint256 oathReward = (millisSinceReward * _baseEmissionsPerMillisecond() * pool.allocPoint) / totalAllocPoint;
+        uint256 secondsSinceReward = block.timestamp - pool.lastRewardTime;
+        if (secondsSinceReward != 0 && lpSupply != 0) {
+            uint256 oathReward = (secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint) / totalAllocPoint;
             accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
         }
 
@@ -345,14 +345,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function updatePool(uint256 pid) public {
         require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
-        uint256 timestamp = _timestamp();
-        uint256 millisSinceReward = timestamp - pool.lastRewardTime;
+        uint256 timestamp = block.timestamp;
+        uint256 secondsSinceReward = timestamp - pool.lastRewardTime;
 
-        if (millisSinceReward != 0) {
+        if (secondsSinceReward != 0) {
             uint256 lpSupply = _poolBalance(pid);
 
             if (lpSupply != 0) {
-                uint256 oathReward = (millisSinceReward * _baseEmissionsPerMillisecond() * pool.allocPoint) /
+                uint256 oathReward = (secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint) /
                     totalAllocPoint;
                 pool.accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
             }
@@ -645,7 +645,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
-    function _baseEmissionsPerMillisecond() internal view returns (uint256 rate) {
+    function _baseEmissionsPerSecond() internal view returns (uint256 rate) {
         rate = emissionSetter.getRate();
     }
 
@@ -680,7 +680,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _updateEntry(uint256 amount, uint256 relicId) internal {
         PositionInfo storage position = positionForId[relicId];
         uint256 weight = _findWeight(amount, position.amount);
-        uint256 maturity = _timestamp() - position.entry;
+        uint256 maturity = block.timestamp - position.entry;
         position.entry += maturity * weight / 1e18;
     }
 
@@ -691,7 +691,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _updateLevel(uint256 relicId) internal returns (uint256 newLevel) {
         PositionInfo storage position = positionForId[relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        uint256 maturity = _timestamp() - position.entry;
+        uint256 maturity = block.timestamp - position.entry;
         for (uint256 i = pool.levels.length - 1; true; i = _uncheckedDec(i)) {
             if (maturity >= pool.levels[i].requiredMaturity) {
                 if (position.level != i) {
@@ -729,12 +729,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         unchecked {
             return i - 1;
         }
-    }
-
-    /// @dev Converts timestamp to milliseconds so precision isn't lost when we mutate the
-    /// user's entry time.
-    function _timestamp() internal view returns (uint256 timestamp) {
-        timestamp = block.timestamp * 1000;
     }
 
     /// @notice Existing position is valid if and only if it has non-zero amount.

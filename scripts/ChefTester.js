@@ -24,12 +24,12 @@ async function main() {
   console.log('testLP: ' + pair.address);
   let curve = [
     { requiredMaturity: 0, allocPoint: 25, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 60, allocPoint: 50, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 120, allocPoint: 75, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 150, allocPoint: 90, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 240, allocPoint: 110, balance: 0 },
-    { requiredMaturity: 1000 * 24 * 60 * 60 * 600, allocPoint: 120, balance: 0 }
+    { requiredMaturity: 24 * 60 * 60 * 60, allocPoint: 50, balance: 0 },
+    { requiredMaturity: 24 * 60 * 60 * 120, allocPoint: 75, balance: 0 },
+    { requiredMaturity: 24 * 60 * 60 * 150, allocPoint: 90, balance: 0 },
+    { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 },
+    { requiredMaturity: 24 * 60 * 60 * 240, allocPoint: 110, balance: 0 },
+    { requiredMaturity: 24 * 60 * 60 * 600, allocPoint: 120, balance: 0 }
   ];
 
   let globalInfo = await reliquary.getGlobalInfo(chef.address);
