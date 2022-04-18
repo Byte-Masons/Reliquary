@@ -98,9 +98,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @notice Info of each staked position
     mapping(uint256 => PositionInfo) public positionForId;
 
-    /// @notice ensures the same token isn't added to the contract twice
-    mapping(address => bool) public hasBeenAdded;
-
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint;
 
@@ -246,9 +243,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         string memory name,
         bool isPair
     ) external onlyRole(OPERATOR) {
-        require(!hasBeenAdded[address(_lpToken)], "this token has already been added");
-        require(_lpToken != OATH, "same token");
-
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
@@ -263,7 +257,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
                 isPair: isPair
             })
         );
-        hasBeenAdded[address(_lpToken)] = true;
 
         emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, isPair);
     }
@@ -611,7 +604,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
             _rewarder.onOathReward(position.poolId, msg.sender, to, 0, 0);
         }
 
-        // Note: transfer can fail or succeed if `amount` is zero.
         lpToken[position.poolId].safeTransfer(to, amount);
         burn(relicId);
         delete (positionForId[relicId]);
