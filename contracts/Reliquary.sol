@@ -243,6 +243,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         string memory name,
         bool isPair
     ) external onlyRole(OPERATOR) {
+        require(levels[0].requiredMaturity == 0, "levels[0].requiredMaturity != 0");
+
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
@@ -614,6 +616,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @notice Update position without performing a deposit/withdraw/harvest
     /// @param relicId The NFT ID of the position being updated
     function updatePosition(uint256 relicId) external {
+        _ensureValidPosition(relicId);
         PositionInfo storage position = positionForId[relicId];
         updatePool(position.poolId);
 
@@ -684,15 +687,18 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         PositionInfo storage position = positionForId[relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
         uint256 maturity = block.timestamp - position.entry;
-        for (uint256 i = pool.levels.length - 1; true; i = _uncheckedDec(i)) {
-            if (maturity >= pool.levels[i].requiredMaturity) {
-                if (position.level != i) {
-                    position.level = i;
-                    emit LevelChanged(relicId, newLevel);
-                }
+        uint256 highestMaturity;
+        uint256 length = pool.levels.length;
+        for (uint256 i; i < length; i = _uncheckedInc(i)) {
+            uint256 requiredMaturity = pool.levels[i].requiredMaturity;
+            if (maturity >= requiredMaturity && requiredMaturity >= highestMaturity) {
+                highestMaturity = requiredMaturity;
                 newLevel = i;
-                break;
             }
+        }
+        if (position.level != newLevel) {
+            position.level = newLevel;
+            emit LevelChanged(relicId, newLevel);
         }
     }
 
@@ -713,13 +719,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _uncheckedInc(uint256 i) internal pure returns (uint256) {
         unchecked {
             return i + 1;
-        }
-    }
-
-    /// @dev Utility function to bypass underflow checking, saving gas
-    function _uncheckedDec(uint256 i) internal pure returns (uint256) {
-        unchecked {
-            return i - 1;
         }
     }
 

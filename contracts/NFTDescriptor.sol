@@ -213,12 +213,18 @@ contract NFTDescriptor {
     /// @param level Current level of the position
     /// @param levels The levels for this pool, including their required maturity and alloc points
     function generateBars(uint256 level, INFTDescriptor.Level[] memory levels) internal pure returns (string memory bars) {
-        uint256 numBars = levels.length;
-        uint256 barWidth = GRAPH_WIDTH * 10 / numBars;
+        uint256 highestAllocPoint = levels[0].allocPoint;
+        for (uint256 i = 1; i < levels.length; i++) {
+            if (levels[i].allocPoint > highestAllocPoint) {
+                highestAllocPoint = levels[i].allocPoint;
+            }
+        }
+
+        uint256 barWidth = GRAPH_WIDTH * 10 / levels.length;
         string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
         bars = '<svg x="58" y="50" width="180" height="150">';
-        for (uint256 i; i < numBars; i++) {
-            uint256 barHeight = levels[i].allocPoint * GRAPH_HEIGHT / levels[numBars - 1].allocPoint;
+        for (uint256 i; i < levels.length; i++) {
+            uint256 barHeight = levels[i].allocPoint * GRAPH_HEIGHT / highestAllocPoint;
             bars = string(abi.encodePacked(
                 bars,
                 '<rect x="', (barWidth * i / 10).toString(), '.', (barWidth * i % 10).toString(),
