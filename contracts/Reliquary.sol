@@ -495,7 +495,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
     /// @notice Update position without performing a deposit/withdraw/harvest
     /// @param relicId The NFT ID of the position being updated
-    function updatePosition(uint256 relicId) external {
+    function updatePosition(uint256 relicId) external nonReentrant {
         _ensureValidPosition(relicId);
         _updatePosition(0, relicId, Kind.OTHER, false);
     }
@@ -565,7 +565,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         IRewarder _rewarder = rewarder[poolId];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(poolId, msg.sender, ownerOf(relicId), _pendingOath, position.amount);
+            _rewarder.onOathReward(poolId, msg.sender, ownerOf(relicId), _pendingOath, newAmount);
         }
 
         if (newAmount == 0) {
@@ -584,10 +584,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param addedValue New value being added
      + @param oldValue Current amount of x
     */
-    function _findWeight(
-      uint addedValue,
-      uint oldValue
-    ) internal pure returns (uint256 weightNew) {
+    function _findWeight(uint addedValue, uint oldValue) internal pure returns (uint256 weightNew) {
       if (oldValue == 0) {
         weightNew = 1e18;
       } else {
