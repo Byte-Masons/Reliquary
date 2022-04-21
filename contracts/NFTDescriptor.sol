@@ -28,6 +28,7 @@ contract NFTDescriptor {
         string memory poolId = params.poolId.toString();
         string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
+        string memory maturity = (params.maturity / 1 days).toString();
 
         string memory name = string(
             abi.encodePacked(
@@ -40,7 +41,7 @@ contract NFTDescriptor {
                 poolId,
                 amount,
                 pendingOath,
-                params.maturity
+                maturity
             );
         string memory image =
             Base64.encode(
@@ -51,7 +52,7 @@ contract NFTDescriptor {
                                 tokenId,
                                 params.poolName,
                                 pendingOath,
-                                params.maturity,
+                                maturity,
                                 params.level
                             ),
                             generateTextFromToken(
@@ -104,12 +105,12 @@ contract NFTDescriptor {
         string memory poolId,
         string memory amount,
         string memory pendingOath,
-        uint256 maturity
+        string memory maturity
     ) internal pure returns (string memory) {
         return
         string(
             abi.encodePacked(
-                'This NFT represents a liquidity position in a Reliquary ',
+                'This NFT represents a position in a Reliquary ',
                 poolName,
                 ' pool. ',
                 'The owner of this NFT can modify or redeem the position.\\n',
@@ -120,7 +121,7 @@ contract NFTDescriptor {
                 '\\nPending Oath: ',
                 pendingOath,
                 '\\nMaturity: ',
-                maturity.toString()
+                maturity, ' days'
             )
         );
     }
@@ -135,7 +136,7 @@ contract NFTDescriptor {
         string memory tokenId,
         string memory poolName,
         string memory pendingOath,
-        uint256 maturity,
+        string memory maturity,
         uint256 level
     ) internal pure returns (string memory svg) {
         level = level > 4 ? 5 : level + 1;
@@ -149,7 +150,7 @@ contract NFTDescriptor {
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
                 '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
-                generateImageText(tokenId, poolName, pendingOath, maturity.toString())
+                generateImageText(tokenId, poolName, pendingOath, maturity)
             )
         );
     }
@@ -170,7 +171,7 @@ contract NFTDescriptor {
                 '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
                 '</text><text x="50%" y="279" class="bit" style="font-size: 12">', poolName,
                 '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity, '</text>'
+                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity, ' DAYS</text>'
             )
         );
     }

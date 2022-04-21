@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.13;
-pragma experimental ABIEncoderV2;
 
 import "./Relic.sol";
 import "./interfaces/IEmissionSetter.sol";
@@ -11,8 +9,6 @@ import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-/// NOTE: Work on quality of life abstractions and position management
 
 /*
  + @title Reliquary
@@ -332,7 +328,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
     function massUpdatePools(uint256[] calldata pids) external {
-        for (uint256 i = 0; i < pids.length; i = _uncheckedInc(i)) {
+        for (uint256 i; i < pids.length; i = _uncheckedInc(i)) {
             updatePool(pids[i]);
         }
     }

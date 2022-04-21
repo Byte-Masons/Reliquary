@@ -16,7 +16,7 @@ interface INFTDescriptor {
         uint256 amount;
         uint256 pendingOath;
         uint256 maturity;
-	uint256 level;
+        uint256 level;
         Level[] levels;
     }
 
