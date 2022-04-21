@@ -391,14 +391,11 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _deposit(uint256 amount, uint256 relicId) internal {
         require(amount != 0, "depositing 0 amount");
 
-        _updatePosition(amount, relicId, Kind.DEPOSIT, false);
+        (uint256 poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, false);
 
-        address to = ownerOf(relicId);
-        PositionInfo storage position = positionForId[relicId];
-        uint256 poolId = position.poolId;
         lpToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(poolId, amount, to, relicId);
+        emit Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
     /*
@@ -412,10 +409,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        _updatePosition(amount, relicId, Kind.WITHDRAW, false);
+        (uint256 poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
 
-        PositionInfo storage position = positionForId[relicId];
-        uint256 poolId = position.poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -430,10 +425,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
-        uint256 _pendingOath = _updatePosition(0, relicId, Kind.OTHER, true);
+        (uint256 poolId, uint256 _pendingOath) = _updatePosition(0, relicId, Kind.OTHER, true);
 
-        PositionInfo storage position = positionForId[relicId];
-        emit Harvest(position.poolId, _pendingOath, relicId);
+        emit Harvest(poolId, _pendingOath, relicId);
     }
 
     /*
@@ -447,10 +441,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        uint256 _pendingOath = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
+        (uint256 poolId, uint256 _pendingOath) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
 
-        PositionInfo storage position = positionForId[relicId];
-        uint256 poolId = position.poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -509,7 +501,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 relicId,
         Kind kind,
         bool _harvest
-    ) internal returns (uint256 _pendingOath) {
+    ) internal returns (uint256 poolId, uint256 _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
         updatePool(position.poolId);
 
@@ -529,7 +521,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         uint256 oldLevel = position.level;
         uint256 newLevel = _updateLevel(relicId);
-        uint256 poolId = position.poolId;
+        poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
         if (oldLevel != newLevel) {
             pool.levels[oldLevel].balance -= oldAmount;
