@@ -53,7 +53,8 @@ contract NFTDescriptor {
                                 params.poolName,
                                 pendingOath,
                                 maturity,
-                                params.level
+                                params.level,
+                                params.levels.length
                             ),
                             generateTextFromToken(
                                 params.underlying,
@@ -132,14 +133,16 @@ contract NFTDescriptor {
     /// @param pendingOath Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     /// @param level Current maturity level of the position
+    /// @param numLevels Total number of levels in the pool
     function generateSVGImage(
         string memory tokenId,
         string memory poolName,
         string memory pendingOath,
         string memory maturity,
-        uint256 level
+        uint256 level,
+        uint256 numLevels
     ) internal pure returns (string memory svg) {
-        level = level > 4 ? 5 : level + 1;
+        level = (level + 1) * 5 / numLevels;
         svg = string(
             abi.encodePacked(
                 '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -149,7 +152,7 @@ contract NFTDescriptor {
                 '.art { image-rendering: pixelated }',
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
-                '<image href="', IPFS, 'cup', level.toString(), '.png" height="450" width="290" class="art"/>',
+                '<image href="', IPFS, 'cup', (level == 0) ? '1' : level.toString(), '.png" height="450" width="290" class="art"/>',
                 generateImageText(tokenId, poolName, pendingOath, maturity)
             )
         );
