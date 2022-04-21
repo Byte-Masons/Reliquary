@@ -82,6 +82,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 balance;
     }
 
+    /// @notice Indicates whether tokens are being added to, or removed from, a pool
+    enum Kind {
+        DEPOSIT,
+        WITHDRAW,
+        OTHER
+    }
+
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
     /// @notice Address of NFTDescriptor contract.
@@ -230,8 +237,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param _lpToken Address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
      + @param levels Array of Levels that determine how maturity affects rewards
-     +        NOTE: Must be sorted in ascending order of requiredMaturity,
-     +        and first level must have requiredMaturity of 0
      + @param name Name of pool to be displayed in NFT image
      + @param isPair Whether this pool's token should be displayed as a pair in NFT image
     */
@@ -390,42 +395,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     function _deposit(uint256 amount, uint256 relicId) internal {
         require(amount != 0, "depositing 0 amount");
 
-        PositionInfo storage position = positionForId[relicId];
-        updatePool(position.poolId);
-        _updateEntry(amount, relicId);
-
-        uint256 oldAmount = position.amount;
-        uint256 newAmount = oldAmount + amount;
-        position.amount = newAmount;
-        uint256 oldLevel = position.level;
-        uint256 newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
-        if (oldLevel != newLevel) {
-            pool.levels[oldLevel].balance -= oldAmount;
-            pool.levels[newLevel].balance += newAmount;
-        } else {
-            pool.levels[oldLevel].balance += amount;
-        }
-
-        uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        uint256 _pendingOath = accumulatedOath - position.rewardDebt;
-
-        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
-
-        if (_pendingOath != 0) {
-            position.rewardCredit += _pendingOath;
-        }
+        _updatePosition(amount, relicId, Kind.DEPOSIT, false);
 
         address to = ownerOf(relicId);
-        IRewarder _rewarder = rewarder[position.poolId];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, to, to, 0, position.amount);
-        }
+        PositionInfo storage position = positionForId[relicId];
+        uint256 poolId = position.poolId;
+        lpToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        lpToken[position.poolId].safeTransferFrom(msg.sender, address(this), amount);
-
-        emit Deposit(position.poolId, amount, to, relicId);
+        emit Deposit(poolId, amount, to, relicId);
     }
 
     /*
@@ -439,45 +416,13 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
+        _updatePosition(amount, relicId, Kind.WITHDRAW, false);
+
         PositionInfo storage position = positionForId[relicId];
-        updatePool(position.poolId);
+        uint256 poolId = position.poolId;
+        lpToken[poolId].safeTransfer(to, amount);
 
-        uint256 oldAmount = position.amount;
-        uint256 newAmount = oldAmount - amount;
-        position.amount = newAmount;
-        _updateEntry(amount, relicId);
-        uint256 oldLevel = position.level;
-        uint256 newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
-        if (oldLevel != newLevel) {
-            pool.levels[oldLevel].balance -= oldAmount;
-            pool.levels[newLevel].balance += newAmount;
-        } else {
-            pool.levels[oldLevel].balance -= amount;
-        }
-
-        uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        uint256 _pendingOath = accumulatedOath - position.rewardDebt;
-
-        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
-
-        if (_pendingOath != 0) {
-            position.rewardCredit += _pendingOath;
-        }
-
-        IRewarder _rewarder = rewarder[position.poolId];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
-        }
-
-        lpToken[position.poolId].safeTransfer(to, amount);
-        if (newAmount == 0) {
-            burn(relicId);
-            delete (positionForId[relicId]);
-        }
-
-        emit Withdraw(position.poolId, amount, to, relicId);
+        emit Withdraw(poolId, amount, to, relicId);
     }
 
     /*
@@ -489,39 +434,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
+        uint256 _pendingOath = _updatePosition(0, relicId, Kind.OTHER, true);
+
         PositionInfo storage position = positionForId[relicId];
-        updatePool(position.poolId);
-
-        // Effects
-        uint256 amount = position.amount;
-        uint256 oldLevel = position.level;
-        uint256 newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
-        if (oldLevel != newLevel) {
-            pool.levels[oldLevel].balance -= amount;
-            pool.levels[newLevel].balance += amount;
-        }
-
-        uint256 leveledAmount = amount * pool.levels[oldLevel].allocPoint;
-        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        uint256 rewardCredit = position.rewardCredit;
-        uint256 _pendingOath = accumulatedOath + rewardCredit - position.rewardDebt;
-        if (rewardCredit != 0) {
-            position.rewardCredit = 0;
-        }
-
-        position.rewardDebt = amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
-
-        // Interactions
-        if (_pendingOath != 0) {
-            OATH.safeTransfer(to, _pendingOath);
-        }
-
-        IRewarder _rewarder = rewarder[position.poolId];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
-        }
-
         emit Harvest(position.poolId, _pendingOath, relicId);
     }
 
@@ -536,50 +451,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
+        uint256 _pendingOath = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
+
         PositionInfo storage position = positionForId[relicId];
-        updatePool(position.poolId);
+        uint256 poolId = position.poolId;
+        lpToken[poolId].safeTransfer(to, amount);
 
-        uint256 oldAmount = position.amount;
-        uint256 newAmount = oldAmount - amount;
-        position.amount = newAmount;
-        _updateEntry(amount, relicId);
-        uint256 oldLevel = position.level;
-        uint256 newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
-        if (oldLevel != newLevel) {
-            pool.levels[oldLevel].balance -= oldAmount;
-            pool.levels[newLevel].balance += newAmount;
-        } else {
-            pool.levels[oldLevel].balance -= amount;
-        }
-
-        uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        uint256 rewardCredit = position.rewardCredit;
-        uint256 _pendingOath = accumulatedOath + rewardCredit - position.rewardDebt;
-        if (rewardCredit != 0) {
-            position.rewardCredit = 0;
-        }
-
-        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
-
-        if (_pendingOath != 0) {
-            OATH.safeTransfer(to, _pendingOath);
-        }
-
-        IRewarder _rewarder = rewarder[position.poolId];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, _pendingOath, position.amount);
-        }
-
-        lpToken[position.poolId].safeTransfer(to, amount);
-        if (position.amount == 0) {
-            burn(relicId);
-            delete (positionForId[relicId]);
-        }
-
-        emit Withdraw(position.poolId, amount, to, relicId);
-        emit Harvest(position.poolId, _pendingOath, relicId);
+        emit Withdraw(poolId, amount, to, relicId);
+        emit Harvest(poolId, _pendingOath, relicId);
     }
 
     /*
@@ -593,7 +472,8 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
 
         PositionInfo storage position = positionForId[relicId];
         uint256 amount = position.amount;
-        PoolInfo storage pool = poolInfo[position.poolId];
+        uint256 poolId = position.poolId;
+        PoolInfo storage pool = poolInfo[poolId];
 
         position.amount = 0;
         position.rewardDebt = 0;
@@ -601,42 +481,97 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         pool.levels[position.level].balance -= amount;
         _updateLevel(relicId);
 
-        IRewarder _rewarder = rewarder[position.poolId];
+        IRewarder _rewarder = rewarder[poolId];
         if (address(_rewarder) != address(0)) {
-            _rewarder.onOathReward(position.poolId, msg.sender, to, 0, 0);
+            _rewarder.onOathReward(poolId, msg.sender, to, 0, 0);
         }
 
         lpToken[position.poolId].safeTransfer(to, amount);
         burn(relicId);
         delete (positionForId[relicId]);
 
-        emit EmergencyWithdraw(position.poolId, amount, to, relicId);
+        emit EmergencyWithdraw(poolId, amount, to, relicId);
     }
 
     /// @notice Update position without performing a deposit/withdraw/harvest
     /// @param relicId The NFT ID of the position being updated
     function updatePosition(uint256 relicId) external {
         _ensureValidPosition(relicId);
+        _updatePosition(0, relicId, Kind.OTHER, false);
+    }
+
+    /*
+     + @dev Internal function called whenever a position's state needs to be modified
+     + @param amount Amount of lpToken to deposit/withdraw
+     + @param relicId The NFT ID of the position being updated
+     + @param kind Indicates whether tokens are being added to, or removed from, a pool
+     + @param _harvest Whether a harvest should be performed
+     + @return pending OATH reward for a given position owner.
+    */
+    function _updatePosition(
+        uint256 amount,
+        uint256 relicId,
+        Kind kind,
+        bool _harvest
+    ) internal returns (uint256 _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
         updatePool(position.poolId);
 
-        uint256 amount = position.amount;
+        uint256 oldAmount = position.amount;
+        uint256 newAmount;
+        if (kind == Kind.DEPOSIT) {
+            _updateEntry(amount, relicId);
+            newAmount = oldAmount + amount;
+            position.amount = newAmount;
+        } else if (kind == Kind.WITHDRAW) {
+            newAmount = oldAmount - amount;
+            position.amount = newAmount;
+            _updateEntry(amount, relicId);
+        } else {
+            newAmount = oldAmount;
+        }
+
         uint256 oldLevel = position.level;
         uint256 newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
+        uint256 poolId = position.poolId;
+        PoolInfo storage pool = poolInfo[poolId];
         if (oldLevel != newLevel) {
+            pool.levels[oldLevel].balance -= oldAmount;
+            pool.levels[newLevel].balance += newAmount;
+        } else if (kind == Kind.DEPOSIT) {
+            pool.levels[oldLevel].balance += amount;
+        } else if (kind == Kind.WITHDRAW) {
             pool.levels[oldLevel].balance -= amount;
-            pool.levels[newLevel].balance += amount;
         }
 
-        uint256 leveledAmount = amount * pool.levels[oldLevel].allocPoint;
+        uint256 leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
         uint256 accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        uint256 _pendingOath = accumulatedOath - position.rewardDebt;
-        if (_pendingOath != 0) {
+        _pendingOath = accumulatedOath - position.rewardDebt;
+
+        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
+
+        if (!_harvest && _pendingOath != 0) {
             position.rewardCredit += _pendingOath;
+        } else if (_harvest) {
+            uint256 rewardCredit = position.rewardCredit;
+            if (rewardCredit != 0) {
+                _pendingOath += rewardCredit;
+                position.rewardCredit = 0;
+            }
+            if (_pendingOath != 0) {
+                OATH.safeTransfer(msg.sender, _pendingOath);
+            }
         }
 
-        position.rewardDebt = amount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
+        IRewarder _rewarder = rewarder[poolId];
+        if (address(_rewarder) != address(0)) {
+            _rewarder.onOathReward(poolId, msg.sender, ownerOf(relicId), _pendingOath, position.amount);
+        }
+
+        if (newAmount == 0) {
+            burn(relicId);
+            delete (positionForId[relicId]);
+        }
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
