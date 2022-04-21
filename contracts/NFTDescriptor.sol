@@ -49,13 +49,10 @@ contract NFTDescriptor {
                     string(
                         abi.encodePacked(
                             generateSVGImage(
-                                tokenId,
-                                params.poolName,
-                                pendingOath,
-                                maturity,
                                 params.level,
                                 params.levels.length
                             ),
+                            generateImageText(tokenId, params.poolName, pendingOath, maturity),
                             generateTextFromToken(
                                 params.underlying,
                                 params.isPair,
@@ -128,17 +125,9 @@ contract NFTDescriptor {
     }
 
     /// @notice Generate the first part of the SVG for this NFT
-    /// @param tokenId ID of the NFT/position
-    /// @param poolName Name of pool as provided by operator
-    /// @param pendingOath Amount of OATH that can currently be harvested from this position
-    /// @param maturity Weighted average of the maturity deposits into this position
     /// @param level Current maturity level of the position
     /// @param numLevels Total number of levels in the pool
     function generateSVGImage(
-        string memory tokenId,
-        string memory poolName,
-        string memory pendingOath,
-        string memory maturity,
         uint256 level,
         uint256 numLevels
     ) internal pure returns (string memory svg) {
@@ -152,8 +141,7 @@ contract NFTDescriptor {
                 '.art { image-rendering: pixelated }',
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
-                '<image href="', IPFS, 'cup', (level == 0) ? '1' : level.toString(), '.png" height="450" width="290" class="art"/>',
-                generateImageText(tokenId, poolName, pendingOath, maturity)
+                '<image href="', IPFS, 'cup', (level == 0) ? '1' : level.toString(), '.png" height="450" width="290" class="art"/>'
             )
         );
     }
