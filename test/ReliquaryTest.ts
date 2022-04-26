@@ -13,7 +13,7 @@ let lp: Oath, oath: Oath;
 let curve = [{ requiredMaturity: 0, allocPoint: 50, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
 
 const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
-  const artifact: Artifact = await artifacts.readArtifact('Oath');
+  const artifact: Artifact = await artifacts.readArtifact('TestToken');
   const contract: Oath = <Oath>await deployContract(deployer, artifact, [tokenName, tokenSymbol]);
   return contract;
 };

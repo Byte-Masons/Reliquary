@@ -78,7 +78,7 @@ async function main() {
   await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, pairBalance);
   let id = await reliquary.tokenOfOwnerByIndex(chef.address, chef.signer.address, 0);
   console.log('NFT IDs');
-  console.log(id);
+  console.log(id.toString());
   console.log('parsed ID: ' + id.toString());
   let chefOathBalance = await oathToken.balanceOf(chef.address);
   let userOathBalance = await oathToken.balanceOf(chef.signer.address);

@@ -21,10 +21,10 @@ async function returnChef(chefAddress) {
 async function getGlobalInfo(chefAddress) {
   let chef = await returnChef(chefAddress);
   let globalInfo = {
-    totalAllocPoint: await chef.totalAllocPoint(),
+    totalAllocPoint: (await chef.totalAllocPoint()).toString(),
     chefToken: await chef.OATH(),
     nftDescriptor: await chef.nftDescriptor(),
-    emissionSetter: await chef.emissionSetter
+    emissionSetter: await chef.emissionSetter()
   };
   return globalInfo;
 }
@@ -54,9 +54,8 @@ async function viewPoolInfo(chefAddress, pid) {
     accOathPerShare: poolInfo[0].toString(),
     lastRewardTime: poolInfo[1].toString(),
     allocPoint: poolInfo[2].toString(),
-    levels: poolInfo[3].toString(),
-    name: poolInfo[4],
-    isPair: poolInfo[5]
+    name: poolInfo[3],
+    isPair: poolInfo[4]
   };
   return obj;
 }
