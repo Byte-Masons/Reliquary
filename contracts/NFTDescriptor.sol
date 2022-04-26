@@ -28,7 +28,7 @@ contract NFTDescriptor {
         string memory poolId = params.poolId.toString();
         string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
-        string memory maturity = (params.maturity / 1 days).toString();
+        uint256 maturity = (params.maturity / 1 days);
 
         string memory name = string(
             abi.encodePacked(
@@ -52,7 +52,12 @@ contract NFTDescriptor {
                                 params.level,
                                 params.levels.length
                             ),
-                            generateImageText(tokenId, params.poolName, pendingOath, maturity),
+                            generateImageText(
+                                tokenId,
+                                params.poolName,
+                                pendingOath,
+                                maturity
+                            ),
                             generateTextFromToken(
                                 params.underlying,
                                 params.isPair,
@@ -103,7 +108,7 @@ contract NFTDescriptor {
         string memory poolId,
         string memory amount,
         string memory pendingOath,
-        string memory maturity
+        uint256 maturity
     ) internal pure returns (string memory) {
         return
         string(
@@ -119,7 +124,7 @@ contract NFTDescriptor {
                 '\\nPending Oath: ',
                 pendingOath,
                 '\\nMaturity: ',
-                maturity, ' days'
+                maturity.toString(), ' day', (maturity == 1) ? '' : 's'
             )
         );
     }
@@ -155,14 +160,15 @@ contract NFTDescriptor {
         string memory tokenId,
         string memory poolName,
         string memory pendingOath,
-        string memory maturity
+        uint256 maturity
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
                 '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
                 '</text><text x="50%" y="279" class="bit" style="font-size: 12">', poolName,
                 '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity, ' DAYS</text>'
+                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
+                ' DAY', (maturity == 1) ? '' : 'S', '</text>'
             )
         );
     }

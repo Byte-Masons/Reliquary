@@ -23,6 +23,8 @@ async function getGlobalInfo(chefAddress) {
   let globalInfo = {
     totalAllocPoint: await chef.totalAllocPoint(),
     chefToken: await chef.OATH(),
+    nftDescriptor: await chef.nftDescriptor(),
+    emissionSetter: await chef.emissionSetter
   };
   return globalInfo;
 }
@@ -52,8 +54,9 @@ async function viewPoolInfo(chefAddress, pid) {
     accOathPerShare: poolInfo[0].toString(),
     lastRewardTime: poolInfo[1].toString(),
     allocPoint: poolInfo[2].toString(),
-    name: poolInfo[3],
-    isLP: poolInfo[4]
+    levels: poolInfo[3].toString(),
+    name: poolInfo[4],
+    isPair: poolInfo[5]
   };
   return obj;
 }
@@ -96,9 +99,9 @@ async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, cur
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, allocPoint, rewarder, curve, name, isLP, overwriteRewarder) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, name, isLP, overwriteRewarder) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pid, allocPoint, rewarder, curve, name, isLP, overwriteRewarder);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, name, isLP, overwriteRewarder);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -165,13 +168,6 @@ async function emergencyWithdraw(chefAddress, positionId) {
   return receipt;
 }
 
-async function curved(chefAddress, positionId) {
-  let chef = await returnChef(chefAddress);
-  let curvedValue = await chef.curved(positionId);
-  await curvedValue.wait();
-  return curvedValue;
-}
-
 async function tokenOfOwnerByIndex(chefAddress, ownerAddress, index) {
   let chef = await returnChef(chefAddress);
   let tokenId = await chef.tokenOfOwnerByIndex(ownerAddress, index);
@@ -223,6 +219,5 @@ module.exports = {
   harvest,
   withdrawAndHarvest,
   emergencyWithdraw,
-  curved,
   tokenURI
 };

@@ -92,7 +92,8 @@ async function main() {
   await network.provider.send('evm_increaseTime', [31557600 * 1.5]);
   await network.provider.send('evm_mine');
   await reliquary.updatePool(chef.address, 0, reaper.BigGas);
-  await reliquary.harvest(chef.address, id);
+  await chef.updatePosition(id);
+  //await reliquary.harvest(chef.address, id);
   //reaper.sleep(10000);
   console.log(await chef.tokenURI(id));
   const json = Buffer.from((await chef.tokenURI(id)).replace('data:application/json;base64,', ''), 'base64').toString();
