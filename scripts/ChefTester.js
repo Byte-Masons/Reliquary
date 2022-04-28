@@ -38,7 +38,7 @@ async function main() {
 
   const operatorRole = await chef.OPERATOR();
   await chef.grantRole(operatorRole, chef.signer.address);
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   await reliquary.addPool(
     chef.signer,
     chef.address,
