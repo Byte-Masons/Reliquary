@@ -1,4 +1,4 @@
-import {Oath, NFTDescriptor, Sigmoid, Constant} from './../types';
+import {TestToken, NFTDescriptor, Sigmoid, Constant} from './../types';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {network, ethers, waffle, artifacts} from 'hardhat';
 import {expect} from 'chai';
@@ -9,12 +9,12 @@ import {Signer} from 'ethers';
 const {deployChef, deployNFTDescriptor, getPoolCount, addPool, viewPoolInfo, getPositionInfo} = require('../src/Reliquary.js');
 
 let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
-let lp: Oath, oath: Oath;
+let lp: TestToken, oath: TestToken;
 let curve = [{ requiredMaturity: 0, allocPoint: 50, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
 
-const deployOath = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
+const deployTestToken = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
   const artifact: Artifact = await artifacts.readArtifact('TestToken');
-  const contract: Oath = <Oath>await deployContract(deployer, artifact, [tokenName, tokenSymbol]);
+  const contract: TestToken = <TestToken>await deployContract(deployer, artifact, [tokenName, tokenSymbol]);
   return contract;
 };
 
@@ -28,8 +28,8 @@ describe('Reliquary', function () {
   beforeEach(async function () {
     [superAdmin, alice, bob, operator] = await ethers.getSigners();
 
-    oath = await deployOath(superAdmin, 'Oath', 'OATH');
-    lp = await deployOath(superAdmin, 'LP Token', 'LPT');
+    oath = await deployTestToken(superAdmin, 'Oath', 'OATH');
+    lp = await deployTestToken(superAdmin, 'LP Token', 'LPT');
     await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
     const nftDescriptor: NFTDescriptor = await deployNFTDescriptor();
