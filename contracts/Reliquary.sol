@@ -240,14 +240,14 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint256 allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
-        Level[] memory levels,
+        Level[] calldata levels,
         string memory name,
         bool isPair
     ) external onlyRole(OPERATOR) {
         require(levels.length != 0, "empty levels array");
         require(levels[0].requiredMaturity == 0, "levels[0].requiredMaturity != 0");
-        uint256 highestMaturity;
         if (levels.length > 1) {
+            uint256 highestMaturity;
             for (uint i = 1; i < levels.length; i = _uncheckedInc(i)) {
                 require(levels[i].requiredMaturity > highestMaturity, "unsorted levels array");
                 highestMaturity = levels[i].requiredMaturity;
