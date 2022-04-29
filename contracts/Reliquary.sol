@@ -573,6 +573,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
     /// @notice Gets the base emission rate from external, upgradable contract
     function _baseEmissionsPerSecond() internal view returns (uint256 rate) {
         rate = emissionSetter.getRate();
+        require(rate <= 6e18, "maximum emission rate exceeded");
     }
 
     /*
