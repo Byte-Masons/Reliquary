@@ -138,7 +138,7 @@ contract NFTDescriptor {
                 '"}, {"trait_type": "Maturity", "value": "',
                 maturity.toString(), ' day', (maturity == 1) ? '' : 's',
                 '"}, {"trait_type": "Level", "value": ',
-                level.toString(), '}'
+                (level + 1).toString(), '}'
             )
         );
     }
