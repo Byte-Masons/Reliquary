@@ -335,9 +335,9 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
-    function massUpdatePools(uint256[] calldata pids) external {
+    function massUpdatePools(uint256[] calldata pids) external nonReentrant {
         for (uint256 i; i < pids.length; i = _uncheckedInc(i)) {
-            updatePool(pids[i]);
+            _updatePool(pids[i]);
         }
     }
 
@@ -346,7 +346,12 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint256 pid) public {
+    function updatePool(uint256 pid) external nonReentrant {
+        _updatePool(pid);
+    }
+
+    /// @dev Internal _updatePool function without nonReentrant modifier
+    function _updatePool(uint256 pid) internal {
         require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
         uint256 timestamp = block.timestamp;
@@ -511,7 +516,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         bool _harvest
     ) internal returns (uint256 poolId, uint256 _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
-        updatePool(position.poolId);
+        _updatePool(position.poolId);
 
         uint256 oldAmount = position.amount;
         uint256 newAmount;
