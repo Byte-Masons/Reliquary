@@ -35,13 +35,13 @@ contract NFTDescriptor {
                 'Relic #', tokenId, ': ', params.poolName
             )
         );
-        string memory description =
-            generateDescription(
-                params.poolName,
+        string memory description = generateDescription(params.poolName);
+        string memory attributes = generateAttributes(
                 poolId,
                 amount,
                 pendingOath,
-                maturity
+                maturity,
+                params.level
             );
         string memory image =
             Base64.encode(
@@ -86,7 +86,9 @@ contract NFTDescriptor {
                                 name,
                                 '", "description":"',
                                 description,
-                                '", "image": "',
+                                '", "attributes": [',
+                                attributes,
+                                '], "image": "',
                                 'data:image/svg+xml;base64,',
                                 image,
                                 '"}'
@@ -97,34 +99,46 @@ contract NFTDescriptor {
             );
     }
 
-    /// @notice Generate description of the liquidity position as NFT attribute
+    /// @notice Generate description of the liquidity position for NFT metadata
     /// @param poolName Name of pool as provided by operator
-    /// @param poolId ID of pool
-    /// @param amount Amount of underlying tokens deposited in this position
-    /// @param pendingOath Amount of OATH that can currently be harvested from this position
-    /// @param maturity Weighted average of the maturity deposits into this position
     function generateDescription(
-        string memory poolName,
-        string memory poolId,
-        string memory amount,
-        string memory pendingOath,
-        uint256 maturity
+        string memory poolName
     ) internal pure returns (string memory) {
         return
         string(
             abi.encodePacked(
-                'This NFT represents a position in a Reliquary ',
-                poolName,
-                ' pool. ',
-                'The owner of this NFT can modify or redeem the position.\\n',
-                '\\nPool ID: ',
+                'This NFT represents a position in a Reliquary ', poolName, ' pool. ',
+                'The owner of this NFT can modify or redeem the position, reducing its maturity accordingly.'
+            )
+        );
+    }
+
+    /// @notice Generate attributes for NFT metadata
+    /// @param poolId ID of pool
+    /// @param amount Amount of underlying tokens deposited in this position
+    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param maturity Weighted average of the maturity deposits into this position
+    /// @param level Current maturity level of the position
+    function generateAttributes(
+        string memory poolId,
+        string memory amount,
+        string memory pendingOath,
+        uint256 maturity,
+        uint256 level
+    ) internal pure returns (string memory) {
+        return
+        string(
+            abi.encodePacked(
+                '{"trait_type": "Pool ID", "value": ',
                 poolId,
-                '\\nAmount Deposited: ',
+                '}, {"trait_type": "Amount Deposited", "value": "',
                 amount,
-                '\\nPending Oath: ',
+                '"}, {"trait_type": "Pending Oath", "value": "',
                 pendingOath,
-                '\\nMaturity: ',
-                maturity.toString(), ' day', (maturity == 1) ? '' : 's'
+                '"}, {"trait_type": "Maturity", "value": "',
+                maturity.toString(), ' day', (maturity == 1) ? '' : 's',
+                '"}, {"trait_type": "Level", "value": ',
+                level.toString(), '}'
             )
         );
     }
