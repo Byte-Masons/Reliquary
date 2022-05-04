@@ -15,9 +15,9 @@ contract Rewarder is IRewarder {
     IERC20 public immutable rewardToken;
     IReliquary public immutable reliquary;
 
-    uint public depositBonus;
-    uint public minimum;
-    uint public cadence;
+    uint public immutable depositBonus;
+    uint public immutable minimum;
+    uint public immutable cadence;
 
     modifier onlyReliquary() {
         require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
@@ -53,7 +53,7 @@ contract Rewarder is IRewarder {
         address to,
         uint rewardAmount
     ) external override onlyReliquary {
-        if (rewardMultiplier > 0) {
+        if (rewardMultiplier != 0) {
             uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
             uint rewardBal = rewardToken.balanceOf(address(this));
             if (pendingReward > rewardBal) {
@@ -69,8 +69,8 @@ contract Rewarder is IRewarder {
         address to,
         uint depositAmount
     ) external override onlyReliquary {
-        if (depositAmount > minimum) {
-            _createTerms(relicId);
+        if (depositAmount > minimum && block.timestamp - startTime[relicId] >= cadence) {
+            _harvestRewards(relicId);
         }
     }
 
@@ -79,7 +79,7 @@ contract Rewarder is IRewarder {
         address to,
         uint withdrawalAmount
     ) external override onlyReliquary {
-        startTime[relicId] = 0;
+        delete startTime[relicId];
     }
 
     function harvestRewards(uint relicId) external {
@@ -90,14 +90,6 @@ contract Rewarder is IRewarder {
     function _harvestRewards(uint relicId) internal {
         startTime[relicId] = block.timestamp;
         rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
-    }
-
-    function _createTerms(uint relicId) internal {
-        if (block.timestamp - startTime[relicId] < cadence) {
-            return;
-        } else {
-            _harvestRewards(relicId);
-        }
     }
 
     function pendingTokens(
