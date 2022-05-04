@@ -12,12 +12,16 @@ contract Rewarder is IRewarder {
 
     uint private constant BASIS_POINTS = 10_000;
     uint public immutable rewardMultiplier;
+
     IERC20 public immutable rewardToken;
     IReliquary public immutable reliquary;
 
     uint public immutable depositBonus;
     uint public immutable minimum;
     uint public immutable cadence;
+
+    /// @notice Mapping from relicId to start of term
+    mapping(uint => uint) public startTime;
 
     modifier onlyReliquary() {
         require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
@@ -45,8 +49,6 @@ contract Rewarder is IRewarder {
         rewardToken = _rewardToken;
         reliquary = _reliquary;
     }
-
-    mapping(uint => uint) public startTime;
 
     function onOathReward(
         uint relicId,
