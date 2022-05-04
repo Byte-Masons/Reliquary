@@ -476,20 +476,12 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         uint poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
 
-        position.amount = 0;
-        position.rewardDebt = 0;
-        _updateEntry(amount, relicId);
         pool.levels[position.level].balance -= amount;
-        _updateLevel(relicId);
 
-        IRewarder _rewarder = rewarder[poolId];
-        if (address(_rewarder) != address(0)) {
-            _rewarder.onOathWithdraw(relicId, to, amount);
-        }
-
-        lpToken[position.poolId].safeTransfer(to, amount);
         burn(relicId);
         delete (positionForId[relicId]);
+
+        lpToken[position.poolId].safeTransfer(to, amount);
 
         emit EmergencyWithdraw(poolId, amount, to, relicId);
     }
