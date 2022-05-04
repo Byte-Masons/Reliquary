@@ -8,24 +8,24 @@ interface IRewarder {
     function onOathReward(
         uint relicId,
         address to,
-        uint256 oathAmount
+        uint oathAmount
     ) external;
 
     function onOathDeposit(
         uint relicId,
         address to,
-        uint256 depositAmount
+        uint depositAmount
     ) external;
 
     function onOathWithdraw(
         uint relicId,
         address to,
-        uint256 withdrawalAmount
+        uint withdrawalAmount
     ) external;
 
     function pendingTokens(
-        uint256 pid,
+        uint pid,
         address user,
-        uint256 oathAmount
-    ) external view returns (IERC20[] memory, uint256[] memory);
+        uint oathAmount
+    ) external view returns (IERC20[] memory, uint[] memory);
 }

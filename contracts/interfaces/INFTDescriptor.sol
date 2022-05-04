@@ -3,20 +3,20 @@ pragma solidity 0.8.13;
 
 interface INFTDescriptor {
     struct Level {
-        uint256 requiredMaturity;
-        uint256 allocPoint;
+        uint requiredMaturity;
+        uint allocPoint;
     }
 
     struct ConstructTokenURIParams {
-        uint256 tokenId;
-        uint256 poolId;
+        uint tokenId;
+        uint poolId;
         bool isPair;
         string poolName;
         address underlying;
-        uint256 amount;
-        uint256 pendingOath;
-        uint256 maturity;
-        uint256 level;
+        uint amount;
+        uint pendingOath;
+        uint maturity;
+        uint level;
         Level[] levels;
     }
 

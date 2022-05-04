@@ -12,11 +12,11 @@ interface IERC20Values {
 }
 
 contract NFTDescriptor {
-    using Strings for uint256;
+    using Strings for uint;
 
     /// @notice Constants for drawing graph
-    uint256 private constant GRAPH_WIDTH = 180;
-    uint256 private constant GRAPH_HEIGHT = 150;
+    uint private constant GRAPH_WIDTH = 180;
+    uint private constant GRAPH_HEIGHT = 150;
 
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
@@ -28,7 +28,7 @@ contract NFTDescriptor {
         string memory poolId = params.poolId.toString();
         string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
         string memory pendingOath = generateDecimalString(params.pendingOath, 18);
-        uint256 maturity = (params.maturity / 1 days);
+        uint maturity = (params.maturity / 1 days);
 
         string memory name = string(
             abi.encodePacked(
@@ -123,8 +123,8 @@ contract NFTDescriptor {
         string memory poolId,
         string memory amount,
         string memory pendingOath,
-        uint256 maturity,
-        uint256 level
+        uint maturity,
+        uint level
     ) internal pure returns (string memory) {
         return
         string(
@@ -147,8 +147,8 @@ contract NFTDescriptor {
     /// @param level Current maturity level of the position
     /// @param numLevels Total number of levels in the pool
     function generateSVGImage(
-        uint256 level,
-        uint256 numLevels
+        uint level,
+        uint numLevels
     ) internal pure returns (string memory svg) {
         level = (level + 1) * 5 / numLevels;
         svg = string(
@@ -174,7 +174,7 @@ contract NFTDescriptor {
         string memory tokenId,
         string memory poolName,
         string memory pendingOath,
-        uint256 maturity
+        uint maturity
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
@@ -195,7 +195,7 @@ contract NFTDescriptor {
     function generateTextFromToken(
         address underlying,
         bool isPair,
-        uint256 amount,
+        uint amount,
         string memory amountString
     ) internal view returns (string memory tags) {
         if (isPair) {
@@ -203,9 +203,9 @@ contract NFTDescriptor {
             IERC20Values token0 = IERC20Values(lp.token0());
             IERC20Values token1 = IERC20Values(lp.token1());
 
-            (uint256 reserves0, uint256 reserves1, ) = lp.getReserves();
-            uint256 amount0 = amount * reserves0 / lp.totalSupply();
-            uint256 amount1 = amount * reserves1 / lp.totalSupply();
+            (uint reserves0, uint reserves1, ) = lp.getReserves();
+            uint amount0 = amount * reserves0 / lp.totalSupply();
+            uint amount1 = amount * reserves1 / lp.totalSupply();
             tags = string(
                 abi.encodePacked(
                     '<text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
@@ -224,19 +224,19 @@ contract NFTDescriptor {
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
     /// @param level Current level of the position
     /// @param levels The levels for this pool, including their required maturity and alloc points
-    function generateBars(uint256 level, INFTDescriptor.Level[] memory levels) internal pure returns (string memory bars) {
-        uint256 highestAllocPoint = levels[0].allocPoint;
-        for (uint256 i = 1; i < levels.length; i++) {
+    function generateBars(uint level, INFTDescriptor.Level[] memory levels) internal pure returns (string memory bars) {
+        uint highestAllocPoint = levels[0].allocPoint;
+        for (uint i = 1; i < levels.length; i++) {
             if (levels[i].allocPoint > highestAllocPoint) {
                 highestAllocPoint = levels[i].allocPoint;
             }
         }
 
-        uint256 barWidth = GRAPH_WIDTH * 10 / levels.length;
+        uint barWidth = GRAPH_WIDTH * 10 / levels.length;
         string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
         bars = '<svg x="58" y="50" width="180" height="150">';
-        for (uint256 i; i < levels.length; i++) {
-            uint256 barHeight = levels[i].allocPoint * GRAPH_HEIGHT / highestAllocPoint;
+        for (uint i; i < levels.length; i++) {
+            uint barHeight = levels[i].allocPoint * GRAPH_HEIGHT / highestAllocPoint;
             bars = string(abi.encodePacked(
                 bars,
                 '<rect x="', (barWidth * i / 10).toString(), '.', (barWidth * i % 10).toString(),
@@ -253,23 +253,23 @@ contract NFTDescriptor {
     /// Does not work for amounts with more than 18 digits before decimal point.
     /// @param num A number
     /// @param decimals Number of decimal places
-    function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory) {
+    function generateDecimalString(uint num, uint decimals) internal pure returns (string memory) {
         if (num == 0) {
             return '0';
         }
 
-        uint256 numLength;
-        uint256 result;
+        uint numLength;
+        uint result;
         do {
             result = num / 10 ** (++numLength);
         } while (result != 0);
 
         bool lessThanOne = numLength <= decimals;
-        uint256 bufferLength;
+        uint bufferLength;
         if (lessThanOne) {
             bufferLength = decimals + 2;
         } else if (numLength > 19) {
-            uint256 difference = numLength - 19;
+            uint difference = numLength - 19;
             decimals -= difference > decimals ? decimals : difference;
             num /= 10 ** difference;
             bufferLength = 20;
@@ -281,11 +281,11 @@ contract NFTDescriptor {
         if (lessThanOne) {
             buffer[0] = '0';
             buffer[1] = '.';
-            for (uint256 i = 0; i < decimals - numLength; i++) {
+            for (uint i = 0; i < decimals - numLength; i++) {
                 buffer[i + 2] = '0';
             }
         }
-        uint256 index = bufferLength - 1;
+        uint index = bufferLength - 1;
         while (num != 0) {
             if (!lessThanOne && index == bufferLength - decimals - 1) {
                 buffer[index--] = '.';
