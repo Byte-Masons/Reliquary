@@ -20,8 +20,8 @@ contract Rewarder is IRewarder {
     uint public immutable minimum;
     uint public immutable cadence;
 
-    /// @notice Mapping from relicId to start of term
-    mapping(uint => uint) public startTime;
+    /// @notice Mapping from relicId to timestamp of last deposit
+    mapping(uint => uint) public lastDepositTime;
 
     modifier onlyReliquary() {
         require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
@@ -29,9 +29,9 @@ contract Rewarder is IRewarder {
     }
 
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
-    /// @param _depositBonus Bonus owed when enough time has elapsed since a term was created
-    /// @param _minimum The minimum deposit amount to create a term
-    /// @param _cadence The minimum elapsed time since last deposit or depositBonus claimed
+    /// @param _depositBonus Bonus owed when cadence has elapsed since lastDepositTime
+    /// @param _minimum The minimum deposit amount to be eligible for depositBonus
+    /// @param _cadence The minimum elapsed time since lastDepositTime
     /// @param _rewardToken Address of token rewards are distributed in
     /// @param _reliquary Address of Reliquary this rewarder will read state from
     constructor(
@@ -71,8 +71,11 @@ contract Rewarder is IRewarder {
         address to,
         uint depositAmount
     ) external override onlyReliquary {
-        if (depositAmount > minimum && block.timestamp - startTime[relicId] >= cadence) {
-            _harvestRewards(relicId);
+        uint _lastDepositTime = lastDepositTime[relicId];
+        uint timestamp = block.timestamp;
+        lastDepositTime[relicId] = timestamp;
+        if (depositAmount > minimum && _lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
+            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
         }
     }
 
@@ -81,16 +84,18 @@ contract Rewarder is IRewarder {
         address to,
         uint withdrawalAmount
     ) external override onlyReliquary {
-        delete startTime[relicId];
+        uint _lastDepositTime = lastDepositTime[relicId];
+        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
+            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+        }
+        delete lastDepositTime[relicId];
     }
 
-    function harvestRewards(uint relicId) external {
-        require(block.timestamp - startTime[relicId] >= cadence);
-        _harvestRewards(relicId);
-    }
-
-    function _harvestRewards(uint relicId) internal {
-        startTime[relicId] = block.timestamp;
+    /// @notice Claim depositBonus without making another deposit
+    function claimDepositBonus(uint relicId) external {
+        uint _lastDepositTime = lastDepositTime[relicId];
+        require(_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence);
+        delete lastDepositTime[relicId];
         rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
     }
 
