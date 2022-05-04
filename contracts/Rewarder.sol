@@ -85,10 +85,10 @@ contract Rewarder is IRewarder {
         uint withdrawalAmount
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
+        delete lastDepositTime[relicId];
         if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
             rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
         }
-        delete lastDepositTime[relicId];
     }
 
     /// @notice Claim depositBonus without making another deposit
