@@ -11,39 +11,42 @@ contract Rewarder is IRewarder {
     using SafeERC20 for IERC20;
 
     uint private constant BASIS_POINTS = 10_000;
-    uint private immutable rewardMultiplier;
-    IERC20 private immutable rewardToken;
-    address private immutable RELIQUARY;
+    uint public immutable rewardMultiplier;
+    IERC20 public immutable rewardToken;
+    IReliquary public immutable reliquary;
 
     uint public depositBonus;
     uint public minimum;
-    uint public vestingTime;
     uint public cadence;
 
+    modifier onlyReliquary() {
+        require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
+        _;
+    }
+
+    /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
+    /// @param _depositBonus Bonus owed when enough time has elapsed since a term was created
+    /// @param _minimum The minimum deposit amount to create a term
+    /// @param _cadence The minimum elapsed time since last deposit or depositBonus claimed
+    /// @param _rewardToken Address of token rewards are distributed in
+    /// @param _reliquary Address of Reliquary this rewarder will read state from
     constructor(
         uint _rewardMultiplier,
         uint _depositBonus,
         uint _minimum,
-        uint _vestingTime,
         uint _cadence,
         IERC20 _rewardToken,
-        address _reliquary
+        IReliquary _reliquary
     ) {
         rewardMultiplier = _rewardMultiplier;
         depositBonus = _depositBonus;
         minimum = _minimum;
-        vestingTime = _vestingTime;
         cadence = _cadence;
         rewardToken = _rewardToken;
-        RELIQUARY = _reliquary;
+        reliquary = _reliquary;
     }
 
     mapping(uint => uint) public startTime;
-
-    function harvestRewards(uint relicId) external {
-        require(block.timestamp - startTime[relicId] >= cadence);
-        _harvestRewards(relicId);
-    }
 
     function onOathReward(
         uint relicId,
@@ -67,7 +70,7 @@ contract Rewarder is IRewarder {
         uint depositAmount
     ) external override onlyReliquary {
         if (depositAmount > minimum) {
-            createTerms(relicId);
+            _createTerms(relicId);
         }
     }
 
@@ -79,17 +82,22 @@ contract Rewarder is IRewarder {
         startTime[relicId] = 0;
     }
 
-    function createTerms(uint relicId) internal {
+    function harvestRewards(uint relicId) external {
+        require(block.timestamp - startTime[relicId] >= cadence);
+        _harvestRewards(relicId);
+    }
+
+    function _harvestRewards(uint relicId) internal {
+        startTime[relicId] = block.timestamp;
+        rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+    }
+
+    function _createTerms(uint relicId) internal {
         if (block.timestamp - startTime[relicId] < cadence) {
             return;
         } else {
             _harvestRewards(relicId);
-            startTime[relicId] = block.timestamp;
         }
-    }
-
-    function _harvestRewards(uint relicId) internal {
-        rewardToken.transfer(IReliquary(RELIQUARY).ownerOf(relicId), depositBonus);
     }
 
     function pendingTokens(
@@ -101,10 +109,5 @@ contract Rewarder is IRewarder {
         rewardTokens[0] = rewardToken;
         rewardAmounts = new uint[](1);
         rewardAmounts[0] = oathAmount * rewardMultiplier / BASIS_POINTS;
-    }
-
-    modifier onlyReliquary() {
-        require(msg.sender == RELIQUARY, "Only Reliquary can call this function.");
-        _;
     }
 }
