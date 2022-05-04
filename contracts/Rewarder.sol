@@ -30,6 +30,10 @@ contract Rewarder is IRewarder {
         address _reliquary
     ) {
         rewardMultiplier = _rewardMultiplier;
+        depositBonus = _depositBonus;
+        minimum = _minimum;
+        vestingTime = _vestingTime;
+        cadence = _cadence;
         rewardToken = _rewardToken;
         RELIQUARY = _reliquary;
     }
@@ -37,8 +41,8 @@ contract Rewarder is IRewarder {
     mapping(uint => uint) public startTime;
 
     function harvestRewards(uint relicId) external {
-      require(block.timestamp - startTime[relicId] >= cadence);
-      _harvestRewards(relicId);
+        require(block.timestamp - startTime[relicId] >= cadence);
+        _harvestRewards(relicId);
     }
 
     function onOathReward(
@@ -46,46 +50,46 @@ contract Rewarder is IRewarder {
         address to,
         uint rewardAmount
     ) external override onlyReliquary {
-      if (rewardMultiplier > 0) {
-        uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
-        uint rewardBal = rewardToken.balanceOf(address(this));
-        if (pendingReward > rewardBal) {
-            rewardToken.safeTransfer(to, rewardBal);
-        } else {
-            rewardToken.safeTransfer(to, pendingReward);
+        if (rewardMultiplier > 0) {
+            uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
+            uint rewardBal = rewardToken.balanceOf(address(this));
+            if (pendingReward > rewardBal) {
+                rewardToken.safeTransfer(to, rewardBal);
+            } else {
+                rewardToken.safeTransfer(to, pendingReward);
+            }
         }
-      }
     }
 
     function onOathDeposit(
-      uint relicId,
-      address to,
-      uint depositAmount
+        uint relicId,
+        address to,
+        uint depositAmount
     ) external override onlyReliquary {
-      if (depositAmount > minimum) {
-        createTerms(relicId);
-      }
+        if (depositAmount > minimum) {
+            createTerms(relicId);
+        }
     }
 
     function onOathWithdraw(
-      uint relicId,
-      address to,
-      uint withdrawalAmount
+        uint relicId,
+        address to,
+        uint withdrawalAmount
     ) external override onlyReliquary {
-      startTime[relicId] = 0;
+        startTime[relicId] = 0;
     }
 
     function createTerms(uint relicId) internal {
-      if (block.timestamp - startTime[relicId] < cadence) {
-        return;
-      } else {
-        _harvestRewards(relicId);
-        startTime[relicId] = block.timestamp;
-      }
+        if (block.timestamp - startTime[relicId] < cadence) {
+            return;
+        } else {
+            _harvestRewards(relicId);
+            startTime[relicId] = block.timestamp;
+        }
     }
 
     function _harvestRewards(uint relicId) internal {
-      rewardToken.transfer(IReliquary(RELIQUARY).ownerOf(relicId), depositBonus);
+        rewardToken.transfer(IReliquary(RELIQUARY).ownerOf(relicId), depositBonus);
     }
 
     function pendingTokens(

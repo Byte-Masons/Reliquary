@@ -36,7 +36,7 @@ async function deployNFTDescriptor() {
 }
 
 async function deployRewarder(multiplier, token, chefAddress) {
-  let Rewarder = await ethers.getContractFactory('RewarderMock');
+  let Rewarder = await ethers.getContractFactory('Rewarder');
   let rewarder = await Rewarder.deploy(multiplier, token, chefAddress);
   return rewarder;
 }
