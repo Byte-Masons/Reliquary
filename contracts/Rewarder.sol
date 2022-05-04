@@ -97,15 +97,11 @@ contract Rewarder is IRewarder {
         address user,
         uint oathAmount
     ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
-        /*IERC20[] memory _rewardTokens = new IERC20[](1);
-        _rewardTokens[0] = (rewardToken);
-        uint[] memory _rewardAmounts = new uint[](1);
-        _rewardAmounts[0] = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
-        return (_rewardTokens, _rewardAmounts);*/
+        rewardTokens = new IERC20[](1);
+        rewardTokens[0] = rewardToken;
+        rewardAmounts = new uint[](1);
+        rewardAmounts[0] = oathAmount * rewardMultiplier / BASIS_POINTS;
     }
-
-    //TODO: add admin state updating etc.
-    //TODO: add multi reward functionality.
 
     modifier onlyReliquary() {
         require(msg.sender == RELIQUARY, "Only Reliquary can call this function.");
