@@ -6,11 +6,21 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IRewarder {
     function onOathReward(
-        uint256 pid,
-        address user,
-        address recipient,
-        uint256 oathAmount,
-        uint256 newLpAmount
+        uint relicId,
+        address to,
+        uint256 oathAmount
+    ) external;
+
+    function onOathDeposit(
+        uint relicId,
+        address to,
+        uint256 depositAmount
+    ) external;
+
+    function onOathWithdraw(
+        uint relicId,
+        address to,
+        uint256 withdrawalAmount
     ) external;
 
     function pendingTokens(

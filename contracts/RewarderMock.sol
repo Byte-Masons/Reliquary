@@ -4,55 +4,107 @@ pragma solidity 0.8.13;
 
 import "./interfaces/IRewarder.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./interfaces/IReliquary.sol";
 
-contract RewarderMock is IRewarder {
+contract Rewarder is IRewarder {
+
     using SafeERC20 for IERC20;
-    uint256 private immutable rewardMultiplier;
+
+    uint private constant BASIS_POINTS = 10_000;
+    uint private immutable rewardMultiplier;
     IERC20 private immutable rewardToken;
-    uint256 private constant REWARD_TOKEN_DIVISOR = 1e18;
-    address private immutable MASTERCHEF_V2;
+    address private immutable RELIQUARY;
+
+    uint public depositBonus;
+    uint public minimum;
+    uint public vestingTime;
+    uint public cadence;
 
     constructor(
-        uint256 _rewardMultiplier,
+        uint _rewardMultiplier,
+        uint _depositBonus,
+        uint _minimum,
+        uint _vestingTime,
+        uint _cadence,
         IERC20 _rewardToken,
-        address _MASTERCHEF_V2
+        address _reliquary
     ) {
         rewardMultiplier = _rewardMultiplier;
         rewardToken = _rewardToken;
-        MASTERCHEF_V2 = _MASTERCHEF_V2;
+        RELIQUARY = _reliquary;
+    }
+
+    mapping(uint => uint) public startTime;
+
+    function harvestRewards(uint relicId) external {
+      require(block.timestamp - startTime[relicId] >= cadence);
+      _harvestRewards(relicId);
     }
 
     function onOathReward(
-        uint256,
-        address user,
+        uint relicId,
         address to,
-        uint256 sushiAmount,
-        uint256
-    ) external override onlyMCV2 {
-        /*uint256 pendingReward = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
-        uint256 rewardBal = rewardToken.balanceOf(address(this));
+        uint rewardAmount
+    ) external override onlyReliquary {
+      if (rewardMultiplier > 0) {
+        uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
+        uint rewardBal = rewardToken.balanceOf(address(this));
         if (pendingReward > rewardBal) {
             rewardToken.safeTransfer(to, rewardBal);
         } else {
             rewardToken.safeTransfer(to, pendingReward);
-        }*/
+        }
+      }
+    }
+
+    function onOathDeposit(
+      uint relicId,
+      address to,
+      uint depositAmount
+    ) external override onlyReliquary {
+      if (depositAmount > minimum) {
+        createTerms(relicId);
+      }
+    }
+
+    function onOathWithdraw(
+      uint relicId,
+      address to,
+      uint withdrawalAmount
+    ) external override onlyReliquary {
+      startTime[relicId] = 0;
+    }
+
+    function createTerms(uint relicId) internal {
+      if (block.timestamp - startTime[relicId] < cadence) {
+        return;
+      } else {
+        _harvestRewards(relicId);
+        startTime[relicId] = block.timestamp;
+      }
+    }
+
+    function _harvestRewards(uint relicId) internal {
+      rewardToken.transfer(IReliquary(RELIQUARY).ownerOf(relicId), depositBonus);
     }
 
     function pendingTokens(
-        uint256 pid,
+        uint pid,
         address user,
-        uint256 sushiAmount
-    ) external view override returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
+        uint oathAmount
+    ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         /*IERC20[] memory _rewardTokens = new IERC20[](1);
         _rewardTokens[0] = (rewardToken);
-        uint256[] memory _rewardAmounts = new uint256[](1);
+        uint[] memory _rewardAmounts = new uint[](1);
         _rewardAmounts[0] = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
-        return (_rewardTokens, _rewardAmounts);
-        */
+        return (_rewardTokens, _rewardAmounts);*/
     }
 
-    modifier onlyMCV2() {
-        require(msg.sender == MASTERCHEF_V2, "Only MCV2 can call this function.");
+    //TODO: add admin state updating etc.
+    //TODO: add multi reward functionality.
+
+    modifier onlyReliquary() {
+        require(msg.sender == RELIQUARY, "Only Reliquary can call this function.");
         _;
     }
 }
