@@ -28,6 +28,7 @@ contract Rewarder is IRewarder {
         _;
     }
 
+    /// @notice Contructor called on deployment of this contract
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
     /// @param _depositBonus Bonus owed when cadence has elapsed since lastDepositTime
     /// @param _minimum The minimum deposit amount to be eligible for depositBonus
@@ -50,6 +51,9 @@ contract Rewarder is IRewarder {
         reliquary = _reliquary;
     }
 
+    /// @notice Called by Reliquary harvest or withdrawAndHarvest function
+    /// @param relicId The NFT ID of the position
+    /// @param rewardAmount Amount of oath reward owed for this position from the Reliquary
     function onOathReward(
         uint relicId,
         uint rewardAmount
@@ -60,6 +64,9 @@ contract Rewarder is IRewarder {
         }
     }
 
+    /// @notice Called by Reliquary _deposit function
+    /// @param relicId The NFT ID of the position
+    /// @param depositAmount Amount being deposited into the underlying Reliquary position
     function onDeposit(
         uint relicId,
         uint depositAmount
@@ -72,6 +79,9 @@ contract Rewarder is IRewarder {
         }
     }
 
+    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
+    /// @param relicId The NFT ID of the position
+    /// @param withdrawalAmount Amount being withdrawn from the underlying Reliquary position
     function onWithdraw(
         uint relicId,
         uint withdrawalAmount
@@ -82,12 +92,18 @@ contract Rewarder is IRewarder {
     }
 
     /// @notice Claim depositBonus without making another deposit
+    /// @param relicId The NFT ID of the position
     function claimDepositBonus(uint relicId) external {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
         require(_claimDepositBonus(relicId, block.timestamp, _lastDepositTime), "nothing to claim");
     }
 
+    /// @dev Internal claimDepositBonus function
+    /// @param relicId The NFT ID of the position
+    /// @param timestamp The current timestamp, passed in for gas efficiency
+    /// @param _lastDepositTime Time of last deposit into this position, before being updated
+    /// @return claimed Whether depositBonus was actually claimed
     function _claimDepositBonus(
         uint relicId,
         uint timestamp,
@@ -100,6 +116,10 @@ contract Rewarder is IRewarder {
         return false;
     }
 
+    /// @notice Returns the amount of pending tokens for a position from this rewarder
+    ///         Interface supports multiple tokens
+    /// @param relicId The NFT ID of the position
+    /// @param oathAmount Amount of oath reward owed for this position from the Reliquary
     function pendingTokens(
         uint relicId,
         uint oathAmount
