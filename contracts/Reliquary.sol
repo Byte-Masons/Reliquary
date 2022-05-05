@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "./Relic.sol";
-import "./interfaces/IEmissionSetter.sol";
-import "./interfaces/INFTDescriptor.sol";
-import "./interfaces/IRewarder.sol";
+import "./interfaces/IReliquary.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /*
@@ -24,59 +20,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + increased composability without affecting accounting logic too much, and users can
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
-contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
     bytes32 public constant OPERATOR = keccak256("OPERATOR");
-
-    /*
-     + @notice Info for each Reliquary position.
-     + `amount` LP token amount the position owner has provided
-     + `rewardDebt` OATH accumalated before the position's entry or last harvest
-     + `rewardCredit` OATH owed to the user on next harvest
-     + `entry` Used to determine the maturity of the position
-     + `poolId` ID of the pool to which this position belongs
-     + `level` Index of this position's level within the pool's array of levels
-    */
-    struct PositionInfo {
-        uint amount;
-        uint rewardDebt;
-        uint rewardCredit;
-        uint entry; // position owner's relative entry into the pool.
-        uint poolId; // ensures that a single Relic is only used for one pool.
-        uint level;
-    }
-
-    /*
-     + @notice Info of each Reliquary pool
-     + `accOathPerShare` Accumulated OATH per share of pool (1 / 1e12)
-     + `lastRewardTime` Last timestamp the accumulated OATH was updated
-     + `allocPoint` Pool's individual allocation - ratio of the total allocation
-     + `levels` Array of Levels that determine how maturity affects rewards
-     + `name` Name of pool to be displayed in NFT image
-     + `isPair` Whether this pool's token should be displayed as a pair in NFT image
-    */
-    struct PoolInfo {
-        uint accOathPerShare;
-        uint lastRewardTime;
-        uint allocPoint;
-        Level[] levels;
-        string name;
-        bool isPair;
-    }
-
-    /*
-     + @notice Level that determines how maturity is rewarded
-     + `requiredMaturity` The minimum maturity (in seconds) required to reach this Level
-     + `allocPoint` Level's individual allocation - ratio of the total allocation
-     + `balance` Total number of tokens deposited in positions at this Level
-    */
-    struct Level {
-        uint requiredMaturity;
-        uint allocPoint;
-        uint balance;
-    }
 
     /// @notice Indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
@@ -84,25 +32,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         WITHDRAW,
         OTHER
     }
-
-    /// @notice Address of OATH contract.
-    IERC20 public immutable OATH;
-    /// @notice Address of NFTDescriptor contract.
-    INFTDescriptor public nftDescriptor;
-    /// @notice Address of EmissionSetter contract.
-    IEmissionSetter public emissionSetter;
-    /// @notice Info of each Reliquary pool.
-    PoolInfo[] public poolInfo;
-    /// @notice Address of the LP token for each Reliquary pool.
-    IERC20[] public lpToken;
-    /// @notice Address of each `IRewarder` contract in Reliquary.
-    IRewarder[] public rewarder;
-
-    /// @notice Info of each staked position
-    mapping(uint => PositionInfo) public positionForId;
-
-    /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
-    uint public totalAllocPoint;
 
     uint private constant ACC_OATH_PRECISION = 1e12;
 
@@ -154,12 +83,12 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
      + @param _emissionSetter The contract address for EmissionSetter, which will return the emission rate
     */
-    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor, IEmissionSetter _emissionSetter) {
+    constructor(
+        IERC20 _oath,
+        INFTDescriptor _nftDescriptor,
+        IEmissionSetter _emissionSetter
+    ) IReliquary(_oath, _nftDescriptor, _emissionSetter) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-
-        OATH = _oath;
-        nftDescriptor = _nftDescriptor;
-        emissionSetter = _emissionSetter;
     }
 
     function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
@@ -218,11 +147,6 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
         return interfaceId == type(IERC721Enumerable).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
             super.supportsInterface(interfaceId);
-    }
-
-    /// @notice Returns the number of Reliquary pools.
-    function poolLength() public view returns (uint pools) {
-        pools = poolInfo.length;
     }
 
     /*
@@ -313,7 +237,7 @@ contract Reliquary is Relic, AccessControlEnumerable, Multicall, ReentrancyGuard
      + @param relicId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
-    function pendingOath(uint relicId) public view returns (uint pending) {
+    function pendingOath(uint relicId) public view override returns (uint pending) {
         _ensureValidPosition(relicId);
 
         PositionInfo storage position = positionForId[relicId];

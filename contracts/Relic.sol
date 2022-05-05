@@ -5,7 +5,7 @@ pragma solidity 0.8.13;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
 // The NFT
-contract Relic is IERC721, ERC721Enumerable {
+abstract contract Relic is IERC721, ERC721Enumerable {
     constructor() ERC721("Reliquary Liquidity Position", "RELIC") {}
 
     uint256 private nonce;
