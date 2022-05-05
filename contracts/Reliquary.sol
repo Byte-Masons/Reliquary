@@ -246,8 +246,8 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
 
         uint secondsSinceReward = block.timestamp - pool.lastRewardTime;
         if (secondsSinceReward != 0 && lpSupply != 0) {
-            uint oathReward = (secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint) / totalAllocPoint;
-            accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
+            uint oathReward = secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint / totalAllocPoint;
+            accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
         }
 
         uint leveledAmount = position.amount * pool.levels[position.level].allocPoint;
@@ -284,9 +284,9 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
             uint lpSupply = _poolBalance(pid);
 
             if (lpSupply != 0) {
-                uint oathReward = (secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint) /
+                uint oathReward = secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint /
                     totalAllocPoint;
-                pool.accOathPerShare += (oathReward * ACC_OATH_PRECISION) / lpSupply;
+                pool.accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
             }
 
             pool.lastRewardTime = timestamp;
@@ -402,7 +402,7 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
         pool.levels[position.level].balance -= amount;
 
         burn(relicId);
-        delete (positionForId[relicId]);
+        delete positionForId[relicId];
 
         lpToken[position.poolId].safeTransfer(to, amount);
 
