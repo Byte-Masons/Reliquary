@@ -10,12 +10,12 @@ interface IRewarder {
         uint oathAmount
     ) external;
 
-    function onOathDeposit(
+    function onDeposit(
         uint relicId,
         uint depositAmount
     ) external;
 
-    function onOathWithdraw(
+    function onWithdraw(
         uint relicId,
         uint withdrawalAmount
     ) external;

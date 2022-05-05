@@ -55,18 +55,12 @@ contract Rewarder is IRewarder {
         uint rewardAmount
     ) external override onlyReliquary {
         if (rewardMultiplier != 0) {
-            address to = reliquary.ownerOf(relicId);
             uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
-            uint rewardBal = rewardToken.balanceOf(address(this));
-            if (pendingReward > rewardBal) {
-                rewardToken.safeTransfer(to, rewardBal);
-            } else {
-                rewardToken.safeTransfer(to, pendingReward);
-            }
+            rewardToken.safeTransfer(reliquary.ownerOf(relicId), pendingReward);
         }
     }
 
-    function onOathDeposit(
+    function onDeposit(
         uint relicId,
         uint depositAmount
     ) external override onlyReliquary {
@@ -78,7 +72,7 @@ contract Rewarder is IRewarder {
         }
     }
 
-    function onOathWithdraw(
+    function onWithdraw(
         uint relicId,
         uint withdrawalAmount
     ) external override onlyReliquary {
