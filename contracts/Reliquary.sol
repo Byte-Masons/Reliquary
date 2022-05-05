@@ -494,11 +494,10 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
           if (address(_rewarder) != address(0)) {
               _rewarder.onWithdraw(relicId, amount);
           }
-        }
-
-        if (newAmount == 0) {
-            burn(relicId);
-            delete (positionForId[relicId]);
+          if (newAmount == 0) {
+              burn(relicId);
+              delete (positionForId[relicId]);
+          }
         }
     }
 
