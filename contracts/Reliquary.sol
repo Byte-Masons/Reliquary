@@ -141,8 +141,7 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
     function supportsInterface(bytes4 interfaceId) public view
     override(
         AccessControlEnumerable,
-        ERC721Enumerable,
-        IERC165
+        ERC721Enumerable
     ) returns (bool) {
         return interfaceId == type(IERC721Enumerable).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
