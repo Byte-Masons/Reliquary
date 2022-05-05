@@ -479,7 +479,7 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
                 OATH.safeTransfer(msg.sender, _pendingOath);
                 IRewarder _rewarder = rewarder[poolId];
                 if (address(_rewarder) != address(0)) {
-                    _rewarder.onOathReward(relicId, ownerOf(relicId), _pendingOath);
+                    _rewarder.onOathReward(relicId, _pendingOath);
                 }
             }
         }
@@ -487,12 +487,12 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
         if (kind == Kind.DEPOSIT) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onOathDeposit(relicId, ownerOf(relicId), amount);
+              _rewarder.onOathDeposit(relicId, amount);
           }
         } else if (kind == Kind.WITHDRAW) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onOathWithdraw(relicId, ownerOf(relicId), amount);
+              _rewarder.onOathWithdraw(relicId, amount);
           }
         }
 

@@ -52,10 +52,10 @@ contract Rewarder is IRewarder {
 
     function onOathReward(
         uint relicId,
-        address to,
         uint rewardAmount
     ) external override onlyReliquary {
         if (rewardMultiplier != 0) {
+            address to = reliquary.ownerOf(relicId);
             uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
             uint rewardBal = rewardToken.balanceOf(address(this));
             if (pendingReward > rewardBal) {
@@ -68,7 +68,6 @@ contract Rewarder is IRewarder {
 
     function onOathDeposit(
         uint relicId,
-        address to,
         uint depositAmount
     ) external override onlyReliquary {
         if (depositAmount > minimum) {
@@ -81,7 +80,6 @@ contract Rewarder is IRewarder {
 
     function onOathWithdraw(
         uint relicId,
-        address to,
         uint withdrawalAmount
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
@@ -109,8 +107,7 @@ contract Rewarder is IRewarder {
     }
 
     function pendingTokens(
-        uint pid,
-        address user,
+        uint relicId,
         uint oathAmount
     ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         rewardTokens = new IERC20[](1);
