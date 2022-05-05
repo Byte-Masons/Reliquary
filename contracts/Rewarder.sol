@@ -71,11 +71,11 @@ contract Rewarder is IRewarder {
         address to,
         uint depositAmount
     ) external override onlyReliquary {
-        uint _lastDepositTime = lastDepositTime[relicId];
-        uint timestamp = block.timestamp;
-        lastDepositTime[relicId] = timestamp;
-        if (depositAmount > minimum && _lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
-            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+        if (depositAmount > minimum) {
+            uint _lastDepositTime = lastDepositTime[relicId];
+            uint timestamp = block.timestamp;
+            lastDepositTime[relicId] = timestamp;
+            _claimDepositBonus(relicId, timestamp, _lastDepositTime);
         }
     }
 
@@ -86,17 +86,26 @@ contract Rewarder is IRewarder {
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
-        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
-            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
-        }
+        _claimDepositBonus(relicId, block.timestamp, _lastDepositTime);
     }
 
     /// @notice Claim depositBonus without making another deposit
     function claimDepositBonus(uint relicId) external {
         uint _lastDepositTime = lastDepositTime[relicId];
-        require(_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence);
         delete lastDepositTime[relicId];
-        rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+        require(_claimDepositBonus(relicId, block.timestamp, _lastDepositTime), "nothing to claim");
+    }
+
+    function _claimDepositBonus(
+        uint relicId,
+        uint timestamp,
+        uint _lastDepositTime
+    ) internal returns (bool claimed) {
+        if (_lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
+            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+            return true;
+        }
+        return false;
     }
 
     function pendingTokens(
