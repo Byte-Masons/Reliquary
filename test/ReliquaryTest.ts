@@ -12,9 +12,9 @@ let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddr
 let lp: TestToken, oath: TestToken;
 let curve = [{ requiredMaturity: 0, allocPoint: 50, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
 
-const deployTestToken = async (deployer: Signer, tokenName: string, tokenSymbol: string) => {
+const deployTestToken = async (deployer: Signer, tokenName: string, tokenSymbol: string, decimals: number) => {
   const artifact: Artifact = await artifacts.readArtifact('TestToken');
-  const contract: TestToken = <TestToken>await deployContract(deployer, artifact, [tokenName, tokenSymbol]);
+  const contract: TestToken = <TestToken>await deployContract(deployer, artifact, [tokenName, tokenSymbol, decimals]);
   return contract;
 };
 
@@ -28,8 +28,8 @@ describe('Reliquary', function () {
   beforeEach(async function () {
     [superAdmin, alice, bob, operator] = await ethers.getSigners();
 
-    oath = await deployTestToken(superAdmin, 'Oath', 'OATH');
-    lp = await deployTestToken(superAdmin, 'LP Token', 'LPT');
+    oath = await deployTestToken(superAdmin, 'Oath', 'OATH', 18);
+    lp = await deployTestToken(superAdmin, 'LP Token', 'LPT', 18);
     await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
     const nftDescriptor: NFTDescriptor = await deployNFTDescriptor();

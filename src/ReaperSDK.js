@@ -144,9 +144,9 @@ async function getPoolLength(chefAddress) {
   return length;
 }
 
-async function deployTestToken(name, symbol) {
+async function deployTestToken(name, symbol, decimals) {
   let TestERC20 = await ethers.getContractFactory("TestToken");
-  let token = await TestERC20.deploy(name, symbol);
+  let token = await TestERC20.deploy(name, symbol, decimals);
   return token;
 }
 

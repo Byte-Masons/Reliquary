@@ -4,8 +4,8 @@ const addresses = require('../Addresses.json');
 const {tokens, testnet, mainnet} = require('../Addresses.json');
 
 async function main() {
-  let oathToken = await reaper.deployTestToken('OATH', 'OATH');
-  let testToken = await reaper.deployTestToken('USDC', 'USDC');
+  let oathToken = await reaper.deployTestToken('OATH', 'OATH', 18);
+  let testToken = await reaper.deployTestToken('USDC', 'USDC', 6);
   let UniV2Factory = await ethers.getContractFactory('UniswapV2Factory');
   let uniV2Factory = await UniV2Factory.deploy('0x0000000000000000000000000000000000000000');
   await uniV2Factory.createPair(oathToken.address, testToken.address);
@@ -17,7 +17,7 @@ async function main() {
   let Constant = await ethers.getContractFactory('Constant');
   let emissionSetter = await Constant.deploy();
   let chef = await reliquary.deployChef(oathToken.address, nftDescriptor.address, emissionSetter.address);
-  let rewarder = await reliquary.deployRewarder(1000000, oathToken.address, chef.address);
+  let rewarder = await reliquary.deployRewarder(1000000, ethers.utils.parseEther('100'), ethers.utils.parseEther('1000'), 24 * 60 * 60 * 30, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);
   console.log('testOath: ' + oathToken.address);
@@ -68,7 +68,7 @@ async function main() {
 
   await oathToken.mint(chef.address, ethers.utils.parseEther('100000000000'));
   await oathToken.mint(pair.address, ethers.utils.parseEther('100.1234'));
-  await testToken.mint(pair.address, ethers.utils.parseEther('1000000'));
+  await testToken.mint(pair.address, ethers.utils.parseUnits('1000000', 6));
   //reaper.sleep(10000);
   await pair.mint(chef.signer.address);
   //reaper.sleep(10000);

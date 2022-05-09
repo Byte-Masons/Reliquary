@@ -35,9 +35,9 @@ async function deployNFTDescriptor() {
   return nftDescriptor;
 }
 
-async function deployRewarder(multiplier, token, chefAddress) {
+async function deployRewarder(multiplier, depositBonus, minimum, cadence, token, chefAddress) {
   let Rewarder = await ethers.getContractFactory('Rewarder');
-  let rewarder = await Rewarder.deploy(multiplier, token, chefAddress);
+  let rewarder = await Rewarder.deploy(multiplier, depositBonus, minimum, cadence, token, chefAddress);
   return rewarder;
 }
 
