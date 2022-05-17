@@ -33,7 +33,7 @@ abstract contract ReliquaryData is Relic {
      + `allocPoint` Pool's individual allocation - ratio of the total allocation
      + `levels` Array of Levels that determine how maturity affects rewards
      + `name` Name of pool to be displayed in NFT image
-     + `isPair` Whether this pool's token should be displayed as a pair in NFT image
+     + `displayType` Identifier for how this pool's underlying asset should be displayed in NFT image
     */
     struct PoolInfo {
         uint accOathPerShare;
@@ -41,7 +41,7 @@ abstract contract ReliquaryData is Relic {
         uint allocPoint;
         Level[] levels;
         string name;
-        bool isPair;
+        uint displayType;
     }
 
     /*

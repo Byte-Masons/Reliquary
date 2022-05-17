@@ -48,7 +48,7 @@ async function main() {
     '0x0000000000000000000000000000000000000000',
     curve,
     'USDC-OATH',
-    true
+    1
   );
   reaper.sleep(10000);
 

@@ -64,13 +64,13 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
         Level[] levels,
-        bool isPair
+        uint displayType
     );
     event LogPoolModified(
         uint indexed pid,
         uint allocPoint,
         IRewarder indexed rewarder,
-        bool isPair
+        uint displayType
     );
     event LogSetNFTDescriptor(INFTDescriptor indexed nftDescriptorAddress);
     event LogSetEmissionSetter(IEmissionSetter indexed emissionSetterAddress);
@@ -113,7 +113,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
             INFTDescriptor.ConstructTokenURIParams({
                 tokenId: tokenId,
                 poolId: position.poolId,
-                isPair: pool.isPair,
+                displayType: pool.displayType,
                 poolName: pool.name,
                 underlying: address(lpToken[position.poolId]),
                 amount: position.amount,
@@ -157,7 +157,6 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param _rewarder Address of the rewarder delegate
      + @param levels Array of Levels that determine how maturity affects rewards
      + @param name Name of pool to be displayed in NFT image
-     + @param isPair Whether this pool's token should be displayed as a pair in NFT image
     */
     function addPool(
         uint allocPoint,
@@ -165,7 +164,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         IRewarder _rewarder,
         Level[] calldata levels,
         string memory name,
-        bool isPair
+        uint displayType
     ) external onlyRole(OPERATOR) {
         require(levels.length != 0, "empty levels array");
         require(levels[0].requiredMaturity == 0, "levels[0].requiredMaturity != 0");
@@ -188,11 +187,11 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
                 accOathPerShare: 0,
                 levels: levels,
                 name: name,
-                isPair: isPair
+                displayType: displayType
             })
         );
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, isPair);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, displayType);
     }
 
     /*
@@ -203,7 +202,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param name Name of pool to be displayed in NFT image
-     + @param isPair Whether this token should be displayed as a pair in NFT image
+     + @param displayType Identifier for how this pool's underlying asset should be displayed in NFT image
      + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
     */
     function modifyPool(
@@ -211,7 +210,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint allocPoint,
         IRewarder _rewarder,
         string calldata name,
-        bool isPair,
+        uint displayType,
         bool overwriteRewarder
     ) external onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
@@ -226,9 +225,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         }
 
         pool.name = name;
-        pool.isPair = isPair;
+        pool.displayType = displayType;
 
-        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], isPair);
+        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], displayType);
     }
 
     /*
@@ -319,7 +318,6 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     */
     function deposit(uint amount, uint relicId) external nonReentrant {
         _ensureValidPosition(relicId);
-        require(ownerOf(relicId) == msg.sender, "you do not own this position");
         _deposit(amount, relicId);
     }
 

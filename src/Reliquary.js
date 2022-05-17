@@ -55,7 +55,7 @@ async function viewPoolInfo(chefAddress, pid) {
     lastRewardTime: poolInfo[1].toString(),
     allocPoint: poolInfo[2].toString(),
     name: poolInfo[3],
-    isPair: poolInfo[4]
+    displayType: poolInfo[4]
   };
   return obj;
 }
@@ -91,16 +91,16 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, isLP) {
+async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, displayType) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, isLP);
+  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, displayType);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, allocPoint, rewarder, name, isLP, overwriteRewarder) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, name, displayType, overwriteRewarder) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pid, allocPoint, rewarder, name, isLP, overwriteRewarder);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, name, displayType, overwriteRewarder);
   let receipt = await tx.wait();
   return receipt;
 }
