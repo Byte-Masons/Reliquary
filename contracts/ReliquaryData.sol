@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "../Relic.sol";
-import "../interfaces/IEmissionSetter.sol";
-import "../interfaces/INFTDescriptor.sol";
-import "../interfaces/IRewarder.sol";
+import "./Relic.sol";
+import "./interfaces/IEmissionSetter.sol";
+import "./interfaces/INFTDescriptor.sol";
+import "./interfaces/IRewarder.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract IReliquary is Relic {
+abstract contract ReliquaryData is Relic {
     /*
      + @notice Info for each Reliquary position.
      + `amount` LP token amount the position owner has provided

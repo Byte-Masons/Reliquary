@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "./interfaces/IReliquary.sol";
+import "./ReliquaryData.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + increased composability without affecting accounting logic too much, and users can
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
-contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
@@ -87,7 +87,7 @@ contract Reliquary is IReliquary, AccessControlEnumerable, Multicall, Reentrancy
         IERC20 _oath,
         INFTDescriptor _nftDescriptor,
         IEmissionSetter _emissionSetter
-    ) IReliquary(_oath, _nftDescriptor, _emissionSetter) {
+    ) ReliquaryData(_oath, _nftDescriptor, _emissionSetter) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 

@@ -4,7 +4,7 @@ pragma solidity 0.8.13;
 
 import "./interfaces/IRewarder.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IReliquary.sol";
+import "./ReliquaryData.sol";
 
 contract Rewarder is IRewarder {
 
@@ -14,7 +14,7 @@ contract Rewarder is IRewarder {
     uint public immutable rewardMultiplier;
 
     IERC20 public immutable rewardToken;
-    IReliquary public immutable reliquary;
+    ReliquaryData public immutable reliquary;
 
     uint public immutable depositBonus;
     uint public immutable minimum;
@@ -41,7 +41,7 @@ contract Rewarder is IRewarder {
         uint _minimum,
         uint _cadence,
         IERC20 _rewardToken,
-        IReliquary _reliquary
+        ReliquaryData _reliquary
     ) {
         rewardMultiplier = _rewardMultiplier;
         depositBonus = _depositBonus;
