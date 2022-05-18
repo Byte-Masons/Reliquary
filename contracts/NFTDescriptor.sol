@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
+import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/INFTDescriptor.sol';
@@ -10,7 +11,7 @@ interface IERC20Values {
     function decimals() external view returns (uint8);
 }
 
-contract NFTDescriptor {
+contract NFTDescriptor is INFTDescriptor, Ownable {
     using Strings for uint;
 
     /// @notice Constants for drawing graph
@@ -20,27 +21,34 @@ contract NFTDescriptor {
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
+    ReliquaryData public reliquary;
+
+    function setReliquary(ReliquaryData _reliquary) external onlyOwner {
+        reliquary = _reliquary;
+    }
+
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
-    /// @param params Struct containing all parameters for this function (avoids stack too deep error)
-    function constructTokenURI(INFTDescriptor.ConstructTokenURIParams memory params) public view returns (string memory) {
-        string memory tokenId = params.tokenId.toString();
-        string memory poolId = params.poolId.toString();
-        string memory amount = generateDecimalString(params.amount, IERC20Values(params.underlying).decimals());
-        string memory pendingOath = generateDecimalString(params.pendingOath, 18);
-        uint maturity = (params.maturity / 1 days);
+    function constructTokenURI(uint relicId, ReliquaryData.Level[] memory levels) public view override returns (string memory) {
+        (uint _amount, uint _rewardDebt, uint _rewardCredit, uint _entry, uint _poolId, uint _level) = reliquary.positionForId(relicId);
+        (uint _accOathPerShare, uint _lastRewardTime, uint _allocPoint, string memory _name) = reliquary.poolInfo(_poolId);
+        string memory tokenId = relicId.toString();
+        string memory poolId = _poolId.toString();
+        string memory amount = generateDecimalString(_amount, IERC20Values(address(reliquary.lpToken(_poolId))).decimals());
+        string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
+        uint maturity = ((block.timestamp - _entry) / 1 days);
 
         string memory name = string(
             abi.encodePacked(
-                'Relic #', tokenId, ': ', params.poolName
+                'Relic #', tokenId, ': ', _name
             )
         );
-        string memory description = generateDescription(params.poolName);
+        string memory description = generateDescription(_name);
         string memory attributes = generateAttributes(
                 poolId,
                 amount,
                 pendingOath,
                 maturity,
-                params.level
+                _level
             );
         string memory image =
             Base64.encode(
@@ -48,24 +56,24 @@ contract NFTDescriptor {
                     string(
                         abi.encodePacked(
                             generateSVGImage(
-                                params.level,
-                                params.levels.length
+                                _level,
+                                levels.length
                             ),
                             generateImageText(
                                 tokenId,
-                                params.poolName,
+                                _name,
                                 pendingOath,
                                 maturity
                             ),
                             generateTextFromToken(
-                                params.underlying,
-                                params.amount,
+                                address(reliquary.lpToken(_poolId)),
+                                _amount,
                                 amount
                             ),
                             '</text>',
                             generateBars(
-                                params.level,
-                                params.levels
+                                _level,
+                                levels
                             ),
                             '</svg></svg>'
                         )
@@ -204,7 +212,7 @@ contract NFTDescriptor {
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
     /// @param level Current level of the position
     /// @param levels The levels for this pool, including their required maturity and alloc points
-    function generateBars(uint level, INFTDescriptor.Level[] memory levels) internal pure returns (string memory bars) {
+    function generateBars(uint level, ReliquaryData.Level[] memory levels) internal pure returns (string memory bars) {
         uint highestAllocPoint = levels[0].allocPoint;
         for (uint i = 1; i < levels.length; i++) {
             if (levels[i].allocPoint > highestAllocPoint) {

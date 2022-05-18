@@ -33,9 +33,10 @@ describe('Reliquary', function () {
     lp = await deployTestToken(superAdmin, 'LP Token', 'LPT', 18);
     await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
-    nftDescriptor = await deployNFTDescriptor();
     const emissionSetter: Constant = await deployConstantEmissionSetter(superAdmin);
     this.chef = await deployChef(oath.address, emissionSetter.address);
+    nftDescriptor = await deployNFTDescriptor();
+    await nftDescriptor.setReliquary(this.chef.address);
 
     const operatorRole: String = await this.chef.OPERATOR();
     await this.chef.grantRole(operatorRole, operator.address);

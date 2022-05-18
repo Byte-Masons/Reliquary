@@ -93,33 +93,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
 
         PositionInfo storage position = positionForId[tokenId];
         uint pid = position.poolId;
-        PoolInfo storage pool = poolInfo[pid];
-        uint maturity = block.timestamp - position.entry;
-
-        uint length = pool.levels.length;
-        INFTDescriptor.Level[] memory levels = new INFTDescriptor.Level[](length);
-        for (uint i; i < length; ++i) {
-            levels[i] = (
-                INFTDescriptor.Level({
-                    requiredMaturity: pool.levels[i].requiredMaturity,
-                    allocPoint: pool.levels[i].allocPoint
-                })
-            );
-        }
-
-        return nftDescriptor[pid].constructTokenURI(
-            INFTDescriptor.ConstructTokenURIParams({
-                tokenId: tokenId,
-                poolId: position.poolId,
-                poolName: pool.name,
-                underlying: address(lpToken[position.poolId]),
-                amount: position.amount,
-                pendingOath: pendingOath(tokenId),
-                maturity: maturity,
-                level: position.level,
-                levels: levels
-            })
-        );
+        return nftDescriptor[pid].constructTokenURI(tokenId, poolInfo[pid].levels);
     }
 
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
@@ -227,7 +201,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param relicId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
-    function pendingOath(uint relicId) public view override returns (uint pending) {
+    function pendingOath(uint relicId) external view override returns (uint pending) {
         _ensureValidPosition(relicId);
 
         PositionInfo storage position = positionForId[relicId];

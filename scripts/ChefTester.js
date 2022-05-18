@@ -13,11 +13,12 @@ async function main() {
   let pairAddress = await uniV2Factory.getPair(oathToken.address, testToken.address);
   let Pair = await ethers.getContractFactory('UniswapV2Pair');
   let pair = await Pair.attach(pairAddress);
-  let NFTDescriptor = await ethers.getContractFactory('NFTDescriptorPair');
-  let nftDescriptor = await NFTDescriptor.deploy();
   let Constant = await ethers.getContractFactory('Constant');
   let emissionSetter = await Constant.deploy();
   let chef = await reliquary.deployChef(oathToken.address, emissionSetter.address);
+  let NFTDescriptor = await ethers.getContractFactory('NFTDescriptorPair');
+  let nftDescriptor = await NFTDescriptor.deploy();
+  await nftDescriptor.setReliquary(chef.address);
   let rewarder = await reliquary.deployRewarder(1000000, ethers.utils.parseEther('100'), ethers.utils.parseEther('1000'), 24 * 60 * 60 * 30, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);

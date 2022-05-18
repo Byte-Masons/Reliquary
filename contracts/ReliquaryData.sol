@@ -94,5 +94,5 @@ abstract contract ReliquaryData is Relic {
      + @param relicId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
-    function pendingOath(uint relicId) public view virtual returns (uint pending);
+    function pendingOath(uint relicId) external view virtual returns (uint pending);
 }
