@@ -2,7 +2,6 @@
 pragma solidity 0.8.13;
 
 import '@openzeppelin/contracts/utils/Strings.sol';
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/INFTDescriptor.sol';
 
@@ -60,7 +59,6 @@ contract NFTDescriptor {
                             ),
                             generateTextFromToken(
                                 params.underlying,
-                                params.displayType,
                                 params.amount,
                                 amount
                             ),
@@ -189,36 +187,18 @@ contract NFTDescriptor {
 
     /// @notice Generate further text labels specific to the underlying token
     /// @param underlying Address of underlying token for this position
-    /// @param displayType Identifier for how this pool's underlying asset should be displayed
     /// @param amount Amount of underlying tokens deposited in this position
     /// @param amountString amount as string
     function generateTextFromToken(
         address underlying,
-        uint displayType,
         uint amount,
         string memory amountString
-    ) internal view returns (string memory tags) {
-        if (displayType == 1) {
-            IUniswapV2Pair lp = IUniswapV2Pair(underlying);
-            IERC20Values token0 = IERC20Values(lp.token0());
-            IERC20Values token1 = IERC20Values(lp.token1());
-
-            (uint reserves0, uint reserves1, ) = lp.getReserves();
-            uint amount0 = amount * reserves0 / lp.totalSupply();
-            uint amount1 = amount * reserves1 / lp.totalSupply();
-            tags = string(
-                abi.encodePacked(
-                    '<text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
-                    '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
-                )
-            );
-        } else {
-            tags = string(
-                abi.encodePacked(
-                    '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
-                )
-            );
-        }
+    ) internal view virtual returns (string memory tags) {
+        tags = string(
+            abi.encodePacked(
+                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
+            )
+        );
     }
 
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement

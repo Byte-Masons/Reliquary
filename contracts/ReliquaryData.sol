@@ -33,7 +33,6 @@ abstract contract ReliquaryData is Relic {
      + `allocPoint` Pool's individual allocation - ratio of the total allocation
      + `levels` Array of Levels that determine how maturity affects rewards
      + `name` Name of pool to be displayed in NFT image
-     + `displayType` Identifier for how this pool's underlying asset should be displayed in NFT image
     */
     struct PoolInfo {
         uint accOathPerShare;
@@ -41,7 +40,6 @@ abstract contract ReliquaryData is Relic {
         uint allocPoint;
         Level[] levels;
         string name;
-        uint displayType;
     }
 
     /*
@@ -58,15 +56,15 @@ abstract contract ReliquaryData is Relic {
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
-    /// @notice Address of NFTDescriptor contract.
-    INFTDescriptor public nftDescriptor;
+    /// @notice Address of each NFTDescriptor contract.
+    INFTDescriptor[] public nftDescriptor;
     /// @notice Address of EmissionSetter contract.
     IEmissionSetter public emissionSetter;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] public poolInfo;
     /// @notice Address of the LP token for each Reliquary pool.
     IERC20[] public lpToken;
-    /// @notice Address of each `IRewarder` contract in Reliquary.
+    /// @notice Address of each `IRewarder` contract.
     IRewarder[] public rewarder;
 
     /// @notice Info of each staked position
@@ -81,9 +79,8 @@ abstract contract ReliquaryData is Relic {
      + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
      + @param _emissionSetter The contract address for EmissionSetter, which will return the emission rate
     */
-    constructor(IERC20 _oath, INFTDescriptor _nftDescriptor, IEmissionSetter _emissionSetter) {
+    constructor(IERC20 _oath, IEmissionSetter _emissionSetter) {
         OATH = _oath;
-        nftDescriptor = _nftDescriptor;
         emissionSetter = _emissionSetter;
     }
 

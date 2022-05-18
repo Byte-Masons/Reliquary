@@ -64,15 +64,14 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
         Level[] levels,
-        uint displayType
+        INFTDescriptor nftDescriptor
     );
     event LogPoolModified(
         uint indexed pid,
         uint allocPoint,
         IRewarder indexed rewarder,
-        uint displayType
+        INFTDescriptor nftDescriptor
     );
-    event LogSetNFTDescriptor(INFTDescriptor indexed nftDescriptorAddress);
     event LogSetEmissionSetter(IEmissionSetter indexed emissionSetterAddress);
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
     event LevelChanged(uint indexed relicId, uint newLevel);
@@ -80,14 +79,12 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     /*
      + @notice Constructs and initializes the contract
      + @param _oath The OATH token contract address.
-     + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
      + @param _emissionSetter The contract address for EmissionSetter, which will return the emission rate
     */
     constructor(
         IERC20 _oath,
-        INFTDescriptor _nftDescriptor,
         IEmissionSetter _emissionSetter
-    ) ReliquaryData(_oath, _nftDescriptor, _emissionSetter) {
+    ) ReliquaryData(_oath, _emissionSetter) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -95,7 +92,8 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         require(_exists(tokenId), "token does not exist");
 
         PositionInfo storage position = positionForId[tokenId];
-        PoolInfo storage pool = poolInfo[position.poolId];
+        uint pid = position.poolId;
+        PoolInfo storage pool = poolInfo[pid];
         uint maturity = block.timestamp - position.entry;
 
         uint length = pool.levels.length;
@@ -109,11 +107,10 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
             );
         }
 
-        return nftDescriptor.constructTokenURI(
+        return nftDescriptor[pid].constructTokenURI(
             INFTDescriptor.ConstructTokenURIParams({
                 tokenId: tokenId,
                 poolId: position.poolId,
-                displayType: pool.displayType,
                 poolName: pool.name,
                 underlying: address(lpToken[position.poolId]),
                 amount: position.amount,
@@ -123,12 +120,6 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
                 levels: levels
             })
         );
-    }
-
-    /// @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
-    function setNFTDescriptor(INFTDescriptor _nftDescriptor) external onlyRole(OPERATOR) {
-        nftDescriptor = _nftDescriptor;
-        emit LogSetNFTDescriptor(_nftDescriptor);
     }
 
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
@@ -157,6 +148,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param _rewarder Address of the rewarder delegate
      + @param levels Array of Levels that determine how maturity affects rewards
      + @param name Name of pool to be displayed in NFT image
+     + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
     */
     function addPool(
         uint allocPoint,
@@ -164,7 +156,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         IRewarder _rewarder,
         Level[] calldata levels,
         string memory name,
-        uint displayType
+        INFTDescriptor _nftDescriptor
     ) external onlyRole(OPERATOR) {
         require(levels.length != 0, "empty levels array");
         require(levels[0].requiredMaturity == 0, "levels[0].requiredMaturity != 0");
@@ -179,6 +171,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         totalAllocPoint += allocPoint;
         lpToken.push(_lpToken);
         rewarder.push(_rewarder);
+        nftDescriptor.push(_nftDescriptor);
 
         poolInfo.push(
             PoolInfo({
@@ -186,12 +179,11 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
                 lastRewardTime: block.timestamp,
                 accOathPerShare: 0,
                 levels: levels,
-                name: name,
-                displayType: displayType
+                name: name
             })
         );
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, displayType);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, _nftDescriptor);
     }
 
     /*
@@ -202,15 +194,15 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param name Name of pool to be displayed in NFT image
-     + @param displayType Identifier for how this pool's underlying asset should be displayed in NFT image
      + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
+     + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
     */
     function modifyPool(
         uint pid,
         uint allocPoint,
         IRewarder _rewarder,
         string calldata name,
-        uint displayType,
+        INFTDescriptor _nftDescriptor,
         bool overwriteRewarder
     ) external onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
@@ -225,9 +217,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         }
 
         pool.name = name;
-        pool.displayType = displayType;
+        nftDescriptor[pid] = _nftDescriptor;
 
-        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], displayType);
+        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor);
     }
 
     /*

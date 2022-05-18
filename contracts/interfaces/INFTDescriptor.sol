@@ -10,7 +10,6 @@ interface INFTDescriptor {
     struct ConstructTokenURIParams {
         uint tokenId;
         uint poolId;
-        uint displayType;
         string poolName;
         address underlying;
         uint amount;

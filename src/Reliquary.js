@@ -6,9 +6,9 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(oathAddress, nftDescriptorAddress, emissionSetterAddress) {
+async function deployChef(oathAddress, emissionSetterAddress) {
   let Reliquary = await ethers.getContractFactory('Reliquary');
-  let chef = await Reliquary.deploy(oathAddress, nftDescriptorAddress, emissionSetterAddress);
+  let chef = await Reliquary.deploy(oathAddress, emissionSetterAddress);
   return chef;
 }
 
@@ -23,7 +23,6 @@ async function getGlobalInfo(chefAddress) {
   let globalInfo = {
     totalAllocPoint: (await chef.totalAllocPoint()).toString(),
     chefToken: await chef.OATH(),
-    nftDescriptor: await chef.nftDescriptor(),
     emissionSetter: await chef.emissionSetter()
   };
   return globalInfo;
@@ -55,7 +54,6 @@ async function viewPoolInfo(chefAddress, pid) {
     lastRewardTime: poolInfo[1].toString(),
     allocPoint: poolInfo[2].toString(),
     name: poolInfo[3],
-    displayType: poolInfo[4]
   };
   return obj;
 }
@@ -91,16 +89,16 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, displayType) {
+async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, nftDescriptor) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, displayType);
+  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, nftDescriptor);
   let receipt = await tx.wait();
   return receipt;
 }
 
-async function modifyPool(chefAddress, pid, allocPoint, rewarder, name, displayType, overwriteRewarder) {
+async function modifyPool(chefAddress, pid, allocPoint, rewarder, name, nftDescriptor, overwriteRewarder) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.modifyPool(pid, allocPoint, rewarder, name, displayType, overwriteRewarder);
+  let tx = await chef.modifyPool(pid, allocPoint, rewarder, name, nftDescriptor, overwriteRewarder);
   let receipt = await tx.wait();
   return receipt;
 }
