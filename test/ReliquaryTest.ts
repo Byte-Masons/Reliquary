@@ -1,4 +1,4 @@
-import {TestToken, NFTDescriptor, Sigmoid, Constant} from './../types';
+import {TestToken, NFTDescriptor, Constant} from './../types';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {network, ethers, waffle, artifacts} from 'hardhat';
 import {expect} from 'chai';
