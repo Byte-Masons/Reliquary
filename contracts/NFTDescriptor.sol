@@ -29,13 +29,13 @@ contract NFTDescriptor is INFTDescriptor, Ownable {
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
     function constructTokenURI(uint relicId, ReliquaryData.Level[] memory levels) public view override returns (string memory) {
-        (uint _amount, uint _rewardDebt, uint _rewardCredit, uint _entry, uint _poolId, uint _level) = reliquary.positionForId(relicId);
-        (uint _accOathPerShare, uint _lastRewardTime, uint _allocPoint, string memory _name) = reliquary.poolInfo(_poolId);
+        (uint _amount, , , uint _entry, uint _poolId, uint _level) = reliquary.positionForId(relicId);
+        ( , , , string memory _name) = reliquary.poolInfo(_poolId);
         string memory tokenId = relicId.toString();
         string memory poolId = _poolId.toString();
         string memory amount = generateDecimalString(_amount, IERC20Values(address(reliquary.lpToken(_poolId))).decimals());
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
-        uint maturity = ((block.timestamp - _entry) / 1 days);
+        uint maturity = (block.timestamp - _entry) / 1 days;
 
         string memory name = string(
             abi.encodePacked(
