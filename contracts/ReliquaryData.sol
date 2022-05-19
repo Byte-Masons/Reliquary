@@ -95,4 +95,8 @@ abstract contract ReliquaryData is Relic {
      + @return pending OATH reward for a given position owner.
     */
     function pendingOath(uint relicId) external view virtual returns (uint pending);
+
+    function levels(uint pid) external view returns (Level[] memory levels) {
+        levels = poolInfo[pid].levels;
+    }
 }

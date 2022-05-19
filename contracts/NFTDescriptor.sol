@@ -28,9 +28,10 @@ contract NFTDescriptor is INFTDescriptor, Ownable {
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
-    function constructTokenURI(uint relicId, ReliquaryData.Level[] memory levels) public view override returns (string memory) {
+    function constructTokenURI(uint relicId) external view override returns (string memory) {
         (uint _amount, , , uint _entry, uint _poolId, uint _level) = reliquary.positionForId(relicId);
         ( , , , string memory _name) = reliquary.poolInfo(_poolId);
+        ReliquaryData.Level[] memory levels = reliquary.levels(_poolId);
         string memory tokenId = relicId.toString();
         string memory poolId = _poolId.toString();
         string memory amount = generateDecimalString(_amount, IERC20Values(address(reliquary.lpToken(_poolId))).decimals());

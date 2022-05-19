@@ -91,9 +91,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "token does not exist");
 
-        PositionInfo storage position = positionForId[tokenId];
-        uint pid = position.poolId;
-        return nftDescriptor[pid].constructTokenURI(tokenId, poolInfo[pid].levels);
+        return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
     }
 
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
