@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/INFTDescriptor.sol';
@@ -11,7 +10,7 @@ interface IERC20Values {
     function decimals() external view returns (uint8);
 }
 
-contract NFTDescriptor is INFTDescriptor, Ownable {
+contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
 
     /// @notice Constants for drawing graph
@@ -21,9 +20,9 @@ contract NFTDescriptor is INFTDescriptor, Ownable {
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
-    ReliquaryData public reliquary;
+    ReliquaryData public immutable reliquary;
 
-    function setReliquary(ReliquaryData _reliquary) external onlyOwner {
+    constructor(ReliquaryData _reliquary) {
         reliquary = _reliquary;
     }
 
@@ -34,7 +33,8 @@ contract NFTDescriptor is INFTDescriptor, Ownable {
         ReliquaryData.Level[] memory levels = reliquary.levels(_poolId);
         string memory tokenId = relicId.toString();
         string memory poolId = _poolId.toString();
-        string memory amount = generateDecimalString(_amount, IERC20Values(address(reliquary.lpToken(_poolId))).decimals());
+        address underlying = address(reliquary.lpToken(_poolId));
+        string memory amount = generateDecimalString(_amount, IERC20Values(underlying).decimals());
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
         uint maturity = (block.timestamp - _entry) / 1 days;
 
@@ -67,7 +67,7 @@ contract NFTDescriptor is INFTDescriptor, Ownable {
                                 maturity
                             ),
                             generateTextFromToken(
-                                address(reliquary.lpToken(_poolId)),
+                                underlying,
                                 _amount,
                                 amount
                             ),

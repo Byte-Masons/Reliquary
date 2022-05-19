@@ -111,9 +111,10 @@ contract Rewarder is IRewarder {
     ) internal returns (bool claimed) {
         if (_lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
             rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
-            return true;
+            claimed = true;
+        } else {
+            claimed = false;
         }
-        return false;
     }
 
     /// @notice Returns the amount of pending tokens for a position from this rewarder

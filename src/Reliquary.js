@@ -28,9 +28,9 @@ async function getGlobalInfo(chefAddress) {
   return globalInfo;
 }
 
-async function deployNFTDescriptor() {
+async function deployNFTDescriptor(chefAddress) {
   let NFTDescriptor = await ethers.getContractFactory('NFTDescriptor');
-  let nftDescriptor = await NFTDescriptor.deploy();
+  let nftDescriptor = await NFTDescriptor.deploy(chefAddress);
   return nftDescriptor;
 }
 
