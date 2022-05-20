@@ -474,7 +474,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             pool.levelBalance[oldLevel] -= amount;
         }
 
-        uint _pendingOath = _calcPendingOath(oldAmount, oldLevel, pool, position.rewardDebt);
+        _pendingOath = _calcPendingOath(oldAmount, oldLevel, pool, position.rewardDebt);
 
         position.rewardDebt = newAmount * pool.levelAllocPoint[newLevel] * pool.accOathPerShare / ACC_OATH_PRECISION;
 
