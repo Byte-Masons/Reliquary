@@ -23,15 +23,8 @@ async function main() {
   console.log('testUSDC: ' + testToken.address);
   console.log('testOath: ' + oathToken.address);
   console.log('testLP: ' + pair.address);
-  let curve = [
-    { requiredMaturity: 0, allocPoint: 25, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60, allocPoint: 50, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60 * 2, allocPoint: 75, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60 * 3, allocPoint: 90, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60 * 5, allocPoint: 100, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60 * 7, allocPoint: 110, balance: 0 },
-    { requiredMaturity: 24 * 60 * 60 * 14, allocPoint: 120, balance: 0 }
-  ];
+  let requiredMaturity = [0, 86400, 86400 * 2, 86400 * 3, 86400 * 5, 86400 * 7, 86400 * 14];
+  let allocPoints = [25, 50, 75, 90, 100, 110, 120];
 
   //reaper.sleep(10000);
   let globalInfo = await reliquary.getGlobalInfo(chef.address);
@@ -47,7 +40,8 @@ async function main() {
     500,
     pair.address,
     '0x0000000000000000000000000000000000000000',
-    curve,
+    requiredMaturity,
+    allocPoints,
     'USDC-OATH',
     nftDescriptor.address
   );

@@ -10,7 +10,8 @@ const {deployChef, deployNFTDescriptor, getPoolCount, addPool, viewPoolInfo, get
 
 let superAdmin: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, operator: SignerWithAddress;
 let lp: TestToken, oath: TestToken;
-let curve = [{ requiredMaturity: 0, allocPoint: 50, balance: 0 }, { requiredMaturity: 24 * 60 * 60 * 180, allocPoint: 100, balance: 0 }];
+let requiredMaturity = [0, 86400 * 180];
+let allocPoint = [50, 100];
 let nftDescriptor: NFTDescriptor;
 
 const deployTestToken = async (deployer: Signer, tokenName: string, tokenSymbol: string, decimals: number) => {
@@ -52,7 +53,8 @@ describe('Reliquary', function () {
         100,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+        allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -68,7 +70,8 @@ describe('Reliquary', function () {
         100,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -100,7 +103,8 @@ describe('Reliquary', function () {
         1,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -125,7 +129,8 @@ describe('Reliquary', function () {
         1,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -141,10 +146,10 @@ describe('Reliquary', function () {
   describe('AddPool', function () {
     it('Should add pool with reward token multiplier', async function () {
       await expect(
-        this.chef.connect(operator).addPool(10, lp.address, ethers.constants.AddressZero, curve, 'LP Token', nftDescriptor.address),
+        this.chef.connect(operator).addPool(10, lp.address, ethers.constants.AddressZero, requiredMaturity, allocPoint, 'LP Token', nftDescriptor.address),
       )
         .to.emit(this.chef, 'LogPoolAddition')
-        //.withArgs(0, 10, lp.address, ethers.constants.AddressZero, curve, nftDescriptor.address);
+        //.withArgs(0, 10, lp.address, ethers.constants.AddressZero, requiredMaturity, allocPoint, nftDescriptor.address);
     });
   });
 
@@ -156,7 +161,8 @@ describe('Reliquary', function () {
         1,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -184,7 +190,8 @@ describe('Reliquary', function () {
         10,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -207,7 +214,8 @@ describe('Reliquary', function () {
         10,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -228,7 +236,8 @@ describe('Reliquary', function () {
         1,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );
@@ -273,7 +282,8 @@ describe('Reliquary', function () {
         10,
         lp.address,
         ethers.constants.AddressZero,
-        curve,
+        requiredMaturity,
+	allocPoint,
         'LP Token',
         nftDescriptor.address,
       );

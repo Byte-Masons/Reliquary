@@ -89,9 +89,9 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, curve, name, nftDescriptor) {
+async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, curve, name, nftDescriptor);
+  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor);
   let receipt = await tx.wait();
   return receipt;
 }

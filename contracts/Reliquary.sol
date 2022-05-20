@@ -63,7 +63,6 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint allocPoint,
         IERC20 indexed lpToken,
         IRewarder indexed rewarder,
-        Level[] levels,
         INFTDescriptor nftDescriptor
     );
     event LogPoolModified(
@@ -126,17 +125,19 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint allocPoint,
         IERC20 _lpToken,
         IRewarder _rewarder,
-        Level[] calldata levels,
+        uint[] calldata requiredMaturity,
+        uint[] calldata allocPoints,
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external onlyRole(OPERATOR) {
-        require(levels.length != 0, "empty levels array");
-        require(levels[0].requiredMaturity == 0, "levels[0].requiredMaturity != 0");
-        if (levels.length > 1) {
+        require(requiredMaturity.length != 0, "empty levels array");
+        require(requiredMaturity.length == allocPoints.length, "array length mismatch");
+        require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");
+        if (requiredMaturity.length > 1) {
             uint highestMaturity;
-            for (uint i = 1; i < levels.length; i = _uncheckedInc(i)) {
-                require(levels[i].requiredMaturity > highestMaturity, "unsorted levels array");
-                highestMaturity = levels[i].requiredMaturity;
+            for (uint i = 1; i < requiredMaturity.length; i = _uncheckedInc(i)) {
+                require(requiredMaturity[i] > highestMaturity, "unsorted levels array");
+                highestMaturity = requiredMaturity[i];
             }
         }
 
@@ -150,12 +151,14 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
                 allocPoint: allocPoint,
                 lastRewardTime: block.timestamp,
                 accOathPerShare: 0,
-                levels: levels,
+                levelRequiredMaturity: requiredMaturity,
+                levelAllocPoint: allocPoints,
+                levelBalance: new uint[](allocPoints.length),
                 name: name
             })
         );
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, levels, _nftDescriptor);
+        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, _nftDescriptor);
     }
 
     /*
@@ -213,7 +216,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
             accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
         }
 
-        uint leveledAmount = position.amount * pool.levels[position.level].allocPoint;
+        uint leveledAmount = position.amount * pool.levelAllocPoint[position.level];
         pending = leveledAmount * accOathPerShare / ACC_OATH_PRECISION + position.rewardCredit - position.rewardDebt;
     }
 
@@ -290,8 +293,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     function _deposit(uint amount, uint relicId) internal {
         require(amount != 0, "depositing 0 amount");
 
-        (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, false);
+        _updatePosition(amount, relicId, Kind.DEPOSIT, false);
 
+       uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(poolId, amount, ownerOf(relicId), relicId);
@@ -308,8 +312,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
+        _updatePosition(amount, relicId, Kind.WITHDRAW, false);
 
+        uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -324,9 +329,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
-        (uint poolId, uint _pendingOath) = _updatePosition(0, relicId, Kind.OTHER, true);
+        uint _pendingOath = _updatePosition(0, relicId, Kind.OTHER, true);
 
-        emit Harvest(poolId, _pendingOath, relicId);
+        emit Harvest(positionForId[relicId].poolId, _pendingOath, relicId);
     }
 
     /*
@@ -340,8 +345,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        (uint poolId, uint _pendingOath) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
+        uint _pendingOath = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
 
+        uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -362,7 +368,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
 
-        pool.levels[position.level].balance -= amount;
+        pool.levelBalance[position.level] -= amount;
 
         burn(relicId);
         delete positionForId[relicId];
@@ -392,7 +398,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint relicId,
         Kind kind,
         bool _harvest
-    ) internal returns (uint poolId, uint _pendingOath) {
+    ) internal returns (uint _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
         _updatePool(position.poolId);
 
@@ -412,22 +418,19 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
 
         uint oldLevel = position.level;
         uint newLevel = _updateLevel(relicId);
-        poolId = position.poolId;
-        PoolInfo storage pool = poolInfo[poolId];
+        PoolInfo storage pool = poolInfo[position.poolId];
         if (oldLevel != newLevel) {
-            pool.levels[oldLevel].balance -= oldAmount;
-            pool.levels[newLevel].balance += newAmount;
+            pool.levelBalance[oldLevel] -= oldAmount;
+            pool.levelBalance[newLevel] += newAmount;
         } else if (kind == Kind.DEPOSIT) {
-            pool.levels[oldLevel].balance += amount;
+            pool.levelBalance[oldLevel] += amount;
         } else if (kind == Kind.WITHDRAW) {
-            pool.levels[oldLevel].balance -= amount;
+            pool.levelBalance[oldLevel] -= amount;
         }
 
-        uint leveledAmount = oldAmount * pool.levels[oldLevel].allocPoint;
-        uint accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
-        _pendingOath = accumulatedOath - position.rewardDebt;
+        uint _pendingOath = _calcPendingOath(oldAmount, oldLevel, pool, position.rewardDebt);
 
-        position.rewardDebt = newAmount * pool.levels[newLevel].allocPoint * pool.accOathPerShare / ACC_OATH_PRECISION;
+        position.rewardDebt = newAmount * pool.levelAllocPoint[newLevel] * pool.accOathPerShare / ACC_OATH_PRECISION;
 
         if (!_harvest && _pendingOath != 0) {
             position.rewardCredit += _pendingOath;
@@ -439,7 +442,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
             }
             if (_pendingOath != 0) {
                 OATH.safeTransfer(msg.sender, _pendingOath);
-                IRewarder _rewarder = rewarder[poolId];
+                IRewarder _rewarder = rewarder[position.poolId];
                 if (address(_rewarder) != address(0)) {
                     _rewarder.onOathReward(relicId, _pendingOath);
                 }
@@ -447,12 +450,12 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         }
 
         if (kind == Kind.DEPOSIT) {
-          IRewarder _rewarder = rewarder[poolId];
+          IRewarder _rewarder = rewarder[position.poolId];
           if (address(_rewarder) != address(0)) {
               _rewarder.onDeposit(relicId, amount);
           }
         } else if (kind == Kind.WITHDRAW) {
-          IRewarder _rewarder = rewarder[poolId];
+          IRewarder _rewarder = rewarder[position.poolId];
           if (address(_rewarder) != address(0)) {
               _rewarder.onWithdraw(relicId, amount);
           }
@@ -461,6 +464,12 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
               delete (positionForId[relicId]);
           }
         }
+    }
+
+    function _calcPendingOath(uint oldAmount, uint oldLevel, PoolInfo storage pool, uint rewardDebt) internal view returns (uint _pendingOath) {
+        uint leveledAmount = oldAmount * pool.levelAllocPoint[oldLevel];
+        uint accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+        _pendingOath = accumulatedOath - rewardDebt;
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
@@ -508,14 +517,14 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     function _updateLevel(uint relicId) internal returns (uint newLevel) {
         PositionInfo storage position = positionForId[relicId];
         PoolInfo storage pool = poolInfo[position.poolId];
-        uint length = pool.levels.length;
+        uint length = pool.levelRequiredMaturity.length;
         if (length == 1) {
             return 0;
         }
 
         uint maturity = block.timestamp - position.entry;
         for (uint i = length - 1; true; i = _uncheckedDec(i)) {
-            if (maturity >= pool.levels[i].requiredMaturity) {
+            if (maturity >= pool.levelRequiredMaturity[i]) {
                 if (position.level != i) {
                     position.level = i;
                     emit LevelChanged(relicId, newLevel);
@@ -533,9 +542,9 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     */
     function _poolBalance(uint pid) internal view returns (uint total) {
         PoolInfo storage pool = poolInfo[pid];
-        uint length = pool.levels.length;
+        uint length = pool.levelBalance.length;
         for (uint i; i < length; i = _uncheckedInc(i)) {
-            total += pool.levels[i].balance * pool.levels[i].allocPoint;
+            total += pool.levelBalance[i] * pool.levelAllocPoint[i];
         }
     }
 
