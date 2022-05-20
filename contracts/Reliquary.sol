@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "./ReliquaryData.sol";
+import "./interfaces/IReliquary.sol";
+import "./interfaces/IEmissionSetter.sol";
+import "./interfaces/INFTDescriptor.sol";
+import "./interfaces/IRewarder.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Multicall.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -20,7 +24,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  + increased composability without affecting accounting logic too much, and users can
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
-contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
@@ -34,6 +38,27 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     }
 
     uint private constant ACC_OATH_PRECISION = 1e12;
+
+    uint256 private nonce;
+
+    /// @notice Address of OATH contract.
+    IERC20 public immutable OATH;
+    /// @notice Address of each NFTDescriptor contract.
+    INFTDescriptor[] public nftDescriptor;
+    /// @notice Address of EmissionSetter contract.
+    IEmissionSetter public emissionSetter;
+    /// @notice Info of each Reliquary pool.
+    PoolInfo[] public poolInfo;
+    /// @notice Address of the LP token for each Reliquary pool.
+    IERC20[] public lpToken;
+    /// @notice Address of each `IRewarder` contract.
+    IRewarder[] public rewarder;
+
+    /// @notice Info of each staked position
+    mapping(uint => PositionInfo) public positionForId;
+
+    /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
+    uint public totalAllocPoint;
 
     event Deposit(
         uint indexed pid,
@@ -80,11 +105,15 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param _oath The OATH token contract address.
      + @param _emissionSetter The contract address for EmissionSetter, which will return the emission rate
     */
-    constructor(
-        IERC20 _oath,
-        IEmissionSetter _emissionSetter
-    ) ReliquaryData(_oath, _emissionSetter) {
+    constructor(IERC20 _oath, IEmissionSetter _emissionSetter) ERC721("Reliquary Liquidity Position", "RELIC") {
+        OATH = _oath;
+        emissionSetter = _emissionSetter;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    /// @notice Returns the number of Reliquary pools.
+    function poolLength() public view override returns (uint pools) {
+        pools = poolInfo.length;
     }
 
     function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
@@ -93,8 +122,18 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
     }
 
+    function mint(address to) internal returns (uint256 id) {
+        id = ++nonce;
+        _safeMint(to, id);
+    }
+
+    function burn(uint256 tokenId) internal returns (bool) {
+        _burn(tokenId);
+        return true;
+    }
+
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
-    function setEmissionSetter(IEmissionSetter _emissionSetter) external onlyRole(OPERATOR) {
+    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(OPERATOR) {
         emissionSetter = _emissionSetter;
         emit LogSetEmissionSetter(_emissionSetter);
     }
@@ -102,12 +141,22 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     /// @notice Implement ERC165 to return which interfaces this contract conforms to
     function supportsInterface(bytes4 interfaceId) public view
     override(
+        IReliquary,
         AccessControlEnumerable,
         ERC721Enumerable
     ) returns (bool) {
-        return interfaceId == type(IERC721Enumerable).interfaceId ||
+        return interfaceId == type(IReliquary).interfaceId ||
+            interfaceId == type(IERC721Enumerable).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    function getPositionForId(uint relicId) external view override returns (PositionInfo memory position) {
+        position = positionForId[relicId];
+    }
+
+    function getPoolInfo(uint pid) external view override returns (PoolInfo memory pool) {
+        pool = poolInfo[pid];
     }
 
     /*
@@ -129,7 +178,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         uint[] calldata allocPoints,
         string memory name,
         INFTDescriptor _nftDescriptor
-    ) external onlyRole(OPERATOR) {
+    ) external override onlyRole(OPERATOR) {
         require(requiredMaturity.length != 0, "empty levels array");
         require(requiredMaturity.length == allocPoints.length, "array length mismatch");
         require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");
@@ -179,7 +228,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         string calldata name,
         INFTDescriptor _nftDescriptor,
         bool overwriteRewarder
-    ) external onlyRole(OPERATOR) {
+    ) external override onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
 
         PoolInfo storage pool = poolInfo[pid];
@@ -224,7 +273,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
-    function massUpdatePools(uint[] calldata pids) external nonReentrant {
+    function massUpdatePools(uint[] calldata pids) external override nonReentrant {
         for (uint i; i < pids.length; i = _uncheckedInc(i)) {
             _updatePool(pids[i]);
         }
@@ -235,7 +284,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param pid The index of the pool. See `poolInfo`.
      + @return pool Returns the pool that was updated.
     */
-    function updatePool(uint pid) external nonReentrant {
+    function updatePool(uint pid) external override nonReentrant {
         _updatePool(pid);
     }
 
@@ -271,7 +320,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
         address to,
         uint pid,
         uint amount
-    ) external nonReentrant returns (uint id) {
+    ) external override nonReentrant returns (uint id) {
         require(pid < poolInfo.length, "invalid pool ID");
         id = mint(to);
         positionForId[id].poolId = pid;
@@ -283,7 +332,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param amount Token amount to deposit.
      + @param relicId NFT ID of the receiver of `amount` deposit benefit.
     */
-    function deposit(uint amount, uint relicId) external nonReentrant {
+    function deposit(uint amount, uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         require(ownerOf(relicId) == msg.sender, "you do not own this position");
         _deposit(amount, relicId);
@@ -306,7 +355,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param amount token amount to withdraw.
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdraw(uint amount, uint relicId) external nonReentrant {
+    function withdraw(uint amount, uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -324,7 +373,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @notice Harvest proceeds for transaction sender to owner of `relicId`.
      + @param relicId NFT ID of the receiver of OATH rewards.
     */
-    function harvest(uint relicId) external nonReentrant {
+    function harvest(uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -339,7 +388,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @param amount token amount to withdraw.
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
-    function withdrawAndHarvest(uint amount, uint relicId) external nonReentrant {
+    function withdrawAndHarvest(uint amount, uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -358,7 +407,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
      + @notice Withdraw without caring about rewards. EMERGENCY ONLY.
      + @param relicId NFT ID of the receiver of the tokens.
     */
-    function emergencyWithdraw(uint relicId) external nonReentrant {
+    function emergencyWithdraw(uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
@@ -380,7 +429,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
 
     /// @notice Update position without performing a deposit/withdraw/harvest
     /// @param relicId The NFT ID of the position being updated
-    function updatePosition(uint relicId) external nonReentrant {
+    function updatePosition(uint relicId) external override nonReentrant {
         _ensureValidPosition(relicId);
         _updatePosition(0, relicId, Kind.OTHER, false);
     }
