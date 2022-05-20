@@ -11,7 +11,7 @@ abstract contract Relic is ERC721Enumerable {
     uint256 private nonce;
 
     function mint(address to) internal returns (uint256 id) {
-        id = nonce++;
+        id = ++nonce;
         _safeMint(to, id);
     }
 
