@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.13;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "./IEmissionSetter.sol";
 import "./INFTDescriptor.sol";
 import "./IRewarder.sol";
@@ -54,7 +54,7 @@ struct PoolInfo {
     string name;
 }
 
-interface IReliquary is IERC721 {
+interface IReliquary is IERC721Enumerable {
 
   function setEmissionSetter(IEmissionSetter _emissionSetter) external;
   function supportsInterface(bytes4 interfaceId) external view returns (bool);

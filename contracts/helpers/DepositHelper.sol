@@ -7,6 +7,8 @@ import "../interfaces/IReliquary.sol";
 
 interface IVault is IERC20 {
   function deposit(uint256 _amount) external;
+  function withdraw(uint256 _amount) external;
+  function getPricePerFullShare() external returns (uint);
   function token() external returns (IERC20);
 }
 
@@ -25,6 +27,7 @@ contract DepositHelper {
     uint amount,
     uint relicId
   ) external {
+    require(msg.sender == reliquary.ownerOf(relicId), "you are not permitted to manage this relic");
     IVault vault = IVault(address(reliquary.lpToken(pid)));
     IERC20 token = vault.token();
     token.safeTransferFrom(msg.sender, address(this), amount);
@@ -37,6 +40,25 @@ contract DepositHelper {
     } else {
       reliquary.deposit(vault.balanceOf(address(this)), relicId);
     }
+  }
+
+  function withdraw(
+    uint pid,
+    uint amount,
+    uint relicId
+  ) external {
+    require(msg.sender == reliquary.ownerOf(relicId), "you are not permitted to manage this relic");
+    IERC721 relic = IERC721(address(reliquary));
+    IVault vault = IVault(address(reliquary.lpToken(pid)));
+    IERC20 token = vault.token();
+
+    uint amountInShares = amount * 1e18 / vault.getPricePerFullShare();
+    relic.safeTransferFrom(msg.sender, address(this), relicId);
+    reliquary.withdraw(amountInShares, relicId);
+
+    vault.withdraw(vault.balanceOf(address(this)));
+    token.transfer(msg.sender, token.balanceOf(address(this)));
+    relic.safeTransferFrom(address(this), msg.sender, relicId);
   }
 
 }
