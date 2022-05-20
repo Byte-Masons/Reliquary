@@ -282,6 +282,7 @@ contract Reliquary is ReliquaryData, AccessControlEnumerable, Multicall, Reentra
     */
     function deposit(uint amount, uint relicId) external nonReentrant {
         _ensureValidPosition(relicId);
+        require(ownerOf(relicId) == msg.sender, "you do not own this position");
         _deposit(amount, relicId);
     }
 

@@ -27,7 +27,6 @@ contract DepositHelper {
     uint amount,
     uint relicId
   ) external {
-    require(msg.sender == reliquary.ownerOf(relicId), "you are not permitted to manage this relic");
     IVault vault = IVault(address(reliquary.lpToken(pid)));
     IERC20 token = vault.token();
     token.safeTransferFrom(msg.sender, address(this), amount);
@@ -38,7 +37,10 @@ contract DepositHelper {
     if (relicId == 0) {
       reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
     } else {
+      IERC721 relic = IERC721(address(reliquary));
+      relic.safeTransferFrom(msg.sender, address(this), relicId);
       reliquary.deposit(vault.balanceOf(address(this)), relicId);
+      relic.safeTransferFrom(address(this), msg.sender, relicId);
     }
   }
 
@@ -47,7 +49,6 @@ contract DepositHelper {
     uint amount,
     uint relicId
   ) external {
-    require(msg.sender == reliquary.ownerOf(relicId), "you are not permitted to manage this relic");
     IERC721 relic = IERC721(address(reliquary));
     IVault vault = IVault(address(reliquary.lpToken(pid)));
     IERC20 token = vault.token();
