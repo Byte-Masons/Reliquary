@@ -191,7 +191,7 @@ describe('Reliquary', function () {
       await lp.approve(this.chef.address, 10);
       await expect(this.chef.createRelicAndDeposit(alice.address, 0, 1))
         .to.emit(this.chef, 'Deposit')
-        .withArgs(0, 1, alice.address, 0);
+        .withArgs(0, 1, alice.address, 1);
     });
 
     it('Depositing into non-existent pool should fail', async function () {
