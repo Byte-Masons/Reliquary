@@ -5,12 +5,11 @@ import './NFTDescriptor.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
 contract NFTDescriptorPair is NFTDescriptor {
-    constructor(ReliquaryData _reliquary) NFTDescriptor(_reliquary) {}
+    constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}
 
     function generateTextFromToken(
         address underlying,
-        uint amount,
-        string memory amountString
+        uint amount
     ) internal view override returns (string memory tags) {
         IUniswapV2Pair lp = IUniswapV2Pair(underlying);
         IERC20Values token0 = IERC20Values(lp.token0());

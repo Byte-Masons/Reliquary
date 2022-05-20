@@ -9,7 +9,7 @@ async function main() {
   let UniV2Factory = await ethers.getContractFactory('UniswapV2Factory');
   let uniV2Factory = await UniV2Factory.deploy('0x0000000000000000000000000000000000000000');
   await uniV2Factory.createPair(oathToken.address, testToken.address);
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   let pairAddress = await uniV2Factory.getPair(oathToken.address, testToken.address);
   let Pair = await ethers.getContractFactory('UniswapV2Pair');
   let pair = await Pair.attach(pairAddress);
@@ -33,14 +33,14 @@ async function main() {
     { requiredMaturity: 24 * 60 * 60 * 14, allocPoint: 120, balance: 0 }
   ];
 
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   let globalInfo = await reliquary.getGlobalInfo(chef.address);
   console.log('global variables');
   console.log(globalInfo);
 
   const operatorRole = await chef.OPERATOR();
   await chef.grantRole(operatorRole, chef.signer.address);
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   await reliquary.addPool(
     chef.signer,
     chef.address,
@@ -51,7 +51,7 @@ async function main() {
     'USDC-OATH',
     nftDescriptor.address
   );
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
 
   let globalInfo2 = await reliquary.getGlobalInfo(chef.address);
   console.log('global variables');
@@ -71,11 +71,11 @@ async function main() {
   await oathToken.mint(chef.address, ethers.utils.parseEther('100000000000'));
   await oathToken.mint(pair.address, ethers.utils.parseEther('100.1234'));
   await testToken.mint(pair.address, ethers.utils.parseUnits('1000000', 6));
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   await pair.mint(chef.signer.address);
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   let pairBalance = await pair.balanceOf(chef.signer.address);
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   await reaper.approveMax(chef.address, pair.address);
   await reliquary.createNewPositionAndDeposit(chef.address, chef.signer.address, 0, pairBalance);
   let id = await reliquary.tokenOfOwnerByIndex(chef.address, chef.signer.address, 0);
@@ -90,14 +90,14 @@ async function main() {
   console.log('Position Info:');
   console.log(positionInfo);
 
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   //await network.provider.send('evm_increaseTime', [31557600 * 1.5]);
   //await network.provider.send('evm_mine');
   await reliquary.updatePool(chef.address, 0, reaper.BigGas);
   await chef.updatePosition(id, reaper.BigGas);
   //await reliquary.harvest(chef.address, id);
 
-  reaper.sleep(10000);
+  //reaper.sleep(10000);
   console.log(await chef.tokenURI(id));
   const json = Buffer.from((await chef.tokenURI(id)).replace('data:application/json;base64,', ''), 'base64').toString();
   console.log(json);
@@ -107,7 +107,7 @@ async function main() {
 
   let poolInfo2 = await reliquary.viewPoolInfo(chef.address, 0);
   console.log(poolInfo2);
-  let pendingOath = await reliquary.pendingOath(chef.address, 0, id);
+  let pendingOath = await reliquary.pendingOath(chef.address, id);
   console.log('Pending Oath: ' + pendingOath.toString());
 }
 

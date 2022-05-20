@@ -4,6 +4,7 @@ pragma solidity 0.8.13;
 import '@openzeppelin/contracts/utils/Strings.sol';
 import 'base64-sol/base64.sol';
 import './interfaces/INFTDescriptor.sol';
+import './interfaces/IReliquary.sol';
 
 interface IERC20Values {
     function symbol() external view returns (string memory);
@@ -20,60 +21,55 @@ contract NFTDescriptor is INFTDescriptor {
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
 
-    ReliquaryData public immutable reliquary;
+    IReliquary public immutable reliquary;
 
-    constructor(ReliquaryData _reliquary) {
+    constructor(IReliquary _reliquary) {
         reliquary = _reliquary;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
     function constructTokenURI(uint relicId) external view override returns (string memory) {
-        (uint _amount, , , uint _entry, uint _poolId, uint _level) = reliquary.positionForId(relicId);
-        ( , , , string memory _name) = reliquary.poolInfo(_poolId);
-        ReliquaryData.Level[] memory levels = reliquary.levels(_poolId);
-        string memory tokenId = relicId.toString();
-        string memory poolId = _poolId.toString();
-        address underlying = address(reliquary.lpToken(_poolId));
-        string memory amount = generateDecimalString(_amount, IERC20Values(underlying).decimals());
+        PositionInfo memory position = reliquary.getPositionForId(relicId);
+        PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
+        Level[] memory levels = pool.levels;
+        address underlying = address(reliquary.lpToken(position.poolId));
+        string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
-        uint maturity = (block.timestamp - _entry) / 1 days;
+        uint maturity = (block.timestamp - position.entry) / 1 days;
 
         string memory name = string(
             abi.encodePacked(
-                'Relic #', tokenId, ': ', _name
+                'Relic #', relicId.toString(), ': ', pool.name
             )
         );
-        string memory description = generateDescription(_name);
+        string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(
-                poolId,
-                amount,
-                pendingOath,
-                maturity,
-                _level
-            );
+            position,
+            pendingOath,
+            maturity
+        );
         string memory image =
             Base64.encode(
                 bytes(
                     string(
                         abi.encodePacked(
                             generateSVGImage(
-                                _level,
+                                position.level,
                                 levels.length
                             ),
                             generateImageText(
-                                tokenId,
-                                _name,
+                                relicId,
+                                pool.name,
                                 pendingOath,
                                 maturity
                             ),
                             generateTextFromToken(
                                 underlying,
-                                _amount,
-                                amount
+                                position.amount
                             ),
                             '</text>',
                             generateBars(
-                                _level,
+                                position.level,
                                 levels
                             ),
                             '</svg></svg>'
@@ -121,31 +117,27 @@ contract NFTDescriptor is INFTDescriptor {
     }
 
     /// @notice Generate attributes for NFT metadata
-    /// @param poolId ID of pool
-    /// @param amount Amount of underlying tokens deposited in this position
+    /// @param position Position represented by this Relic
     /// @param pendingOath Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
-    /// @param level Current maturity level of the position
     function generateAttributes(
-        string memory poolId,
-        string memory amount,
+        PositionInfo memory position,
         string memory pendingOath,
-        uint maturity,
-        uint level
+        uint maturity
     ) internal pure returns (string memory) {
         return
         string(
             abi.encodePacked(
                 '{"trait_type": "Pool ID", "value": ',
-                poolId,
+                position.poolId.toString(),
                 '}, {"trait_type": "Amount Deposited", "value": "',
-                amount,
+                position.amount.toString(),
                 '"}, {"trait_type": "Pending Oath", "value": "',
                 pendingOath,
                 '"}, {"trait_type": "Maturity", "value": "',
                 maturity.toString(), ' day', (maturity == 1) ? '' : 's',
                 '"}, {"trait_type": "Level", "value": ',
-                (level + 1).toString(), '}'
+                (position.level + 1).toString(), '}'
             )
         );
     }
@@ -173,19 +165,19 @@ contract NFTDescriptor is INFTDescriptor {
     }
 
     /// @notice Generate the first part of text labels for this NFT image
-    /// @param tokenId ID of the NFT/position
+    /// @param relicId ID of the NFT/position
     /// @param poolName Name of pool as provided by operator
     /// @param pendingOath Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateImageText(
-        string memory tokenId,
+        uint relicId,
         string memory poolName,
         string memory pendingOath,
         uint maturity
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
-                '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', tokenId,
+                '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
                 '</text><text x="50%" y="279" class="bit" style="font-size: 12">', poolName,
                 '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
                 ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
@@ -197,15 +189,13 @@ contract NFTDescriptor is INFTDescriptor {
     /// @notice Generate further text labels specific to the underlying token
     /// @param underlying Address of underlying token for this position
     /// @param amount Amount of underlying tokens deposited in this position
-    /// @param amountString amount as string
     function generateTextFromToken(
         address underlying,
-        uint amount,
-        string memory amountString
+        uint amount
     ) internal view virtual returns (string memory tags) {
         tags = string(
             abi.encodePacked(
-                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
+                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amount.toString()
             )
         );
     }
@@ -213,7 +203,7 @@ contract NFTDescriptor is INFTDescriptor {
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
     /// @param level Current level of the position
     /// @param levels The levels for this pool, including their required maturity and alloc points
-    function generateBars(uint level, ReliquaryData.Level[] memory levels) internal pure returns (string memory bars) {
+    function generateBars(uint level, Level[] memory levels) internal pure returns (string memory bars) {
         uint highestAllocPoint = levels[0].allocPoint;
         for (uint i = 1; i < levels.length; i++) {
             if (levels[i].allocPoint > highestAllocPoint) {

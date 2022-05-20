@@ -94,13 +94,12 @@ interface IReliquary is IERC721Enumerable {
   function OATH() external view returns (IERC20);
   function nftDescriptor(uint) external view returns (INFTDescriptor);
   function emissionSetter() external view returns (IEmissionSetter);
-  function poolInfo(uint) external view returns (PoolInfo memory);
+  function getPoolInfo(uint) external view returns (PoolInfo memory);
   function lpToken(uint) external view returns (IERC20);
   function rewarder(uint) external view returns (IRewarder);
 
-  function positionForId(uint) external view returns (PositionInfo memory);
+  function getPositionForId(uint) external view returns (PositionInfo memory);
   function totalAllocPoint() external view returns (uint);
   function poolLength() external view returns (uint);
-  function levels(uint) external view returns (Level[] memory);
 
 }
