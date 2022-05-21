@@ -289,6 +289,10 @@ describe('Reliquary', function () {
       );
       await lp.approve(this.chef.address, 10);
       await this.chef.createRelicAndDeposit(alice.address, 0, 1);
+      const firstOwnedToken = await this.chef.tokenOfOwnerByIndex(alice.address, 0);
+      await expect(this.chef.connect(alice).emergencyWithdraw(firstOwnedToken))
+        .to.emit(this.chef, 'EmergencyWithdraw')
+        .withArgs(0, 1, alice.address, firstOwnedToken);
     });
   });
 });

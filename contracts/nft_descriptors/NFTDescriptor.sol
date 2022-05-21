@@ -3,8 +3,8 @@ pragma solidity 0.8.13;
 
 import '@openzeppelin/contracts/utils/Strings.sol';
 import 'base64-sol/base64.sol';
-import './interfaces/INFTDescriptor.sol';
-import './interfaces/IReliquary.sol';
+import '../interfaces/INFTDescriptor.sol';
+import '../interfaces/IReliquary.sol';
 
 interface IERC20Values {
     function symbol() external view returns (string memory);
