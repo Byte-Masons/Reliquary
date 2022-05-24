@@ -45,14 +45,16 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @notice Address of EmissionSetter contract.
     IEmissionSetter public emissionSetter;
     /// @notice Info of each Reliquary pool.
-    PoolInfo[] public poolInfo;
+    PoolInfo[] private poolInfo;
+    /// @notice Level system for each Reliquary pool.
+    LevelInfo[] private levels;
     /// @notice Address of the LP token for each Reliquary pool.
     IERC20[] public lpToken;
     /// @notice Address of each `IRewarder` contract.
     IRewarder[] public rewarder;
 
     /// @notice Info of each staked position
-    mapping(uint => PositionInfo) public positionForId;
+    mapping(uint => PositionInfo) private positionForId;
 
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint public totalAllocPoint;
@@ -156,6 +158,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         pool = poolInfo[pid];
     }
 
+    function getLevelInfo(uint pid) external view override returns(LevelInfo memory levelInfo) {
+        levelInfo = levels[pid];
+    }
+
     /*
      + @notice Add a new pool for the specified LP.
      +         Can only be called by an operator.
@@ -163,7 +169,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param allocPoint The allocation points for the new pool
      + @param _lpToken Address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
-     + @param levels Array of Levels that determine how maturity affects rewards
+     + @param requiredMaturity Array of maturity (in seconds) required to achieve each level for this pool
+     + @param allocPoints The allocation points for each level within this pool
      + @param name Name of pool to be displayed in NFT image
      + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
     */
@@ -197,10 +204,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
                 allocPoint: allocPoint,
                 lastRewardTime: block.timestamp,
                 accOathPerShare: 0,
-                levelRequiredMaturity: requiredMaturity,
-                levelAllocPoint: allocPoints,
-                levelBalance: new uint[](allocPoints.length),
                 name: name
+            })
+        );
+        levels.push(
+            LevelInfo({
+                requiredMaturity: requiredMaturity,
+                allocPoint: allocPoints,
+                balance: new uint[](allocPoints.length)
             })
         );
 
@@ -252,7 +263,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         _ensureValidPosition(relicId);
 
         PositionInfo storage position = positionForId[relicId];
-        PoolInfo storage pool = poolInfo[position.poolId];
+        uint poolId = position.poolId;
+        PoolInfo storage pool = poolInfo[poolId];
         uint accOathPerShare = pool.accOathPerShare;
         uint lpSupply = _poolBalance(position.poolId);
 
@@ -262,7 +274,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
         }
 
-        uint leveledAmount = position.amount * pool.levelAllocPoint[position.level];
+        uint leveledAmount = position.amount * levels[poolId].allocPoint[position.level];
         pending = leveledAmount * accOathPerShare / ACC_OATH_PRECISION + position.rewardCredit - position.rewardDebt;
     }
 
@@ -412,9 +424,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         PositionInfo storage position = positionForId[relicId];
         uint amount = position.amount;
         uint poolId = position.poolId;
-        PoolInfo storage pool = poolInfo[poolId];
 
-        pool.levelBalance[position.level] -= amount;
+        levels[poolId].balance[position.level] -= amount;
 
         burn(relicId);
         delete positionForId[relicId];
@@ -464,19 +475,20 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         uint oldLevel = position.level;
         uint newLevel = _updateLevel(relicId);
-        PoolInfo storage pool = poolInfo[position.poolId];
+        uint poolId = position.poolId;
+        LevelInfo storage levelInfo = levels[poolId];
         if (oldLevel != newLevel) {
-            pool.levelBalance[oldLevel] -= oldAmount;
-            pool.levelBalance[newLevel] += newAmount;
+            levelInfo.balance[oldLevel] -= oldAmount;
+            levelInfo.balance[newLevel] += newAmount;
         } else if (kind == Kind.DEPOSIT) {
-            pool.levelBalance[oldLevel] += amount;
+            levelInfo.balance[oldLevel] += amount;
         } else if (kind == Kind.WITHDRAW) {
-            pool.levelBalance[oldLevel] -= amount;
+            levelInfo.balance[oldLevel] -= amount;
         }
 
-        _pendingOath = _calcPendingOath(oldAmount, oldLevel, pool, position.rewardDebt);
+        _pendingOath = _calcPendingOath(oldAmount, oldLevel, poolId, position.rewardDebt);
 
-        position.rewardDebt = newAmount * pool.levelAllocPoint[newLevel] * pool.accOathPerShare / ACC_OATH_PRECISION;
+        position.rewardDebt = newAmount * levelInfo.allocPoint[newLevel] * poolInfo[poolId].accOathPerShare / ACC_OATH_PRECISION;
 
         if (!_harvest && _pendingOath != 0) {
             position.rewardCredit += _pendingOath;
@@ -488,7 +500,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             }
             if (_pendingOath != 0) {
                 OATH.safeTransfer(msg.sender, _pendingOath);
-                IRewarder _rewarder = rewarder[position.poolId];
+                IRewarder _rewarder = rewarder[poolId];
                 if (address(_rewarder) != address(0)) {
                     _rewarder.onOathReward(relicId, _pendingOath);
                 }
@@ -496,21 +508,21 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         }
 
         if (kind == Kind.DEPOSIT) {
-          IRewarder _rewarder = rewarder[position.poolId];
+          IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
               _rewarder.onDeposit(relicId, amount);
           }
         } else if (kind == Kind.WITHDRAW) {
-          IRewarder _rewarder = rewarder[position.poolId];
+          IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
               _rewarder.onWithdraw(relicId, amount);
           }
         }
     }
 
-    function _calcPendingOath(uint oldAmount, uint oldLevel, PoolInfo storage pool, uint rewardDebt) internal view returns (uint _pendingOath) {
-        uint leveledAmount = oldAmount * pool.levelAllocPoint[oldLevel];
-        uint accumulatedOath = leveledAmount * pool.accOathPerShare / ACC_OATH_PRECISION;
+    function _calcPendingOath(uint oldAmount, uint oldLevel, uint poolId, uint rewardDebt) internal view returns (uint _pendingOath) {
+        uint leveledAmount = oldAmount * levels[poolId].allocPoint[oldLevel];
+        uint accumulatedOath = leveledAmount * poolInfo[poolId].accOathPerShare / ACC_OATH_PRECISION;
         _pendingOath = accumulatedOath - rewardDebt;
     }
 
@@ -558,15 +570,15 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     */
     function _updateLevel(uint relicId) internal returns (uint newLevel) {
         PositionInfo storage position = positionForId[relicId];
-        PoolInfo storage pool = poolInfo[position.poolId];
-        uint length = pool.levelRequiredMaturity.length;
+        LevelInfo storage levelInfo = levels[position.poolId];
+        uint length = levelInfo.requiredMaturity.length;
         if (length == 1) {
             return 0;
         }
 
         uint maturity = block.timestamp - position.entry;
         for (uint i = length - 1; true; i = _uncheckedDec(i)) {
-            if (maturity >= pool.levelRequiredMaturity[i]) {
+            if (maturity >= levelInfo.requiredMaturity[i]) {
                 if (position.level != i) {
                     position.level = i;
                     emit LevelChanged(relicId, newLevel);
@@ -583,10 +595,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @return The amount of pool tokens held by the contract
     */
     function _poolBalance(uint pid) internal view returns (uint total) {
-        PoolInfo storage pool = poolInfo[pid];
-        uint length = pool.levelBalance.length;
+        LevelInfo storage levelInfo = levels[pid];
+        uint length = levelInfo.balance.length;
         for (uint i; i < length; i = _uncheckedInc(i)) {
-            total += pool.levelBalance[i] * pool.levelAllocPoint[i];
+            total += levelInfo.balance[i] * levelInfo.allocPoint[i];
         }
     }
 

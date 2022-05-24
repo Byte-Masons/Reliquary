@@ -31,6 +31,7 @@ contract NFTDescriptor is INFTDescriptor {
     function constructTokenURI(uint relicId) external view override returns (string memory) {
         PositionInfo memory position = reliquary.getPositionForId(relicId);
         PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
+        LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
         address underlying = address(reliquary.lpToken(position.poolId));
         string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
@@ -44,6 +45,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(
             position,
+            amount,
             pendingOath,
             maturity
         );
@@ -54,7 +56,7 @@ contract NFTDescriptor is INFTDescriptor {
                         abi.encodePacked(
                             generateSVGImage(
                                 position.level,
-                                pool.levelBalance.length
+                                levelInfo.balance.length
                             ),
                             generateImageText(
                                 relicId,
@@ -64,12 +66,13 @@ contract NFTDescriptor is INFTDescriptor {
                             ),
                             generateTextFromToken(
                                 underlying,
-                                position.amount
+                                position.amount,
+                                amount
                             ),
                             '</text>',
                             generateBars(
                                 position.level,
-                                pool
+                                levelInfo
                             ),
                             '</svg></svg>'
                         )
@@ -121,6 +124,7 @@ contract NFTDescriptor is INFTDescriptor {
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateAttributes(
         PositionInfo memory position,
+        string memory amount,
         string memory pendingOath,
         uint maturity
     ) internal pure returns (string memory) {
@@ -130,7 +134,7 @@ contract NFTDescriptor is INFTDescriptor {
                 '{"trait_type": "Pool ID", "value": ',
                 position.poolId.toString(),
                 '}, {"trait_type": "Amount Deposited", "value": "',
-                position.amount.toString(),
+                amount,
                 '"}, {"trait_type": "Pending Oath", "value": "',
                 pendingOath,
                 '"}, {"trait_type": "Maturity", "value": "',
@@ -190,31 +194,32 @@ contract NFTDescriptor is INFTDescriptor {
     /// @param amount Amount of underlying tokens deposited in this position
     function generateTextFromToken(
         address underlying,
-        uint amount
+        uint amount,
+        string memory amountString
     ) internal view virtual returns (string memory tags) {
         tags = string(
             abi.encodePacked(
-                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amount.toString()
+                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
             )
         );
     }
 
     /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
     /// @param level Current level of the position
-    /// @param pool Pool which the position belongs to
-    function generateBars(uint level, PoolInfo memory pool) internal pure returns (string memory bars) {
-        uint highestAllocPoint = pool.levelAllocPoint[0];
-        for (uint i = 1; i < pool.levelAllocPoint.length; i++) {
-            if (pool.levelAllocPoint[i] > highestAllocPoint) {
-                highestAllocPoint = pool.levelAllocPoint[i];
+    /// @param levelInfo Level info for this pool
+    function generateBars(uint level, LevelInfo memory levelInfo) internal pure returns (string memory bars) {
+        uint highestAllocPoint = levelInfo.allocPoint[0];
+        for (uint i = 1; i < levelInfo.allocPoint.length; i++) {
+            if (levelInfo.allocPoint[i] > highestAllocPoint) {
+                highestAllocPoint = levelInfo.allocPoint[i];
             }
         }
 
-        uint barWidth = GRAPH_WIDTH * 10 / pool.levelAllocPoint.length;
+        uint barWidth = GRAPH_WIDTH * 10 / levelInfo.allocPoint.length;
         string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
         bars = '<svg x="58" y="50" width="180" height="150">';
-        for (uint i; i < pool.levelAllocPoint.length; i++) {
-            uint barHeight = pool.levelAllocPoint[i] * GRAPH_HEIGHT / highestAllocPoint;
+        for (uint i; i < levelInfo.allocPoint.length; i++) {
+            uint barHeight = levelInfo.allocPoint[i] * GRAPH_HEIGHT / highestAllocPoint;
             bars = string(abi.encodePacked(
                 bars,
                 '<rect x="', (barWidth * i / 10).toString(), '.', (barWidth * i % 10).toString(),

@@ -31,19 +31,25 @@ struct PositionInfo {
  + `accOathPerShare` Accumulated OATH per share of pool (1 / 1e12)
  + `lastRewardTime` Last timestamp the accumulated OATH was updated
  + `allocPoint` Pool's individual allocation - ratio of the total allocation
- + `levelRequiredMaturity` The minimum maturity (in seconds) required to reach this level
- + `levelAllocPoint` Level's individual allocation - ratio of the total allocation
- + `levelBalance` Total number of tokens deposited in positions at this level
  + `name` Name of pool to be displayed in NFT image
 */
 struct PoolInfo {
     uint accOathPerShare;
     uint lastRewardTime;
     uint allocPoint;
-    uint[] levelRequiredMaturity;
-    uint[] levelAllocPoint;
-    uint[] levelBalance;
     string name;
+}
+
+/*
+ + @notice Level that determines how maturity is rewarded
+ + `requiredMaturity` The minimum maturity (in seconds) required to reach this Level
+ + `allocPoint` Level's individual allocation - ratio of the total allocation
+ + `balance` Total number of tokens deposited in positions at this Level
+*/
+struct LevelInfo {
+    uint[] requiredMaturity;
+    uint[] allocPoint;
+    uint[] balance;
 }
 
 interface IReliquary is IERC721Enumerable {
@@ -88,6 +94,7 @@ interface IReliquary is IERC721Enumerable {
   function nftDescriptor(uint) external view returns (INFTDescriptor);
   function emissionSetter() external view returns (IEmissionSetter);
   function getPoolInfo(uint) external view returns (PoolInfo memory);
+  function getLevelInfo(uint) external view returns (LevelInfo memory);
   function lpToken(uint) external view returns (IERC20);
   function rewarder(uint) external view returns (IRewarder);
 

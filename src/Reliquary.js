@@ -48,7 +48,7 @@ async function deployCurve() {
 
 async function viewPoolInfo(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
-  let poolInfo = await chef.poolInfo(pid);
+  let poolInfo = await chef.getPoolInfo(pid);
   let obj = {
     accOathPerShare: poolInfo[0].toString(),
     lastRewardTime: poolInfo[1].toString(),
@@ -72,7 +72,7 @@ async function viewRewarder(chefAddress, pid) {
 
 async function getPositionInfo(chefAddress, positionId) {
   let chef = await returnChef(chefAddress);
-  let userInfo = await chef.positionForId(positionId);
+  let userInfo = await chef.getPositionForId(positionId);
   return {
     amount: userInfo[0].toString(),
     rewardDebt: userInfo[1].toString(),

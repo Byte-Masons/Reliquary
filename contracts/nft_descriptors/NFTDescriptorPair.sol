@@ -9,7 +9,8 @@ contract NFTDescriptorPair is NFTDescriptor {
 
     function generateTextFromToken(
         address underlying,
-        uint amount
+        uint amount,
+	string memory amountString
     ) internal view override returns (string memory tags) {
         IUniswapV2Pair lp = IUniswapV2Pair(underlying);
         IERC20Values token0 = IERC20Values(lp.token0());

@@ -172,11 +172,11 @@ describe('Reliquary', function () {
         .withArgs(
           0,
           (
-            await this.chef.poolInfo(0)
+            await this.chef.getPoolInfo(0)
           ).lastRewardTime,
           await lp.balanceOf(this.chef.address),
           (
-            await this.chef.poolInfo(0)
+            await this.chef.getPoolInfo(0)
           ).accOathPerShare,
         );
     });
