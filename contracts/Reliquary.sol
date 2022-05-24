@@ -260,8 +260,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @return pending OATH reward for a given position owner.
     */
     function pendingOath(uint relicId) external view override returns (uint pending) {
-        _ensureValidPosition(relicId);
-
         PositionInfo storage position = positionForId[relicId];
         uint poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
@@ -342,7 +340,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of `amount` deposit benefit.
     */
     function deposit(uint amount, uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         require(ownerOf(relicId) == msg.sender, "you do not own this position");
         _deposit(amount, relicId);
     }
@@ -364,7 +361,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
     function withdraw(uint amount, uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
@@ -381,7 +377,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of OATH rewards.
     */
     function harvest(uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
@@ -396,7 +391,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
     function withdrawAndHarvest(uint amount, uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
@@ -414,7 +408,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of the tokens.
     */
     function emergencyWithdraw(uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
@@ -435,7 +428,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @notice Update position without performing a deposit/withdraw/harvest
     /// @param relicId The NFT ID of the position being updated
     function updatePosition(uint relicId) external override nonReentrant {
-        _ensureValidPosition(relicId);
         _updatePosition(0, relicId, Kind.OTHER, false);
     }
 
@@ -611,11 +603,5 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         unchecked {
             return i - 1;
         }
-    }
-
-    /// @notice Existing position is valid if and only if it has non-zero amount.
-    function _ensureValidPosition(uint relicId) internal view {
-        PositionInfo storage position = positionForId[relicId];
-        require(position.amount != 0, "invalid position ID");
     }
 }
