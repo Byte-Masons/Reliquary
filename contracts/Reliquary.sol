@@ -529,11 +529,11 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
       if (oldValue == 0) {
         weightNew = 1e18;
       } else {
-        if (addedValue < oldValue) {
-          weightNew = addedValue * 1e18 / (addedValue + oldValue);
-        } else if (oldValue < addedValue) {
+        if (oldValue < addedValue) {
           uint weightOld = oldValue * 1e18 / (addedValue + oldValue);
           weightNew = 1e18 - weightOld;
+        } else if (addedValue < oldValue) {
+          weightNew = addedValue * 1e18 / (addedValue + oldValue);
         } else {
           weightNew = 1e18 / 2;
         }
