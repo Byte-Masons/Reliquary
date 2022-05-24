@@ -505,10 +505,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
           if (address(_rewarder) != address(0)) {
               _rewarder.onWithdraw(relicId, amount);
           }
-          if (newAmount == 0) {
-              burn(relicId);
-              delete (positionForId[relicId]);
-          }
         }
     }
 
