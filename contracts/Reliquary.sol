@@ -34,9 +34,11 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         OTHER
     }
 
+    /// @notice Level of precision rewards are calculated to
     uint private constant ACC_OATH_PRECISION = 1e12;
 
-    uint256 private nonce;
+    /// @notice Nonce to use for new relicId
+    uint private nonce;
 
     /// @notice Address of OATH contract.
     IERC20 public immutable OATH;
@@ -110,33 +112,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /// @notice Returns the number of Reliquary pools.
-    function poolLength() public view override returns (uint pools) {
-        pools = poolInfo.length;
-    }
-
-    function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
-        require(_exists(tokenId), "token does not exist");
-
-        return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
-    }
-
-    function mint(address to) internal returns (uint256 id) {
-        id = ++nonce;
-        _safeMint(to, id);
-    }
-
-    function burn(uint256 tokenId) internal returns (bool) {
-        _burn(tokenId);
-        return true;
-    }
-
-    /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
-    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(OPERATOR) {
-        emissionSetter = _emissionSetter;
-        emit LogSetEmissionSetter(_emissionSetter);
-    }
-
     /// @notice Implement ERC165 to return which interfaces this contract conforms to
     function supportsInterface(bytes4 interfaceId) public view
     override(
@@ -148,6 +123,22 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             interfaceId == type(IERC721Enumerable).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    /// @notice Returns the number of Reliquary pools.
+    function poolLength() public view override returns (uint pools) {
+        pools = poolInfo.length;
+    }
+
+    function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
+        require(_exists(tokenId), "token does not exist");
+        return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
+    }
+
+    /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
+    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(OPERATOR) {
+        emissionSetter = _emissionSetter;
+        emit LogSetEmissionSetter(_emissionSetter);
     }
 
     function getPositionForId(uint relicId) external view override returns (PositionInfo memory position) {
@@ -329,7 +320,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint amount
     ) external override nonReentrant returns (uint id) {
         require(pid < poolInfo.length, "invalid pool ID");
-        id = mint(to);
+        id = _mint(to);
         positionForId[id].poolId = pid;
         _deposit(amount, id);
     }
@@ -417,7 +408,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         levels[poolId].balance[position.level] -= amount;
 
-        burn(relicId);
+        _burn(relicId);
         delete positionForId[relicId];
 
         lpToken[position.poolId].safeTransfer(to, amount);
@@ -603,5 +594,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         unchecked {
             return i - 1;
         }
+    }
+
+    function _mint(address to) private returns (uint id) {
+        id = ++nonce;
+        _safeMint(to, id);
     }
 }
