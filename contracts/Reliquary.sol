@@ -351,9 +351,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     function _deposit(uint amount, uint relicId) internal {
         require(amount != 0, "depositing 0 amount");
 
-        _updatePosition(amount, relicId, Kind.DEPOSIT, false);
+        (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, false);
 
-       uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(poolId, amount, ownerOf(relicId), relicId);
@@ -370,9 +369,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        _updatePosition(amount, relicId, Kind.WITHDRAW, false);
+        (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
 
-        uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -387,9 +385,9 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         address to = ownerOf(relicId);
         require(to == msg.sender, "you do not own this position");
 
-        uint _pendingOath = _updatePosition(0, relicId, Kind.OTHER, true);
+        (uint poolId, uint _pendingOath) = _updatePosition(0, relicId, Kind.OTHER, true);
 
-        emit Harvest(positionForId[relicId].poolId, _pendingOath, relicId);
+        emit Harvest(poolId, _pendingOath, relicId);
     }
 
     /*
@@ -403,9 +401,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
 
-        uint _pendingOath = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
+        (uint poolId, uint _pendingOath) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
 
-        uint poolId = positionForId[relicId].poolId;
         lpToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
@@ -455,7 +452,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint relicId,
         Kind kind,
         bool _harvest
-    ) internal returns (uint _pendingOath) {
+    ) internal returns (uint poolId, uint _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
         _updatePool(position.poolId);
 
@@ -475,7 +472,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         uint oldLevel = position.level;
         uint newLevel = _updateLevel(relicId);
-        uint poolId = position.poolId;
+        poolId = position.poolId;
         LevelInfo storage levelInfo = levels[poolId];
         if (oldLevel != newLevel) {
             levelInfo.balance[oldLevel] -= oldAmount;
