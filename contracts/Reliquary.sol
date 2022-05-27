@@ -10,9 +10,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 /*
  + @title Reliquary
  + @author Justin Bebis, Zokunei & the Byte Masons team
- + @notice Built on the MasterChefV2 system authored by Sushi's team
  +
- + @notice This system is designed to modify Masterchef accounting logic such that
+ + @notice This system is designed to manage incentives for deposited assets such that
  + behaviors can be programmed on a per-pool basis using maturity levels. Stake in a
  + pool, also referred to as "position," is represented by means of an NFT called a
  + "Relic." Each position has a "maturity" which captures the age of the position.
