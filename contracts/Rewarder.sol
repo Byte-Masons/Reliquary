@@ -75,7 +75,7 @@ contract Rewarder is IRewarder {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
             lastDepositTime[relicId] = timestamp;
-            _claimDepositBonus(relicId, timestamp, _lastDepositTime);
+            _claimDepositBonus(reliquary.ownerOf(relicId), timestamp, _lastDepositTime);
         }
     }
 
@@ -88,29 +88,31 @@ contract Rewarder is IRewarder {
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
-        _claimDepositBonus(relicId, block.timestamp, _lastDepositTime);
+        _claimDepositBonus(reliquary.ownerOf(relicId), block.timestamp, _lastDepositTime);
     }
 
     /// @notice Claim depositBonus without making another deposit
     /// @param relicId The NFT ID of the position
     function claimDepositBonus(uint relicId) external {
+        address to = msg.sender;
+        require(to == reliquary.ownerOf(relicId), "you do not own this Relic");
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
-        require(_claimDepositBonus(relicId, block.timestamp, _lastDepositTime), "nothing to claim");
+        require(_claimDepositBonus(to, block.timestamp, _lastDepositTime), "nothing to claim");
     }
 
     /// @dev Internal claimDepositBonus function
-    /// @param relicId The NFT ID of the position
+    /// @param to Address to send the depositBonus to
     /// @param timestamp The current timestamp, passed in for gas efficiency
     /// @param _lastDepositTime Time of last deposit into this position, before being updated
     /// @return claimed Whether depositBonus was actually claimed
     function _claimDepositBonus(
-        uint relicId,
+        address to,
         uint timestamp,
         uint _lastDepositTime
     ) internal returns (bool claimed) {
         if (_lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
-            rewardToken.safeTransfer(reliquary.ownerOf(relicId), depositBonus);
+            rewardToken.safeTransfer(to, depositBonus);
             claimed = true;
         } else {
             claimed = false;
@@ -127,7 +129,13 @@ contract Rewarder is IRewarder {
     ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
+
+        uint reward = oathAmount * rewardMultiplier / BASIS_POINTS;
+        uint _lastDepositTime = lastDepositTime[relicId];
+        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
+            reward += depositBonus;
+        }
         rewardAmounts = new uint[](1);
-        rewardAmounts[0] = oathAmount * rewardMultiplier / BASIS_POINTS;
+        rewardAmounts[0] = reward;
     }
 }
