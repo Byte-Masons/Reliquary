@@ -455,19 +455,20 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint oldLevel = position.level;
         uint newLevel = _updateLevel(relicId);
         poolId = position.poolId;
-        LevelInfo storage levelInfo = levels[poolId];
         if (oldLevel != newLevel) {
-            levelInfo.balance[oldLevel] -= oldAmount;
-            levelInfo.balance[newLevel] += newAmount;
+            levels[poolId].balance[oldLevel] -= oldAmount;
+            levels[poolId].balance[newLevel] += newAmount;
         } else if (kind == Kind.DEPOSIT) {
-            levelInfo.balance[oldLevel] += amount;
+            levels[poolId].balance[oldLevel] += amount;
         } else if (kind == Kind.WITHDRAW) {
-            levelInfo.balance[oldLevel] -= amount;
+            levels[poolId].balance[oldLevel] -= amount;
         }
 
-        _pendingOath = _calcPendingOath(oldAmount, oldLevel, poolId, position.rewardDebt);
-
-        position.rewardDebt = newAmount * levelInfo.allocPoint[newLevel] * poolInfo[poolId].accOathPerShare / ACC_OATH_PRECISION;
+        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        _pendingOath = oldAmount * levels[poolId].allocPoint[oldLevel] * accOathPerShare
+            / ACC_OATH_PRECISION - position.rewardDebt;
+        position.rewardDebt = newAmount * levels[poolId].allocPoint[newLevel] * accOathPerShare
+            / ACC_OATH_PRECISION;
 
         if (!_harvest && _pendingOath != 0) {
             position.rewardCredit += _pendingOath;
@@ -497,12 +498,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
               _rewarder.onWithdraw(relicId, amount);
           }
         }
-    }
-
-    function _calcPendingOath(uint oldAmount, uint oldLevel, uint poolId, uint rewardDebt) internal view returns (uint _pendingOath) {
-        uint leveledAmount = oldAmount * levels[poolId].allocPoint[oldLevel];
-        uint accumulatedOath = leveledAmount * poolInfo[poolId].accOathPerShare / ACC_OATH_PRECISION;
-        _pendingOath = accumulatedOath - rewardDebt;
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
