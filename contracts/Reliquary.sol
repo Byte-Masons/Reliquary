@@ -475,8 +475,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         } else if (_harvest) {
             uint rewardCredit = position.rewardCredit;
             if (rewardCredit != 0) {
-                _pendingOath += rewardCredit;
-                position.rewardCredit = 0;
+                _pendingOath = _receivedOath(_pendingOath + rewardCredit);
+                position.rewardCredit -= (_pendingOath > rewardCredit) ? rewardCredit : _pendingOath;
+            } else {
+                _pendingOath = _receivedOath(_pendingOath);
             }
             if (_pendingOath != 0) {
                 OATH.safeTransfer(msg.sender, _pendingOath);
@@ -498,6 +500,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
               _rewarder.onWithdraw(relicId, amount);
           }
         }
+    }
+
+    /// @notice Calculate how much the owner will actually receive on harvest, given available OATH
+    /// @param _pendingOath Amount of OATH owed
+    /// @return received The minimum between amount owed and amount available
+    function _receivedOath(uint _pendingOath) internal view returns (uint received) {
+        uint available = OATH.balanceOf(address(this));
+        received = (available > _pendingOath) ? _pendingOath : available;
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
