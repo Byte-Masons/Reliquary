@@ -574,7 +574,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     }
 
     /*
-     + @notice returns The total deposits of the pool's token
+     + @notice returns The total deposits of the pool's token, weighted by maturity level allocation.
      + @param pid The index of the pool. See `poolInfo`.
      + @return The amount of pool tokens held by the contract
     */
