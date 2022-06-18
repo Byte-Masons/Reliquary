@@ -36,7 +36,7 @@ describe('Reliquary', function () {
 
     const emissionSetter: Constant = await deployConstantEmissionSetter(superAdmin);
     this.chef = await deployChef(oath.address, emissionSetter.address);
-    nftDescriptor = await deployNFTDescriptor(this.chef.address);
+    nftDescriptor = await deployNFTDescriptor(this.chef.address, 3, 0);
 
     const operatorRole: String = await this.chef.OPERATOR();
     await this.chef.grantRole(operatorRole, operator.address);

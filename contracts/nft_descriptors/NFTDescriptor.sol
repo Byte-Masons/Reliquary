@@ -19,12 +19,16 @@ contract NFTDescriptor is INFTDescriptor {
     uint private constant GRAPH_HEIGHT = 150;
 
     // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/';
+    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmaaTKYqR2oUfJ3RDKtNe5JyGV3kTyTpwRp7L5kAqSNTQY/';
 
     IReliquary public immutable reliquary;
+    uint public immutable numCharacters;
+    uint public immutable minDeposit;
 
-    constructor(IReliquary _reliquary) {
+    constructor(IReliquary _reliquary, uint _numCharacters, uint _minDeposit) {
         reliquary = _reliquary;
+        numCharacters = _numCharacters;
+        minDeposit = _minDeposit;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
@@ -37,11 +41,9 @@ contract NFTDescriptor is INFTDescriptor {
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
 
-        string memory name = string(
-            abi.encodePacked(
-                'Relic #', relicId.toString(), ': ', pool.name
-            )
-        );
+        uint characterId = (position.amount < minDeposit) ? numCharacters :
+            uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % numCharacters;
+
         string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(
             position,
@@ -56,7 +58,8 @@ contract NFTDescriptor is INFTDescriptor {
                         abi.encodePacked(
                             generateSVGImage(
                                 position.level,
-                                levelInfo.balance.length
+                                levelInfo.balance.length,
+                                characterId
                             ),
                             generateImageText(
                                 relicId,
@@ -88,7 +91,9 @@ contract NFTDescriptor is INFTDescriptor {
                         bytes(
                             abi.encodePacked(
                                 '{"name":"',
-                                name,
+                                string(abi.encodePacked(
+                                    'Relic #', relicId.toString(), ': ', pool.name
+                                )),
                                 '", "description":"',
                                 description,
                                 '", "attributes": [',
@@ -150,8 +155,9 @@ contract NFTDescriptor is INFTDescriptor {
     /// @param numLevels Total number of levels in the pool
     function generateSVGImage(
         uint level,
-        uint numLevels
-    ) internal pure returns (string memory svg) {
+        uint numLevels,
+        uint characterId
+    ) internal view returns (string memory svg) {
         level = (level + 1) * 5 / numLevels;
         svg = string(
             abi.encodePacked(
@@ -162,7 +168,8 @@ contract NFTDescriptor is INFTDescriptor {
                 '.art { image-rendering: pixelated }',
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
-                '<image href="', IPFS, 'cup', (level == 0) ? '1' : level.toString(), '.png" height="450" width="290" class="art"/>'
+                '<image href="', IPFS, characterId.toString(), '/', (level == 0) ? '1' : level.toString(), (characterId == numCharacters) ?
+                    '.gif' : '.png', '" height="450" width="290" class="art"/>'
             )
         );
     }

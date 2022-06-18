@@ -5,7 +5,7 @@ import './NFTDescriptor.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
 contract NFTDescriptorPair is NFTDescriptor {
-    constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}
+    constructor(IReliquary _reliquary, uint _numCharacters, uint _minDeposit) NFTDescriptor(_reliquary, _numCharacters, _minDeposit) {}
 
     function generateTextFromToken(
         address underlying,
