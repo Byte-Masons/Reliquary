@@ -17,7 +17,7 @@ async function main() {
   let emissionSetter = await Constant.deploy();
   let chef = await reliquary.deployChef(oathToken.address, emissionSetter.address);
   let NFTDescriptor = await ethers.getContractFactory('NFTDescriptorPair');
-  let nftDescriptor = await NFTDescriptor.deploy(chef.address, 3, ethers.utils.parseEther('1'));
+  let nftDescriptor = await NFTDescriptor.deploy(chef.address, 3);
   let rewarder = await reliquary.deployRewarder(1000000, ethers.utils.parseEther('100'), ethers.utils.parseEther('1000'), 24 * 60 * 60 * 30, oathToken.address, chef.address);
   console.log('chef: ' + chef.address);
   console.log('testUSDC: ' + testToken.address);

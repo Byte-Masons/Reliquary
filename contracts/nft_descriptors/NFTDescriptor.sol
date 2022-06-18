@@ -23,12 +23,10 @@ contract NFTDescriptor is INFTDescriptor {
 
     IReliquary public immutable reliquary;
     uint public immutable numCharacters;
-    uint public immutable minDeposit;
 
-    constructor(IReliquary _reliquary, uint _numCharacters, uint _minDeposit) {
+    constructor(IReliquary _reliquary, uint _numCharacters) {
         reliquary = _reliquary;
         numCharacters = _numCharacters;
-        minDeposit = _minDeposit;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
@@ -41,8 +39,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
 
-        uint characterId = (position.amount < minDeposit) ? numCharacters :
-            uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % numCharacters;
+        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % numCharacters;
 
         string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(
@@ -168,8 +165,7 @@ contract NFTDescriptor is INFTDescriptor {
                 '.art { image-rendering: pixelated }',
                 '.shape { shape-rendering: crispEdges }',
                 '</style>',
-                '<image href="', IPFS, characterId.toString(), '/', (level == 0) ? '1' : level.toString(), (characterId == numCharacters) ?
-                    '.gif' : '.png', '" height="450" width="290" class="art"/>'
+                '<image href="', IPFS, characterId.toString(), '/', (level == 0) ? '1' : level.toString(), '.gif', '" height="450" width="290" class="art"/>'
             )
         );
     }
