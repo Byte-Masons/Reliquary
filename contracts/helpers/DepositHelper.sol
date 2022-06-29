@@ -3,6 +3,7 @@
 pragma solidity 0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "../interfaces/IReliquary.sol";
 
 interface IVault is IERC20 {
@@ -12,14 +13,23 @@ interface IVault is IERC20 {
   function token() external returns (IERC20);
 }
 
-contract DepositHelper {
+contract DepositHelper is IERC721Receiver {
 
   using SafeERC20 for IERC20;
 
-  IReliquary public reliquary;
+  IReliquary public immutable reliquary;
 
   constructor(address _reliquary) {
     reliquary = IReliquary(_reliquary);
+  }
+
+  function onERC721Received(
+    address operator,
+    address from,
+    uint256 tokenId,
+    bytes calldata data
+  ) external pure returns (bytes4){
+    return(IERC721Receiver.onERC721Received.selector);
   }
 
   function deposit(
