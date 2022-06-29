@@ -29,7 +29,7 @@ contract NFTDescriptor is INFTDescriptor {
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
-    function constructTokenURI(uint relicId) external view override returns (string memory) {
+    function constructTokenURI(uint relicId) external view override returns (string memory uri) {
         PositionInfo memory position = reliquary.getPositionForId(relicId);
         PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
         LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
@@ -77,37 +77,35 @@ contract NFTDescriptor is INFTDescriptor {
                 )
             );
 
-        return
-            string.concat(
-                'data:application/json;base64,',
-                Base64.encode(
-                    bytes(
-                        abi.encodePacked(
-                            '{"name":"',
-                            string.concat(
-                                'Relic #', relicId.toString(), ': ', pool.name
-                            ),
-                            '", "description":"',
-                            description,
-                            '", "attributes": [',
-                            attributes,
-                            '], "image": "',
-                            'data:image/svg+xml;base64,',
-                            image,
-                            '"}'
-                        )
+        uri = string.concat(
+            'data:application/json;base64,',
+            Base64.encode(
+                bytes(
+                    abi.encodePacked(
+                        '{"name":"',
+                        string.concat(
+                            'Relic #', relicId.toString(), ': ', pool.name
+                        ),
+                        '", "description":"',
+                        description,
+                        '", "attributes": [',
+                        attributes,
+                        '], "image": "',
+                        'data:image/svg+xml;base64,',
+                        image,
+                        '"}'
                     )
                 )
-            );
+            )
+        );
     }
 
     /// @notice Generate description of the liquidity position for NFT metadata
     /// @param poolName Name of pool as provided by operator
     function generateDescription(
         string memory poolName
-    ) internal pure returns (string memory) {
-        return
-        string.concat(
+    ) internal pure returns (string memory description) {
+        description = string.concat(
             'This NFT represents a position in a Reliquary ', poolName, ' pool. ',
             'The owner of this NFT can modify or redeem the position, reducing its maturity accordingly.'
         );
@@ -122,9 +120,8 @@ contract NFTDescriptor is INFTDescriptor {
         string memory amount,
         string memory pendingOath,
         uint maturity
-    ) internal pure returns (string memory) {
-        return
-        string.concat(
+    ) internal pure returns (string memory attributes) {
+        attributes = string.concat(
             '{"trait_type": "Pool ID", "value": ',
             position.poolId.toString(),
             '}, {"trait_type": "Amount Deposited", "value": "',
@@ -186,8 +183,8 @@ contract NFTDescriptor is INFTDescriptor {
         address underlying,
         uint amount,
         string memory amountString
-    ) internal view virtual returns (string memory tags) {
-        tags = string.concat(
+    ) internal view virtual returns (string memory text) {
+        text = string.concat(
             '<text x="50%" y="320" class="bit" style="font-size: 8">AMOUNT:', amountString
         );
     }
@@ -225,7 +222,7 @@ contract NFTDescriptor is INFTDescriptor {
     /// Does not work for amounts with more than 18 digits before decimal point.
     /// @param num A number
     /// @param decimals Number of decimal places
-    function generateDecimalString(uint num, uint decimals) internal pure returns (string memory) {
+    function generateDecimalString(uint num, uint decimals) internal pure returns (string memory decString) {
         if (num == 0) {
             return '0';
         }
@@ -269,6 +266,6 @@ contract NFTDescriptor is INFTDescriptor {
             }
         }
 
-        return string(buffer);
+        decString = string(buffer);
     }
 }
