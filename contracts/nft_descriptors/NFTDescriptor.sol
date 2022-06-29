@@ -15,18 +15,17 @@ contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
 
     /// @notice Constants for drawing graph
-    uint private constant GRAPH_WIDTH = 180;
-    uint private constant GRAPH_HEIGHT = 150;
+    uint private constant GRAPH_WIDTH = 210;
+    uint private constant GRAPH_HEIGHT = 30;
 
     // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmaaTKYqR2oUfJ3RDKtNe5JyGV3kTyTpwRp7L5kAqSNTQY/';
+    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmaayJ6EGM4JmK8P4eenopFrvExn6cwpeTapxti85ETJP4/';
+    uint private constant NUM_CHARACTERS = 3;
 
     IReliquary public immutable reliquary;
-    uint public immutable numCharacters;
 
-    constructor(IReliquary _reliquary, uint _numCharacters) {
+    constructor(IReliquary _reliquary) {
         reliquary = _reliquary;
-        numCharacters = _numCharacters;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values
@@ -39,7 +38,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
 
-        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % numCharacters;
+        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % NUM_CHARACTERS;
 
         string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(
@@ -183,10 +182,10 @@ contract NFTDescriptor is INFTDescriptor {
     ) internal pure returns (string memory text) {
         text = string(
             abi.encodePacked(
-                '<text x="50%" y="18" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
-                '</text><text x="50%" y="279" class="bit" style="font-size: 12">', poolName,
-                '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
+                '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
+                '</text><text x="50%" y="280" class="bit" style="font-size: 12">', poolName,
+                '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingOath,
+                ' OATH</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
                 ' DAY', (maturity == 1) ? '' : 'S', '</text>'
             )
         );
@@ -202,7 +201,7 @@ contract NFTDescriptor is INFTDescriptor {
     ) internal view virtual returns (string memory tags) {
         tags = string(
             abi.encodePacked(
-                '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
+                '<text x="50%" y="320" class="bit" style="font-size: 8">AMOUNT:', amountString
             )
         );
     }
@@ -219,8 +218,9 @@ contract NFTDescriptor is INFTDescriptor {
         }
 
         uint barWidth = GRAPH_WIDTH * 10 / levelInfo.allocPoint.length;
-        string memory barWidthString = string(abi.encodePacked((barWidth / 10).toString(), '.', (barWidth % 10).toString()));
-        bars = '<svg x="58" y="50" width="180" height="150">';
+        uint barWidthInt = barWidth / 10;
+        string memory barWidthString = string(abi.encodePacked((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), '.', (barWidth % 10).toString()));
+        bars = '<svg x="43" y="226" width="210" height="30">';
         for (uint i; i < levelInfo.allocPoint.length; i++) {
             uint barHeight = levelInfo.allocPoint[i] * GRAPH_HEIGHT / highestAllocPoint;
             bars = string(abi.encodePacked(

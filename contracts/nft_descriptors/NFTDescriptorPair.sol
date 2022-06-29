@@ -5,7 +5,7 @@ import './NFTDescriptor.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
 contract NFTDescriptorPair is NFTDescriptor {
-    constructor(IReliquary _reliquary, uint _numCharacters) NFTDescriptor(_reliquary, _numCharacters) {}
+    constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}
 
     function generateTextFromToken(
         address underlying,
@@ -21,8 +21,8 @@ contract NFTDescriptorPair is NFTDescriptor {
         uint amount1 = amount * reserves1 / lp.totalSupply();
         tags = string(
             abi.encodePacked(
-                '<text x="50%" y="300" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
-                '</text><text x="50%" y="315" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
+                '<text x="50%" y="320" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
+                '</text><text x="50%" y="340" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
             )
         );
     }
