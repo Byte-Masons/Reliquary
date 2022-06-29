@@ -19,11 +19,9 @@ contract NFTDescriptorPair is NFTDescriptor {
         (uint reserves0, uint reserves1, ) = lp.getReserves();
         uint amount0 = amount * reserves0 / lp.totalSupply();
         uint amount1 = amount * reserves1 / lp.totalSupply();
-        tags = string(
-            abi.encodePacked(
-                '<text x="50%" y="320" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
-                '</text><text x="50%" y="340" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
-            )
+        tags = string.concat(
+            '<text x="50%" y="320" class="bit" style="font-size: 8">', token0.symbol(), ':', generateDecimalString(amount0, token0.decimals()),
+            '</text><text x="50%" y="340" class="bit" style="font-size: 8">', token1.symbol(), ':', generateDecimalString(amount1, token1.decimals())
         );
     }
 }

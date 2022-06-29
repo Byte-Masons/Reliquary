@@ -50,55 +50,51 @@ contract NFTDescriptor is INFTDescriptor {
         string memory image =
             Base64.encode(
                 bytes(
-                    string(
-                        abi.encodePacked(
-                            generateSVGImage(
-                                position.level,
-                                levelInfo.balance.length,
-                                characterId
-                            ),
-                            generateImageText(
-                                relicId,
-                                pool.name,
-                                pendingOath,
-                                maturity
-                            ),
-                            generateTextFromToken(
-                                underlying,
-                                position.amount,
-                                amount
-                            ),
-                            '</text>',
-                            generateBars(
-                                position.level,
-                                levelInfo
-                            ),
-                            '</svg></svg>'
-                        )
+                    string.concat(
+                        generateSVGImage(
+                            position.level,
+                            levelInfo.balance.length,
+                            characterId
+                        ),
+                        generateImageText(
+                            relicId,
+                            pool.name,
+                            pendingOath,
+                            maturity
+                        ),
+                        generateTextFromToken(
+                            underlying,
+                            position.amount,
+                            amount
+                        ),
+                        '</text>',
+                        generateBars(
+                            position.level,
+                            levelInfo
+                        ),
+                        '</svg></svg>'
                     )
                 )
             );
 
         return
-            string(
-                abi.encodePacked(
-                    'data:application/json;base64,',
-                    Base64.encode(
-                        bytes(
-                            abi.encodePacked(
-                                '{"name":"',
-                                string(abi.encodePacked(
-                                    'Relic #', relicId.toString(), ': ', pool.name
-                                )),
-                                '", "description":"',
-                                description,
-                                '", "attributes": [',
-                                attributes,
-                                '], "image": "',
-                                'data:image/svg+xml;base64,',
-                                image,
-                                '"}'
-                            )
+            string.concat(
+                'data:application/json;base64,',
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                            '{"name":"',
+                            string.concat(
+                                'Relic #', relicId.toString(), ': ', pool.name
+                            ),
+                            '", "description":"',
+                            description,
+                            '", "attributes": [',
+                            attributes,
+                            '], "image": "',
+                            'data:image/svg+xml;base64,',
+                            image,
+                            '"}'
                         )
                     )
                 )
@@ -111,11 +107,9 @@ contract NFTDescriptor is INFTDescriptor {
         string memory poolName
     ) internal pure returns (string memory) {
         return
-        string(
-            abi.encodePacked(
-                'This NFT represents a position in a Reliquary ', poolName, ' pool. ',
-                'The owner of this NFT can modify or redeem the position, reducing its maturity accordingly.'
-            )
+        string.concat(
+            'This NFT represents a position in a Reliquary ', poolName, ' pool. ',
+            'The owner of this NFT can modify or redeem the position, reducing its maturity accordingly.'
         );
     }
 
@@ -130,19 +124,17 @@ contract NFTDescriptor is INFTDescriptor {
         uint maturity
     ) internal pure returns (string memory) {
         return
-        string(
-            abi.encodePacked(
-                '{"trait_type": "Pool ID", "value": ',
-                position.poolId.toString(),
-                '}, {"trait_type": "Amount Deposited", "value": "',
-                amount,
-                '"}, {"trait_type": "Pending Oath", "value": "',
-                pendingOath,
-                '"}, {"trait_type": "Maturity", "value": "',
-                maturity.toString(), ' day', (maturity == 1) ? '' : 's',
-                '"}, {"trait_type": "Level", "value": ',
-                (position.level + 1).toString(), '}'
-            )
+        string.concat(
+            '{"trait_type": "Pool ID", "value": ',
+            position.poolId.toString(),
+            '}, {"trait_type": "Amount Deposited", "value": "',
+            amount,
+            '"}, {"trait_type": "Pending Oath", "value": "',
+            pendingOath,
+            '"}, {"trait_type": "Maturity", "value": "',
+            maturity.toString(), ' day', (maturity == 1) ? '' : 's',
+            '"}, {"trait_type": "Level", "value": ',
+            (position.level + 1).toString(), '}'
         );
     }
 
@@ -153,19 +145,17 @@ contract NFTDescriptor is INFTDescriptor {
         uint level,
         uint numLevels,
         uint characterId
-    ) internal view returns (string memory svg) {
+    ) internal pure returns (string memory svg) {
         level = (level + 1) * 5 / numLevels;
-        svg = string(
-            abi.encodePacked(
-                '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
-                '<style>',
-                "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');",
-                '.bit { text-anchor: middle; dominant-baseline: middle; font-family: "Press Start 2P", "Courier New", Courier, monospace; fill: white }',
-                '.art { image-rendering: pixelated }',
-                '.shape { shape-rendering: crispEdges }',
-                '</style>',
-                '<image href="', IPFS, characterId.toString(), '/', (level == 0) ? '1' : level.toString(), '.gif', '" height="450" width="290" class="art"/>'
-            )
+        svg = string.concat(
+            '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
+            '<style>',
+            "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');",
+            '.bit { text-anchor: middle; dominant-baseline: middle; font-family: "Press Start 2P", "Courier New", Courier, monospace; fill: white }',
+            '.art { image-rendering: pixelated }',
+            '.shape { shape-rendering: crispEdges }',
+            '</style>',
+            '<image href="', IPFS, characterId.toString(), '/', (level == 0) ? '1' : level.toString(), '.gif', '" height="450" width="290" class="art"/>'
         );
     }
 
@@ -180,14 +170,12 @@ contract NFTDescriptor is INFTDescriptor {
         string memory pendingOath,
         uint maturity
     ) internal pure returns (string memory text) {
-        text = string(
-            abi.encodePacked(
-                '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
-                '</text><text x="50%" y="280" class="bit" style="font-size: 12">', poolName,
-                '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingOath,
-                ' OATH</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
-                ' DAY', (maturity == 1) ? '' : 'S', '</text>'
-            )
+        text = string.concat(
+            '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
+            '</text><text x="50%" y="280" class="bit" style="font-size: 12">', poolName,
+            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingOath,
+            ' OATH</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
+            ' DAY', (maturity == 1) ? '' : 'S', '</text>'
         );
     }
 
@@ -199,10 +187,8 @@ contract NFTDescriptor is INFTDescriptor {
         uint amount,
         string memory amountString
     ) internal view virtual returns (string memory tags) {
-        tags = string(
-            abi.encodePacked(
-                '<text x="50%" y="320" class="bit" style="font-size: 8">AMOUNT:', amountString
-            )
+        tags = string.concat(
+            '<text x="50%" y="320" class="bit" style="font-size: 8">AMOUNT:', amountString
         );
     }
 
@@ -219,11 +205,11 @@ contract NFTDescriptor is INFTDescriptor {
 
         uint barWidth = GRAPH_WIDTH * 10 / levelInfo.allocPoint.length;
         uint barWidthInt = barWidth / 10;
-        string memory barWidthString = string(abi.encodePacked((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), '.', (barWidth % 10).toString()));
+        string memory barWidthString = string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), '.', (barWidth % 10).toString());
         bars = '<svg x="43" y="226" width="210" height="30">';
         for (uint i; i < levelInfo.allocPoint.length; i++) {
             uint barHeight = levelInfo.allocPoint[i] * GRAPH_HEIGHT / highestAllocPoint;
-            bars = string(abi.encodePacked(
+            bars = string.concat(
                 bars,
                 '<rect x="', (barWidth * i / 10).toString(), '.', (barWidth * i % 10).toString(),
                 '" y="', (GRAPH_HEIGHT - barHeight).toString(),
@@ -231,7 +217,7 @@ contract NFTDescriptor is INFTDescriptor {
                 '" width="', barWidthString,
                 '" height="', barHeight.toString(),
                 '" style="fill:#', (i == level) ? 'e6de59' : 'fff', '"/>'
-            ));
+            );
         }
     }
 
