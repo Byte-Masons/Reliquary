@@ -38,7 +38,7 @@ describe('Reliquary', function () {
     this.chef = await deployChef(oath.address, emissionSetter.address);
     nftDescriptor = await deployNFTDescriptor(this.chef.address);
 
-    const operatorRole: String = await this.chef.OPERATOR();
+    const operatorRole: String = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("OPERATOR"));
     await this.chef.grantRole(operatorRole, operator.address);
     await oath.mint(this.chef.address, ethers.utils.parseEther('100000000'));
     //const Rewarder = await ethers.getContractFactory("RewarderMock");

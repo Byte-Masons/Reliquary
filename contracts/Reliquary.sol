@@ -24,7 +24,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
-    bytes32 public constant OPERATOR = keccak256("OPERATOR");
+    bytes32 private constant OPERATOR = keccak256("OPERATOR");
+    bytes32 private constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
 
     /// @notice Indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
@@ -135,7 +136,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     }
 
     /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
-    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(OPERATOR) {
+    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(EMISSION_CURVE) {
         emissionSetter = _emissionSetter;
         emit LogSetEmissionSetter(_emissionSetter);
     }
@@ -173,6 +174,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external override onlyRole(OPERATOR) {
+        require(_lpToken != OATH, "cannot add reward token as pool");
         require(requiredMaturity.length != 0, "empty levels array");
         require(requiredMaturity.length == allocPoints.length, "array length mismatch");
         require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");

@@ -31,7 +31,7 @@ async function main() {
   console.log('global variables');
   console.log(globalInfo);
 
-  const operatorRole = await chef.OPERATOR();
+  const operatorRole = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("OPERATOR"));
   await chef.grantRole(operatorRole, chef.signer.address);
   //reaper.sleep(10000);
   await reliquary.addPool(
