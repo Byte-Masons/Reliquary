@@ -58,10 +58,10 @@ async function viewPoolInfo(chefAddress, pid) {
   return obj;
 }
 
-async function viewLpToken(chefAddress, pid) {
+async function viewPoolToken(chefAddress, pid) {
   let chef = await returnChef(chefAddress);
-  let lpToken = await chef.lpToken(pid);
-  return lpToken;
+  let poolToken = await chef.poolToken(pid);
+  return poolToken;
 }
 
 async function viewRewarder(chefAddress, pid) {
@@ -89,9 +89,9 @@ async function getPoolCount(chefAddress) {
   return poolLength;
 }
 
-async function addPool(operator, chefAddress, allocPoint, lpToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor) {
+async function addPool(operator, chefAddress, allocPoint, poolToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor) {
   let chef = await returnChef(chefAddress);
-  let tx = await chef.connect(operator).addPool(allocPoint, lpToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor);
+  let tx = await chef.connect(operator).addPool(allocPoint, poolToken, rewarder, requiredMaturity, allocPoints, name, nftDescriptor);
   let receipt = await tx.wait();
   return receipt;
 }
@@ -201,7 +201,7 @@ module.exports = {
   returnChef,
   getGlobalInfo,
   viewPoolInfo,
-  viewLpToken,
+  viewPoolToken,
   viewRewarder,
   getPositionInfo,
   getPoolCount,

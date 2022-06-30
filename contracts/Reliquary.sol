@@ -51,7 +51,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @notice Level system for each Reliquary pool.
     LevelInfo[] private levels;
     /// @notice Address of the LP token for each Reliquary pool.
-    IERC20[] public lpToken;
+    IERC20[] public poolToken;
     /// @notice Address of each `IRewarder` contract.
     IRewarder[] public rewarder;
 
@@ -87,7 +87,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     event LogPoolAddition(
         uint indexed pid,
         uint allocPoint,
-        IERC20 indexed lpToken,
+        IERC20 indexed poolToken,
         IRewarder indexed rewarder,
         INFTDescriptor nftDescriptor
     );
@@ -106,7 +106,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param _oath The OATH token contract address.
      + @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate
     */
-    constructor(IERC20 _oath, IEmissionCurve _emissionCurve) ERC721("Reliquary Liquidity Position", "RELIC") {
+    constructor(IERC20 _oath, IEmissionCurve _emissionCurve) ERC721("Reliquary Deposit", "RELIC") {
         oath = _oath;
         emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -158,7 +158,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      +         Can only be called by an operator.
      +
      + @param allocPoint The allocation points for the new pool
-     + @param _lpToken Address of the pooled ERC-20 token
+     + @param _poolToken Address of the pooled ERC-20 token
      + @param _rewarder Address of the rewarder delegate
      + @param requiredMaturity Array of maturity (in seconds) required to achieve each level for this pool
      + @param allocPoints The allocation points for each level within this pool
@@ -167,14 +167,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     */
     function addPool(
         uint allocPoint,
-        IERC20 _lpToken,
+        IERC20 _poolToken,
         IRewarder _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external override onlyRole(OPERATOR) {
-        require(_lpToken != oath, "cannot add reward token as pool");
+        require(_poolToken != oath, "cannot add reward token as pool");
         require(requiredMaturity.length != 0, "empty levels array");
         require(requiredMaturity.length == allocPoints.length, "array length mismatch");
         require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");
@@ -187,7 +187,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         }
 
         totalAllocPoint += allocPoint;
-        lpToken.push(_lpToken);
+        poolToken.push(_poolToken);
         rewarder.push(_rewarder);
         nftDescriptor.push(_nftDescriptor);
 
@@ -207,7 +207,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             })
         );
 
-        emit LogPoolAddition((lpToken.length - 1), allocPoint, _lpToken, _rewarder, _nftDescriptor);
+        emit LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
     }
 
     /*
@@ -342,7 +342,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, false);
 
-        lpToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
+        poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
@@ -359,7 +359,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
 
-        lpToken[poolId].safeTransfer(to, amount);
+        poolToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
     }
@@ -389,7 +389,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         (uint poolId, uint _pendingOath) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
 
-        lpToken[poolId].safeTransfer(to, amount);
+        poolToken[poolId].safeTransfer(to, amount);
 
         emit Withdraw(poolId, amount, to, relicId);
         emit Harvest(poolId, _pendingOath, relicId);
@@ -412,7 +412,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         _burn(relicId);
         delete positionForId[relicId];
 
-        lpToken[position.poolId].safeTransfer(to, amount);
+        poolToken[position.poolId].safeTransfer(to, amount);
 
         emit EmergencyWithdraw(poolId, amount, to, relicId);
     }
@@ -425,7 +425,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
     /*
      + @dev Internal function called whenever a position's state needs to be modified
-     + @param amount Amount of lpToken to deposit/withdraw
+     + @param amount Amount of poolToken to deposit/withdraw
      + @param relicId The NFT ID of the position being updated
      + @param kind Indicates whether tokens are being added to, or removed from, a pool
      + @param _harvest Whether a harvest should be performed

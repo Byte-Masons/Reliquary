@@ -58,7 +58,7 @@ interface IReliquary is IERC721Enumerable {
   function supportsInterface(bytes4 interfaceId) external view returns (bool);
   function addPool(
         uint allocPoint,
-        IERC20 _lpToken,
+        IERC20 _poolToken,
         IRewarder _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
@@ -95,7 +95,7 @@ interface IReliquary is IERC721Enumerable {
   function emissionCurve() external view returns (IEmissionCurve);
   function getPoolInfo(uint) external view returns (PoolInfo memory);
   function getLevelInfo(uint) external view returns (LevelInfo memory);
-  function lpToken(uint) external view returns (IERC20);
+  function poolToken(uint) external view returns (IERC20);
   function rewarder(uint) external view returns (IRewarder);
 
   function getPositionForId(uint) external view returns (PositionInfo memory);

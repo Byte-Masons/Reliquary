@@ -37,7 +37,7 @@ contract DepositHelper is IERC721Receiver {
     uint amount,
     uint relicId
   ) external {
-    IVault vault = IVault(address(reliquary.lpToken(pid)));
+    IVault vault = IVault(address(reliquary.poolToken(pid)));
     IERC20 token = vault.token();
     token.safeTransferFrom(msg.sender, address(this), amount);
     if (token.allowance(address(vault), address(this)) == 0) {
@@ -60,7 +60,7 @@ contract DepositHelper is IERC721Receiver {
     uint relicId
   ) external {
     IERC721 relic = IERC721(address(reliquary));
-    IVault vault = IVault(address(reliquary.lpToken(pid)));
+    IVault vault = IVault(address(reliquary.poolToken(pid)));
     IERC20 token = vault.token();
 
     uint amountInShares = amount * 1e18 / vault.getPricePerFullShare();

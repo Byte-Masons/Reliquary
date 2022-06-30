@@ -33,7 +33,7 @@ contract NFTDescriptor is INFTDescriptor {
         PositionInfo memory position = reliquary.getPositionForId(relicId);
         PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
         LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
-        address underlying = address(reliquary.lpToken(position.poolId));
+        address underlying = address(reliquary.poolToken(position.poolId));
         string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
         string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;

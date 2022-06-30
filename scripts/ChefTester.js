@@ -57,9 +57,9 @@ async function main() {
   let poolCount = await reliquary.getPoolCount(chef.address);
   console.log('pool count: ' + poolCount.toString());
 
-  let lpTokenAddress = await reliquary.viewLpToken(chef.address, 0);
+  let poolTokenAddress = await reliquary.viewPoolToken(chef.address, 0);
   let rewarderAddress = await reliquary.viewRewarder(chef.address, 0);
-  console.log('lpToken address: ' + lpTokenAddress);
+  console.log('poolToken address: ' + poolTokenAddress);
   console.log('rewarderAddress: ' + rewarderAddress);
 
   await oathToken.mint(chef.address, ethers.utils.parseEther('100000000000'));
