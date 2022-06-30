@@ -3,7 +3,7 @@
 pragma solidity 0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import "./IEmissionSetter.sol";
+import "./IEmissionCurve.sol";
 import "./INFTDescriptor.sol";
 import "./IRewarder.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -54,7 +54,7 @@ struct LevelInfo {
 
 interface IReliquary is IERC721Enumerable {
 
-  function setEmissionSetter(IEmissionSetter _emissionSetter) external;
+  function setEmissionCurve(IEmissionCurve _emissionCurve) external;
   function supportsInterface(bytes4 interfaceId) external view returns (bool);
   function addPool(
         uint allocPoint,
@@ -90,9 +90,9 @@ interface IReliquary is IERC721Enumerable {
 
   // State
 
-  function OATH() external view returns (IERC20);
+  function oath() external view returns (IERC20);
   function nftDescriptor(uint) external view returns (INFTDescriptor);
-  function emissionSetter() external view returns (IEmissionSetter);
+  function emissionCurve() external view returns (IEmissionCurve);
   function getPoolInfo(uint) external view returns (PoolInfo memory);
   function getLevelInfo(uint) external view returns (LevelInfo memory);
   function lpToken(uint) external view returns (IERC20);

@@ -20,7 +20,7 @@ const deployTestToken = async (deployer: Signer, tokenName: string, tokenSymbol:
   return contract;
 };
 
-const deployConstantEmissionSetter = async (deployer: Signer) => {
+const deployConstantEmissionCurve = async (deployer: Signer) => {
   const artifact: Artifact = await artifacts.readArtifact('Constant');
   const contract: Constant = <Constant>await deployContract(deployer, artifact);
   return contract;
@@ -34,8 +34,8 @@ describe('Reliquary', function () {
     lp = await deployTestToken(superAdmin, 'LP Token', 'LPT', 18);
     await lp.mint(superAdmin.address, ethers.utils.parseEther('1000'));
 
-    const emissionSetter: Constant = await deployConstantEmissionSetter(superAdmin);
-    this.chef = await deployChef(oath.address, emissionSetter.address);
+    const emissionCurve: Constant = await deployConstantEmissionCurve(superAdmin);
+    this.chef = await deployChef(oath.address, emissionCurve.address);
     nftDescriptor = await deployNFTDescriptor(this.chef.address);
 
     const operatorRole: String = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("OPERATOR"));

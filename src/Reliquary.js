@@ -6,9 +6,9 @@ function debug(arguments) {
   return argumentTypes;
 }
 
-async function deployChef(oathAddress, emissionSetterAddress) {
+async function deployChef(oathAddress, emissionCurveAddress) {
   let Reliquary = await ethers.getContractFactory('Reliquary');
-  let chef = await Reliquary.deploy(oathAddress, emissionSetterAddress);
+  let chef = await Reliquary.deploy(oathAddress, emissionCurveAddress);
   return chef;
 }
 
@@ -22,8 +22,8 @@ async function getGlobalInfo(chefAddress) {
   let chef = await returnChef(chefAddress);
   let globalInfo = {
     totalAllocPoint: (await chef.totalAllocPoint()).toString(),
-    chefToken: await chef.OATH(),
-    emissionSetter: await chef.emissionSetter()
+    chefToken: await chef.oath(),
+    emissionCurve: await chef.emissionCurve()
   };
   return globalInfo;
 }

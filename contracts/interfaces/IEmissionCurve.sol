@@ -2,6 +2,6 @@
 
 pragma solidity 0.8.13;
 
-interface IEmissionSetter {
+interface IEmissionCurve {
     function getRate() external view returns (uint rate);
 }

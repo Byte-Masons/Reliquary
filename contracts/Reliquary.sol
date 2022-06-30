@@ -41,11 +41,11 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     uint private nonce;
 
     /// @notice Address of OATH contract.
-    IERC20 public immutable OATH;
+    IERC20 public immutable oath;
     /// @notice Address of each NFTDescriptor contract.
     INFTDescriptor[] public nftDescriptor;
-    /// @notice Address of EmissionSetter contract.
-    IEmissionSetter public emissionSetter;
+    /// @notice Address of EmissionCurve contract.
+    IEmissionCurve public emissionCurve;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
     /// @notice Level system for each Reliquary pool.
@@ -97,18 +97,18 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         IRewarder indexed rewarder,
         INFTDescriptor nftDescriptor
     );
-    event LogSetEmissionSetter(IEmissionSetter indexed emissionSetterAddress);
+    event LogSetEmissionCurve(IEmissionCurve indexed emissionCurveAddress);
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
     event LevelChanged(uint indexed relicId, uint newLevel);
 
     /*
      + @notice Constructs and initializes the contract
      + @param _oath The OATH token contract address.
-     + @param _emissionSetter The contract address for EmissionSetter, which will return the emission rate
+     + @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate
     */
-    constructor(IERC20 _oath, IEmissionSetter _emissionSetter) ERC721("Reliquary Liquidity Position", "RELIC") {
-        OATH = _oath;
-        emissionSetter = _emissionSetter;
+    constructor(IERC20 _oath, IEmissionCurve _emissionCurve) ERC721("Reliquary Liquidity Position", "RELIC") {
+        oath = _oath;
+        emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -135,10 +135,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
     }
 
-    /// @param _emissionSetter The contract address for EmissionSetter, which will return the base emission rate
-    function setEmissionSetter(IEmissionSetter _emissionSetter) external override onlyRole(EMISSION_CURVE) {
-        emissionSetter = _emissionSetter;
-        emit LogSetEmissionSetter(_emissionSetter);
+    /// @param _emissionCurve The contract address for EmissionCurve, which will return the base emission rate
+    function setEmissionCurve(IEmissionCurve _emissionCurve) external override onlyRole(EMISSION_CURVE) {
+        emissionCurve = _emissionCurve;
+        emit LogSetEmissionCurve(_emissionCurve);
     }
 
     function getPositionForId(uint relicId) external view override returns (PositionInfo memory position) {
@@ -174,7 +174,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external override onlyRole(OPERATOR) {
-        require(_lpToken != OATH, "cannot add reward token as pool");
+        require(_lpToken != oath, "cannot add reward token as pool");
         require(requiredMaturity.length != 0, "empty levels array");
         require(requiredMaturity.length == allocPoints.length, "array length mismatch");
         require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");
@@ -483,7 +483,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
                 _pendingOath = _receivedOath(_pendingOath);
             }
             if (_pendingOath != 0) {
-                OATH.safeTransfer(msg.sender, _pendingOath);
+                oath.safeTransfer(msg.sender, _pendingOath);
                 IRewarder _rewarder = rewarder[poolId];
                 if (address(_rewarder) != address(0)) {
                     _rewarder.onOathReward(relicId, _pendingOath);
@@ -508,13 +508,13 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param _pendingOath Amount of OATH owed
     /// @return received The minimum between amount owed and amount available
     function _receivedOath(uint _pendingOath) internal view returns (uint received) {
-        uint available = OATH.balanceOf(address(this));
+        uint available = oath.balanceOf(address(this));
         received = (available > _pendingOath) ? _pendingOath : available;
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
     function _baseEmissionsPerSecond() internal view returns (uint rate) {
-        rate = emissionSetter.getRate();
+        rate = emissionCurve.getRate();
         require(rate <= 6e18, "maximum emission rate exceeded");
     }
 
