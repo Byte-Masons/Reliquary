@@ -185,7 +185,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory amountString
     ) internal view virtual returns (string memory text) {
         text = string.concat(
-            '<text x="50%" y="320" class="bit" style="font-size: 8">AMOUNT:', amountString
+            '<text x="50%" y="340" class="bit" style="font-size: 8">AMOUNT:', amountString
         );
     }
 
