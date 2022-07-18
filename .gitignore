@@ -17,3 +17,7 @@ types
 
 # IDEs
 .idea
+
+#Foundry
+forge-cache
+out

@@ -19,7 +19,11 @@ async function main() {
 
   const NFTDescriptor: any = await artifacts.readArtifact('NFTDescriptorSingle4626');
   const nftDescriptor: any = await ContractFactory.fromSolidity(NFTDescriptor, frame.getSigner());
-  const deployedNFTDescriptor = await nftDescriptor.deploy(deployedReliquary.address);
+  const deployedNFTDescriptor: any = await nftDescriptor.deploy(deployedReliquary.address);
+
+  const DepositHelper: any = await artifacts.readArtifact('DepositHelper');
+  const depositHelper: any = await ContractFactory.fromSolidity(DepositHelper, frame.getSigner());
+  const deployedDepositHelper: any = await depositHelper.deploy('0x90fEC9587624dC4437833Ef3C34C218996B8AB98');
 }
 
 main()
