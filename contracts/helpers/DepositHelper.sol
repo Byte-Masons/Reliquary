@@ -63,8 +63,7 @@ contract DepositHelper is IERC721Receiver {
     reliquary.safeTransferFrom(msg.sender, address(this), relicId);
     reliquary.withdraw(vault.convertToShares(amount), relicId);
 
-    uint withdrawable = vault.convertToAssets(IERC20(vault).balanceOf(address(this)));
-    vault.withdraw(withdrawable, address(this), address(this));
+    vault.maxWithdraw(address(this));
     token.transfer(msg.sender, token.balanceOf(address(this)));
     reliquary.safeTransferFrom(address(this), msg.sender, relicId);
   }

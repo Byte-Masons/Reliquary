@@ -35,8 +35,8 @@ contract DepositHelperTest is Test {
 
         uint initialBalance = weth.balanceOf(WETH_WHALE);
         helper.withdraw(0, 1e18, helper.reliquary().tokenOfOwnerByIndex(WETH_WHALE, 0));
-        uint balance = weth.balanceOf(WETH_WHALE) - initialBalance;
+        uint diff = weth.balanceOf(WETH_WHALE) - initialBalance;
 
-        assertTrue(1e18 - 1e6 < balance && balance < 1e18 + 1e6);
+        assertTrue(diff == 0);
     }
 }
