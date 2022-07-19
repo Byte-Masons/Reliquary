@@ -35,7 +35,7 @@ contract DepositHelper is IERC721Receiver {
     IERC20 token = IERC20(vault.asset());
     token.safeTransferFrom(msg.sender, address(this), amount);
 
-    if (token.allowance(address(vault), address(this)) == 0) {
+    if (token.allowance(address(this), address(vault)) == 0) {
       token.approve(address(vault), type(uint).max);
     }
     vault.deposit(amount, address(this));
