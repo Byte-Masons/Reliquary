@@ -18,7 +18,7 @@ contract DepositHelperTest is Test {
         vault = IERC4626(address(reliquary.poolToken(0)));
         weth = IERC20(vault.asset());
 
-        vm.startPrank(address(WETH_WHALE), address(WETH_WHALE));
+        vm.startPrank(WETH_WHALE, WETH_WHALE);
         weth.approve(address(helper), type(uint).max);
         helper.reliquary().setApprovalForAll(address(helper), true);
     }

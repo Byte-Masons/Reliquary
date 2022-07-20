@@ -10,7 +10,7 @@
     "deploy": "npx hardhat run scripts/deploy.ts",
     "deploy:staging": "npx hardhat run --network test scripts/deploy.ts",
     "deploy:production": "npx hardhat run --network opera scripts/deploy.ts",
-    "test": "npx hardhat test && ./run_forge_tests.sh",
+    "test": "./run_forge_tests.sh",
     "prepare": "husky install"
   },
   "author": "0xBebis",

@@ -35,7 +35,7 @@ npm install
 
 ## Testing
 
-We have `hardhat` and `forge` tests in the `test/` directory. Get Foundry [here](https://github.com/foundry-rs/foundry). You will need to ensure the contracts have been compiled before running so please use the commands:
+We have `forge` tests in the `test/` directory. Get Foundry [here](https://github.com/foundry-rs/foundry). You will need to ensure the contracts have been compiled before running so please use the commands:
 
 ```bash
 npm run build
