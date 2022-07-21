@@ -23,31 +23,36 @@ contract DepositHelperTest is Test {
         helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
-    function testCreateNew() public {
-        helper.deposit(0, 1 ether, 0);
+    function testCreateNew(uint amount) public {
+        amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
+        helper.deposit(0, amount, 0);
 
-        assertTrue(reliquary.balanceOf(WETH_WHALE) == 1, "no Relic given");
-        assertTrue(
-            reliquary.getPositionForId(_getRelicId()).amount == vault.convertToShares(1 ether),
+        assertEq(reliquary.balanceOf(WETH_WHALE), 1, "no Relic given");
+        assertEq(
+            reliquary.getPositionForId(_getRelicId()).amount, vault.convertToShares(amount),
             "deposited amount not expected amount"
         );
     }
 
-    function testDepositExisting() public {
-        helper.deposit(0, 1 ether, 0);
+    function testDepositExisting(uint amountA, uint amountB) public {
+        amountA = bound(amountA, 10, type(uint).max / 2);
+        amountB = bound(amountB, 10, type(uint).max / 2);
+        vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
+        helper.deposit(0, amountA, 0);
 
-        helper.deposit(0, 0.5 ether, _getRelicId());
+        helper.deposit(0, amountB, _getRelicId());
         uint relicAmount = reliquary.getPositionForId(_getRelicId()).amount;
-        uint expectedAmount = vault.convertToShares(1.5 ether);
-        assertTrue(expectedAmount - 100 < relicAmount && relicAmount < expectedAmount + 100);
+        uint expectedAmount = vault.convertToShares(amountA + amountB);
+        assertApproxEqAbs(expectedAmount, relicAmount, 1);
     }
 
-    function testWithdraw() public {
-        helper.deposit(0, 1 ether, 0);
+    function testWithdraw(uint amount) public {
+        amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
+        helper.deposit(0, amount, 0);
 
         uint initialBalance = weth.balanceOf(WETH_WHALE);
-        helper.withdraw(0, 1 ether, _getRelicId());
-        assertTrue(weth.balanceOf(WETH_WHALE) == initialBalance);
+        helper.withdraw(0, amount, _getRelicId());
+        assertEq(weth.balanceOf(WETH_WHALE), initialBalance);
     }
 
     function _getRelicId() private view returns (uint relicId) {

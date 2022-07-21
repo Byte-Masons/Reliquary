@@ -117,19 +117,21 @@ contract ReliquaryTest is Test {
         reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
     }
 
-    function testPendingOath() public {
+    function testPendingOath(uint amount, uint time) public {
+        vm.assume(time < 3650 days);
+        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
         vm.startPrank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, 1 ether);
-        vm.warp(block.timestamp + 365 days);
+        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
+        skip(time);
         reliquary.updatePool(0);
         uint relicId = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
         reliquary.updatePosition(relicId);
-        assertTrue(reliquary.pendingOath(relicId) == 3153600 ether);
+        assertApproxEqAbs(reliquary.pendingOath(relicId), time * 1e17, 1e12);
         vm.stopPrank();
     }
 
     function testMassUpdatePools() public {
-        vm.warp(block.timestamp + 1);
+        skip(1);
         uint[] memory pools = new uint[](1);
         pools[0] = 0;
         vm.expectEmit(true, false, false, true);
@@ -145,35 +147,41 @@ contract ReliquaryTest is Test {
         reliquary.massUpdatePools(pools);
     }
 
-    function testCreateRelicAndDeposit() public {
+    function testCreateRelicAndDeposit(uint amount) public {
+        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
         vm.expectEmit(true, true, true, true);
-        emit Deposit(0, 1, WETH_WHALE, 1);
+        emit Deposit(0, amount, WETH_WHALE, 1);
         vm.prank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, 1);
+        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
     }
 
-    function testDepositExisting() public {
+    function testDepositExisting(uint amountA, uint amountB) public {
+        amountA = bound(amountA, 1, type(uint).max / 2);
+        amountB = bound(amountB, 1, type(uint).max / 2);
+        vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
         vm.startPrank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, 1);
+        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amountA);
         uint relicId = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
-        reliquary.deposit(2, relicId);
+        reliquary.deposit(amountB, relicId);
         vm.stopPrank();
-        assertTrue(reliquary.getPositionForId(relicId).amount == 3);
+        assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
     }
 
-    function testRevertOnDepositInvalidPool() public {
+    function testRevertOnDepositInvalidPool(uint pool) public {
+        vm.assume(pool != 0);
         vm.expectRevert(bytes("invalid pool ID"));
         vm.prank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 1, 1);
+        reliquary.createRelicAndDeposit(WETH_WHALE, pool, 1);
     }
 
-    function testWithdraw() public {
+    function testWithdraw(uint amount) public {
+        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
         vm.startPrank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, 1);
+        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
         uint relicId = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(0, 1, WETH_WHALE, relicId);
-        reliquary.withdraw(1, relicId);
+        emit Withdraw(0, amount, WETH_WHALE, relicId);
+        reliquary.withdraw(amount, relicId);
         vm.stopPrank();
     }
 
@@ -185,30 +193,30 @@ contract ReliquaryTest is Test {
         weth.approve(address(reliquary), type(uint).max);
         reliquary.createRelicAndDeposit(address(1), 0, 1 ether);
         uint relicIdA = reliquary.tokenOfOwnerByIndex(address(1), 0);
-        vm.warp(block.timestamp + 180 days);
+        skip(180 days);
         reliquary.withdraw(0.75 ether, relicIdA);
         reliquary.deposit(1 ether, relicIdA);
-        vm.stopPrank();
 
-        vm.startPrank(WETH_WHALE);
+        changePrank(WETH_WHALE);
         reliquary.createRelicAndDeposit(WETH_WHALE, 0, 100 ether);
         uint relicIdB = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
-        vm.warp(block.timestamp + 180 days);
+        skip(180 days);
         reliquary.harvest(relicIdB);
+
+        changePrank(address(1));
+        reliquary.harvest(relicIdA);
         vm.stopPrank();
 
-        vm.prank(address(1));
-        reliquary.harvest(relicIdA);
-
-        assertTrue((oath.balanceOf(address(1)) + oath.balanceOf(WETH_WHALE)) / 1e18 == 3110399);
+        assertEq((oath.balanceOf(address(1)) + oath.balanceOf(WETH_WHALE)) / 1e18, 3110399);
     }
 
-    function testEmergencyWithdraw() public {
+    function testEmergencyWithdraw(uint amount) public {
+        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
         vm.startPrank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, 100 ether);
+        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
         uint relicId = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdraw(0, 100 ether, WETH_WHALE, relicId);
+        emit EmergencyWithdraw(0, amount, WETH_WHALE, relicId);
         reliquary.emergencyWithdraw(relicId);
         vm.stopPrank();
     }
