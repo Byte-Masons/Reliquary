@@ -48,12 +48,12 @@ contract DepositHelperTest is Test {
     }
 
     function testWithdraw(uint amount) public {
-        amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
+        uint initialBalance = weth.balanceOf(WETH_WHALE);
+        amount = bound(amount, 10, initialBalance);
         helper.deposit(0, amount, 0);
 
-        uint initialBalance = weth.balanceOf(WETH_WHALE);
         helper.withdraw(0, amount, _getRelicId());
-        assertEq(weth.balanceOf(WETH_WHALE), initialBalance);
+        assertApproxEqAbs(weth.balanceOf(WETH_WHALE), initialBalance, 10);
     }
 
     function _getRelicId() private view returns (uint relicId) {

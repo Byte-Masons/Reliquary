@@ -41,10 +41,3 @@ We have `forge` tests in the `test/` directory. Get Foundry [here](https://githu
 npm run build
 npm run test
 ```
-
-## Chef tester
-We also have an `End to End` test script that verifies the MasterChef works as intended using the command:
-
-```bash
-npx hardhat run scripts/ChefTester.js
-```

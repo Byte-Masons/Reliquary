@@ -1,2 +1,2 @@
 #!/bin/sh
-forge test -vv
+forge test -v
