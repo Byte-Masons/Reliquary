@@ -13,6 +13,7 @@ contract DepositHelperTest is Test {
     address constant WETH_WHALE = 0x2400BB4D7221bA530Daee061D5Afe219E9223Eae;
 
     function setUp() public {
+        vm.createSelectFork("fantom", 43052549);
         helper = new DepositHelper(0x90fEC9587624dC4437833Ef3C34C218996B8AB98);
         reliquary = helper.reliquary();
         vault = IERC4626(address(reliquary.poolToken(0)));

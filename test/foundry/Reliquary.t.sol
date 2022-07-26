@@ -21,6 +21,9 @@ contract ReliquaryTest is Test {
     INFTDescriptor nftDescriptor;
     address constant WETH_WHALE = 0x2400BB4D7221bA530Daee061D5Afe219E9223Eae;
 
+    uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
+    uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
+
     event Deposit(
         uint indexed pid,
         uint amount,
@@ -48,6 +51,7 @@ contract ReliquaryTest is Test {
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
 
     function setUp() public {
+        vm.createSelectFork("fantom", 43052549);
         oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
         IEmissionCurve curve = IEmissionCurve(address(new Constant()));
         reliquary = new Reliquary(oath, curve);
@@ -57,26 +61,6 @@ contract ReliquaryTest is Test {
 
         weth = IERC20(0x74b23882a30290451A17c44f4F05243b6b58C76d);
         nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
-
-        uint[] memory requiredMaturity = new uint[](8);
-        requiredMaturity[0] = 0;
-        requiredMaturity[1] = 1 days;
-        requiredMaturity[2] = 7 days;
-        requiredMaturity[3] = 14 days;
-        requiredMaturity[4] = 30 days;
-        requiredMaturity[5] = 90 days;
-        requiredMaturity[6] = 180 days;
-        requiredMaturity[7] = 365 days;
-
-        uint[] memory allocPoints = new uint[](8);
-        allocPoints[0] = 100;
-        allocPoints[1] = 120;
-        allocPoints[2] = 150;
-        allocPoints[3] = 200;
-        allocPoints[4] = 300;
-        allocPoints[5] = 400;
-        allocPoints[6] = 500;
-        allocPoints[7] = 750;
 
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(
