@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.15;
 
 import "./interfaces/IReliquary.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "openzeppelin-contracts/contracts/utils/Multicall.sol";
+import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
+import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
 /*
  + @title Reliquary

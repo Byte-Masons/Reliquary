@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.13;
+pragma solidity ^0.8.15;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import "../interfaces/IReliquary.sol";
 
 contract DepositHelper is IERC721Receiver {
@@ -58,7 +58,6 @@ contract DepositHelper is IERC721Receiver {
     uint relicId
   ) external {
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
-    IERC20 token = IERC20(vault.asset());
 
     reliquary.safeTransferFrom(msg.sender, address(this), relicId);
     reliquary.withdraw(vault.convertToShares(amount), relicId);

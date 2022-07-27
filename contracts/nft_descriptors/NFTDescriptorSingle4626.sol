@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.15;
 
 import "./NFTDescriptor.sol";
-import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract NFTDescriptorSingle4626 is NFTDescriptor {
     constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}

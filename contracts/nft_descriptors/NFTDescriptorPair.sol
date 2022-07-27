@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity ^0.8.15;
 
 import './NFTDescriptor.sol';
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
+import 'v2-core/interfaces/IUniswapV2Pair.sol';
 
 contract NFTDescriptorPair is NFTDescriptor {
     constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}

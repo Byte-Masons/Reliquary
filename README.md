@@ -20,24 +20,10 @@ testing in the coming weeks.
 
 
 ## Installation
+This is a Foundry project. Get Foundry from [here](https://github.com/foundry-rs/foundry).
 
-This is a [`Hardhat`](https://hardhat.org/) project which requires a specific NodeJS version. We have provided an `.nvmrc` file which shows the current required version of `node`. You can install manually or via [nvm](https://github.com/nvm-sh/nvm) by using the command:
-
-```bash
-nvm use
-```
-
-All dependencies are managed by `npm`, you can install the project using the command:
+Please run the following command in this project's root directory to enable pre-commit testing:
 
 ```bash
-npm install
-```
-
-## Testing
-
-We have `forge` tests in the `test/` directory. Get Foundry [here](https://github.com/foundry-rs/foundry). You will need to ensure the contracts have been compiled before running so please use the commands:
-
-```bash
-npm run build
-npm run test
+ln -s ../../pre-commit .git/hooks/pre-commit
 ```
