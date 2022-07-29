@@ -505,6 +505,35 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         }
     }
 
+    /// @notice Split an owned Relic into a new one, while maintaining maturity
+    /// @param relicId The NFT ID of the Relic to split
+    /// @param amount Amount to move from existing Relic into the new one
+    /// @return newId The NFT ID of the new Relic
+    function split(uint relicId, uint amount) external override nonReentrant returns (uint newId) {
+        address to = ownerOf(relicId);
+        require(to == msg.sender, "you do not own this position");
+
+        PositionInfo storage position = positionForId[relicId];
+        uint relicAmount = position.amount;
+        require(amount < relicAmount, "amount exceeds deposited");
+        relicAmount -= amount;
+        position.amount = relicAmount;
+
+        newId = _mint(to);
+        PositionInfo storage newPosition = positionForId[newId];
+        newPosition.amount = amount;
+        newPosition.entry = position.entry;
+        uint level = position.level;
+        newPosition.level = level;
+        uint poolId = position.poolId;
+        newPosition.poolId = poolId;
+
+        _updatePool(poolId);
+        uint multiplier = poolInfo[poolId].accOathPerShare * levels[poolId].allocPoint[level];
+        position.rewardDebt = relicAmount * multiplier / ACC_OATH_PRECISION;
+        newPosition.rewardDebt = amount * multiplier / ACC_OATH_PRECISION;
+    }
+
     /// @notice Calculate how much the owner will actually receive on harvest, given available OATH
     /// @param _pendingOath Amount of OATH owed
     /// @return received The minimum between amount owed and amount available
