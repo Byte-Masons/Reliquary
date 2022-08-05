@@ -57,13 +57,14 @@ contract EndToEndTest is Test {
 
         console.log(reliquary.tokenURI(relicId));
 
-        uint newId = reliquary.split(relicId, wethCrypt.convertToShares(15 ether));
+        uint newId = helper.deposit(0, 10, 0);
+        reliquary.merge(relicId, newId, wethCrypt.convertToShares(15 ether));
         console.log(reliquary.tokenURI(relicId));
         console.log(reliquary.tokenURI(newId));
 
         helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId);
         helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId);
-        assertApproxEqAbs(weth.balanceOf(address(1)), 100 ether, 10);
+        assertApproxEqRel(weth.balanceOf(address(1)), 100 ether, 2e14);
 
         vm.stopPrank();
     }

@@ -21,7 +21,7 @@ contract Deploy is Script {
     DepositHelper public helper;
 
     function run() external {
-        vm.createSelectFork("fantom");
+        vm.createSelectFork("fantom", 43052549);
         vm.startBroadcast();
 
         IERC20 oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);

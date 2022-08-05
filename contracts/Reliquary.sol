@@ -450,7 +450,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         } else if (kind == Kind.WITHDRAW) {
             newAmount = oldAmount - amount;
             position.amount = newAmount;
-            _updateEntry(amount, relicId);
         } else {
             newAmount = oldAmount;
         }
@@ -534,6 +533,57 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         newPosition.rewardDebt = amount * multiplier / ACC_OATH_PRECISION;
     }
 
+    /// @notice Transfer amount from one Relic into another, updating maturity in the receiving Relic
+    /// @param fromId The NFT ID of the Relic to transfer from
+    /// @param toId The NFT ID of the Relic being transferred to
+    function merge(uint fromId, uint toId, uint amount) external override nonReentrant {
+        address to = msg.sender;
+        require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
+
+        PositionInfo storage fromPosition = positionForId[fromId];
+        uint fromAmount = fromPosition.amount;
+        require(amount <= fromAmount, "amount exceeds deposited");
+
+        uint poolId = fromPosition.poolId;
+        PositionInfo storage toPosition = positionForId[toId];
+        require(poolId == toPosition.poolId, "Relics not of the same pool");
+        _updatePool(poolId);
+
+        uint toAmount = toPosition.amount;
+        uint timestamp = block.timestamp;
+        toPosition.entry = timestamp - _findWeight(amount, toAmount) *
+            (2 * timestamp - fromPosition.entry - toPosition.entry) / 1e18;
+
+        uint newFromAmount = fromAmount - amount;
+        fromPosition.amount = newFromAmount;
+        uint fromLevel = fromPosition.level;
+
+        uint newToAmount = toAmount + amount;
+        toPosition.amount = newToAmount;
+
+        uint oldLevel = toPosition.level;
+        uint newLevel = _updateLevel(toId);
+        if (fromLevel != newLevel) {
+            levels[poolId].balance[fromLevel] -= amount;
+        }
+        if (oldLevel != newLevel) {
+            levels[poolId].balance[oldLevel] -= toAmount;
+        }
+        if (fromLevel != newLevel && oldLevel != newLevel) {
+            levels[poolId].balance[newLevel] += newToAmount;
+        } else if (fromLevel != newLevel) {
+            levels[poolId].balance[newLevel] += amount;
+        } else if (oldLevel != newLevel) {
+            levels[poolId].balance[newLevel] += toAmount;
+        }
+
+        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        fromPosition.rewardDebt = newFromAmount * accOathPerShare * levels[poolId].allocPoint[fromLevel]
+            / ACC_OATH_PRECISION;
+        toPosition.rewardDebt = newToAmount * accOathPerShare  * levels[poolId].allocPoint[newLevel]
+            / ACC_OATH_PRECISION;
+    }
+
     /// @notice Calculate how much the owner will actually receive on harvest, given available OATH
     /// @param _pendingOath Amount of OATH owed
     /// @return received The minimum between amount owed and amount available
@@ -593,13 +643,12 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         }
 
         uint maturity = block.timestamp - position.entry;
-        for (uint i = length - 1; true; i = _uncheckedDec(i)) {
-            if (maturity >= levelInfo.requiredMaturity[i]) {
-                if (position.level != i) {
-                    position.level = i;
+        for (newLevel = length - 1; true; newLevel = _uncheckedDec(newLevel)) {
+            if (maturity >= levelInfo.requiredMaturity[newLevel]) {
+                if (position.level != newLevel) {
+                    position.level = newLevel;
                     emit LevelChanged(relicId, newLevel);
                 }
-                newLevel = i;
                 break;
             }
         }

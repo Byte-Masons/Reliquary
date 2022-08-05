@@ -88,6 +88,7 @@ interface IReliquary is IERC721Enumerable {
   function emergencyWithdraw(uint relicId) external;
   function updatePosition(uint relicId) external;
   function split(uint relicId, uint amount) external returns (uint newId);
+  function merge(uint fromId, uint toId, uint amount) external;
 
   // State
 

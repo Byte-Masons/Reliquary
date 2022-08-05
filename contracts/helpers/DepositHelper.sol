@@ -30,7 +30,7 @@ contract DepositHelper is IERC721Receiver {
     uint pid,
     uint amount,
     uint relicId
-  ) external {
+  ) external returns (uint) {
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
     IERC20 token = IERC20(vault.asset());
     token.safeTransferFrom(msg.sender, address(this), amount);
@@ -44,12 +44,13 @@ contract DepositHelper is IERC721Receiver {
       IERC20(vault).approve(address(reliquary), type(uint).max);
     }
     if (relicId == 0) {
-      reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
+      relicId = reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
     } else {
       reliquary.safeTransferFrom(msg.sender, address(this), relicId);
       reliquary.deposit(vault.balanceOf(address(this)), relicId);
       reliquary.safeTransferFrom(address(this), msg.sender, relicId);
     }
+    return relicId;
   }
 
   function withdraw(
