@@ -563,11 +563,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         uint oldLevel = toPosition.level;
         uint newLevel = _updateLevel(toId);
+        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
         if (fromLevel != newLevel) {
             levels[poolId].balance[fromLevel] -= amount;
         }
         if (oldLevel != newLevel) {
             levels[poolId].balance[oldLevel] -= toAmount;
+            toPosition.rewardCredit += toAmount * levels[poolId].allocPoint[oldLevel] * accOathPerShare
+                / ACC_OATH_PRECISION - toPosition.rewardDebt;
         }
         if (fromLevel != newLevel && oldLevel != newLevel) {
             levels[poolId].balance[newLevel] += newToAmount;
@@ -577,10 +580,9 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[newLevel] += toAmount;
         }
 
-        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
         fromPosition.rewardDebt = newFromAmount * accOathPerShare * levels[poolId].allocPoint[fromLevel]
             / ACC_OATH_PRECISION;
-        toPosition.rewardDebt = newToAmount * accOathPerShare  * levels[poolId].allocPoint[newLevel]
+        toPosition.rewardDebt = newToAmount * accOathPerShare * levels[poolId].allocPoint[newLevel]
             / ACC_OATH_PRECISION;
     }
 

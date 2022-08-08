@@ -107,7 +107,7 @@ contract NFTDescriptor is INFTDescriptor {
     ) internal pure returns (string memory description) {
         description = string.concat(
             'This NFT represents a position in a Reliquary ', poolName, ' pool. ',
-            'The owner of this NFT can modify or redeem the position, reducing its maturity accordingly.'
+            'The owner of this NFT can modify or redeem the position.'
         );
     }
 
