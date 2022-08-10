@@ -19,18 +19,20 @@ contract DepositHelperTest is Test {
         vault = IERC4626(address(reliquary.poolToken(0)));
         weth = IERC20(vault.asset());
 
-        vm.startPrank(WETH_WHALE, WETH_WHALE);
+        vm.startPrank(WETH_WHALE);
         weth.approve(address(helper), type(uint).max);
         helper.reliquary().setApprovalForAll(address(helper), true);
+        vm.stopPrank();
     }
 
     function testCreateNew(uint amount) public {
         amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
-        helper.deposit(0, amount, 0);
+        vm.prank(WETH_WHALE);
+        uint relicId = helper.deposit(0, amount, 0);
 
         assertEq(reliquary.balanceOf(WETH_WHALE), 1, "no Relic given");
         assertEq(
-            reliquary.getPositionForId(_getRelicId()).amount, vault.convertToShares(amount),
+            reliquary.getPositionForId(relicId).amount, vault.convertToShares(amount),
             "deposited amount not expected amount"
         );
     }
@@ -39,10 +41,13 @@ contract DepositHelperTest is Test {
         amountA = bound(amountA, 10, type(uint).max / 2);
         amountB = bound(amountB, 10, type(uint).max / 2);
         vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
-        helper.deposit(0, amountA, 0);
 
-        helper.deposit(0, amountB, _getRelicId());
-        uint relicAmount = reliquary.getPositionForId(_getRelicId()).amount;
+        vm.startPrank(WETH_WHALE);
+        uint relicId = helper.deposit(0, amountA, 0);
+        helper.deposit(0, amountB, relicId);
+        vm.stopPrank();
+
+        uint relicAmount = reliquary.getPositionForId(relicId).amount;
         uint expectedAmount = vault.convertToShares(amountA + amountB);
         assertApproxEqAbs(expectedAmount, relicAmount, 1);
     }
@@ -50,13 +55,12 @@ contract DepositHelperTest is Test {
     function testWithdraw(uint amount) public {
         uint initialBalance = weth.balanceOf(WETH_WHALE);
         amount = bound(amount, 10, initialBalance);
-        helper.deposit(0, amount, 0);
 
-        helper.withdraw(0, amount, _getRelicId());
+        vm.startPrank(WETH_WHALE);
+        uint relicId = helper.deposit(0, amount, 0);
+        helper.withdraw(0, amount, relicId);
+        vm.stopPrank();
+
         assertApproxEqAbs(weth.balanceOf(WETH_WHALE), initialBalance, 10);
-    }
-
-    function _getRelicId() private view returns (uint relicId) {
-        relicId = reliquary.tokenOfOwnerByIndex(WETH_WHALE, 0);
     }
 }

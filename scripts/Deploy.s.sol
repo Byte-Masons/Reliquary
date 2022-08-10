@@ -21,7 +21,7 @@ contract Deploy is Script {
     DepositHelper public helper;
 
     function run() external {
-        vm.createSelectFork("fantom", 43052549);
+        //vm.createSelectFork("fantom", 43052549);
         vm.startBroadcast();
 
         IERC20 oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
@@ -30,7 +30,7 @@ contract Deploy is Script {
 
         nftDescriptor = INFTDescriptor(address(new NFTDescriptorSingle4626(IReliquary(address(reliquary)))));
 
-        IERC20 wethCrypt = IERC20(0x58C60B6dF933Ff5615890dDdDCdD280bad53f1C1);
+        IERC20 wethCrypt = IERC20(0xD8E353151e5AEaFd08e8b631Ff9484Bc0fc18371);
 
         reliquary.grantRole(OPERATOR, tx.origin);
         reliquary.addPool(
