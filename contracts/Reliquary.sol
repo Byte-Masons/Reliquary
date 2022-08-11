@@ -537,6 +537,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param fromId The NFT ID of the Relic to transfer from
     /// @param toId The NFT ID of the Relic being transferred to
     function merge(uint fromId, uint toId, uint amount) external override nonReentrant {
+        require(fromId != toId, "cannot merge same Relic");
         address to = msg.sender;
         require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
 
