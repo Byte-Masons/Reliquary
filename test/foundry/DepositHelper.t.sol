@@ -52,13 +52,13 @@ contract DepositHelperTest is Test {
         assertApproxEqAbs(expectedAmount, relicAmount, 1);
     }
 
-    function testWithdraw(uint amount) public {
+    function testWithdraw(uint amount, bool harvest) public {
         uint initialBalance = weth.balanceOf(WETH_WHALE);
         amount = bound(amount, 10, initialBalance);
 
         vm.startPrank(WETH_WHALE);
         uint relicId = helper.deposit(0, amount, 0);
-        helper.withdraw(0, amount, relicId);
+        helper.withdraw(0, amount, relicId, harvest);
         vm.stopPrank();
 
         assertApproxEqAbs(weth.balanceOf(WETH_WHALE), initialBalance, 10);

@@ -39,10 +39,10 @@ contract ReliquaryUser is IERC721Receiver, Test {
         reliquary.deposit(shares, relicId);
     }
 
-    function withdraw(uint amount, uint index, bool harvest) external {
+    function withdraw(uint amount, uint index, bool _harvest) external {
         uint relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
-        if (harvest) {
+        if (_harvest) {
             reliquary.withdrawAndHarvest(amount, relicId);
         } else {
             reliquary.withdraw(amount, relicId);

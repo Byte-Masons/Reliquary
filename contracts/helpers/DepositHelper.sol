@@ -56,12 +56,23 @@ contract DepositHelper is IERC721Receiver {
   function withdraw(
     uint pid,
     uint amount,
-    uint relicId
+    uint relicId,
+    bool harvest
   ) external {
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 
     reliquary.safeTransferFrom(msg.sender, address(this), relicId);
-    reliquary.withdraw(vault.convertToShares(amount), relicId);
+    if (harvest) {
+        reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId);
+
+        IERC20 oath = reliquary.oath();
+        uint balance = oath.balanceOf(address(this));
+        if (balance != 0) {
+            oath.safeTransfer(msg.sender, balance);
+        }
+    } else {
+        reliquary.withdraw(vault.convertToShares(amount), relicId);
+    }
 
     vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
     reliquary.safeTransferFrom(address(this), msg.sender, relicId);

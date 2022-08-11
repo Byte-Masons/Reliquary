@@ -62,8 +62,8 @@ contract EndToEndTest is Test {
         console.log(reliquary.tokenURI(relicId));
         console.log(reliquary.tokenURI(newId));
 
-        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId);
-        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId);
+        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId, false);
+        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId, false);
         assertApproxEqRel(weth.balanceOf(address(1)), 100 ether, 2e14);
 
         vm.stopPrank();
