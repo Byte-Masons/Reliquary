@@ -12,26 +12,22 @@ interface IERC20Mint {
 }
 
 contract Invariants is Test {
-    Deploy deployer;
     Reliquary reliquary;
-    DepositHelper helper;
-    IERC4626 wethCrypt;
 
     address[] private _targetContracts;
 
     function setUp() public {
-        deployer = new Deploy();
+        Deploy deployer = new Deploy();
         deployer.run();
         reliquary = Reliquary(deployer.reliquary());
-        helper = deployer.helper();
 
         IERC20Mint oath = IERC20Mint(address(reliquary.oath()));
         vm.prank(deployer.MULTISIG());
         oath.mint(address(reliquary), 100_000_000 ether);
 
-        wethCrypt = IERC4626(address(reliquary.poolToken(0)));
+        address wethCrypt = address(reliquary.poolToken(0));
 
-        ReliquaryUser user = new ReliquaryUser(address(reliquary), address(wethCrypt));
+        ReliquaryUser user = new ReliquaryUser(address(reliquary), wethCrypt);
         Skipper skipper = new Skipper();
 
         _targetContracts.push(address(user));

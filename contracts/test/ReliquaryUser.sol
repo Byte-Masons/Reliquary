@@ -68,6 +68,11 @@ contract ReliquaryUser is IERC721Receiver, Test {
         reliquary.merge(fromId, toId, amount);
     }
 
+    function emergencyWithdraw(uint index) external {
+        uint relicId = _getOwnedRelicId(index);
+        reliquary.emergencyWithdraw(relicId);
+    }
+
     function _getOwnedRelicId(uint index) internal returns(uint relicId) {
         uint balance = reliquary.balanceOf(address(this));
         require(balance != 0, "no existing Relics");
@@ -80,7 +85,8 @@ contract ReliquaryUser is IERC721Receiver, Test {
         Weth weth = Weth(wethVault.asset());
         weth.deposit{value: amount}();
         weth.approve(address(wethVault), amount);
-        wethVault.deposit(amount, address(reliquary));
+        wethVault.deposit(amount, address(this));
         shares = wethVault.balanceOf(address(this));
+        wethVault.approve(address(reliquary), shares);
     }
 }
