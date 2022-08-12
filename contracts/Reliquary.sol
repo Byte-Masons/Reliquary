@@ -475,18 +475,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         if (!_harvest && _pendingOath != 0) {
             position.rewardCredit += _pendingOath;
         } else if (_harvest) {
-            uint rewardCredit = position.rewardCredit;
-            if (rewardCredit != 0) {
-                _pendingOath = _receivedOath(_pendingOath + rewardCredit);
-                position.rewardCredit -= (_pendingOath > rewardCredit) ? rewardCredit : _pendingOath;
-            } else {
-                _pendingOath = _receivedOath(_pendingOath);
-            }
-            if (_pendingOath != 0) {
-                oath.safeTransfer(msg.sender, _pendingOath);
+            uint total = _pendingOath + position.rewardCredit;
+            uint received = _receivedOath(total);
+            position.rewardCredit = total - received;
+            if (received != 0) {
+                oath.safeTransfer(msg.sender, received);
                 IRewarder _rewarder = rewarder[poolId];
                 if (address(_rewarder) != address(0)) {
-                    _rewarder.onOathReward(relicId, _pendingOath);
+                    _rewarder.onOathReward(relicId, received);
                 }
             }
         }
@@ -565,13 +561,16 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint oldLevel = toPosition.level;
         uint newLevel = _updateLevel(toId);
         uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        uint pendingOath = toAmount * levels[poolId].allocPoint[oldLevel] * accOathPerShare
+            / ACC_OATH_PRECISION - toPosition.rewardDebt;
+        if (pendingOath != 0) {
+            toPosition.rewardCredit += pendingOath;
+        }
         if (fromLevel != newLevel) {
             levels[poolId].balance[fromLevel] -= amount;
         }
         if (oldLevel != newLevel) {
             levels[poolId].balance[oldLevel] -= toAmount;
-            toPosition.rewardCredit += toAmount * levels[poolId].allocPoint[oldLevel] * accOathPerShare
-                / ACC_OATH_PRECISION - toPosition.rewardDebt;
         }
         if (fromLevel != newLevel && oldLevel != newLevel) {
             levels[poolId].balance[newLevel] += newToAmount;
