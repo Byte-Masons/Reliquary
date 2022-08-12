@@ -31,6 +31,10 @@ contract DepositHelper is IERC721Receiver {
     uint amount,
     uint relicId
   ) external returns (uint) {
+    if (relicId != 0) {
+      require(pid == reliquary.getPositionForId(relicId).poolId, "incorrect pid for relicId");
+    }
+
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
     IERC20 token = IERC20(vault.asset());
     token.safeTransferFrom(msg.sender, address(this), amount);
@@ -59,6 +63,10 @@ contract DepositHelper is IERC721Receiver {
     uint relicId,
     bool harvest
   ) external {
+    if (relicId != 0) {
+      require(pid == reliquary.getPositionForId(relicId).poolId, "incorrect pid for relicId");
+    }
+
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 
     reliquary.safeTransferFrom(msg.sender, address(this), relicId);
