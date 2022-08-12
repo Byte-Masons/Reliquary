@@ -187,6 +187,11 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             }
         }
 
+        uint length = poolLength();
+        for (uint i; i < length; i = _uncheckedInc(i)) {
+            _updatePool(i);
+        }
+
         totalAllocPoint += allocPoint;
         poolToken.push(_poolToken);
         rewarder.push(_rewarder);
@@ -231,6 +236,11 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         bool overwriteRewarder
     ) external override onlyRole(OPERATOR) {
         require(pid < poolInfo.length, "set: pool does not exist");
+
+        uint length = poolLength();
+        for (uint i; i < length; i = _uncheckedInc(i)) {
+            _updatePool(i);
+        }
 
         PoolInfo storage pool = poolInfo[pid];
         totalAllocPoint -= pool.allocPoint;
