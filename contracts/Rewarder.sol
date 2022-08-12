@@ -43,6 +43,8 @@ contract Rewarder is IRewarder {
         IERC20 _rewardToken,
         IReliquary _reliquary
     ) {
+        require(_minimum != 0, "no minimum set!");
+        require(_cadence >= 1 days, "please set a reasonable cadence");
         rewardMultiplier = _rewardMultiplier;
         depositBonus = _depositBonus;
         minimum = _minimum;
