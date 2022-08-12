@@ -71,7 +71,7 @@ contract Rewarder is IRewarder {
         uint relicId,
         uint depositAmount
     ) external override onlyReliquary {
-        if (depositAmount > minimum) {
+        if (depositAmount >= minimum) {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
             lastDepositTime[relicId] = timestamp;
