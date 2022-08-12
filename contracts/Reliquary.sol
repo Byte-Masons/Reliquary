@@ -413,7 +413,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         _burn(relicId);
         delete positionForId[relicId];
 
-        poolToken[position.poolId].safeTransfer(to, amount);
+        poolToken[poolId].safeTransfer(to, amount);
 
         emit EmergencyWithdraw(poolId, amount, to, relicId);
     }
