@@ -80,13 +80,15 @@ contract ReliquaryUser is IERC721Receiver, Test {
         relicId = reliquary.tokenOfOwnerByIndex(address(this), index);
     }
 
-    function _getTokens(uint128 amount) internal returns (uint shares) {
+    function _getTokens(uint amount) internal returns (uint shares) {
+        amount = bound(amount, 10, 2e26);
         deal(address(this), amount);
         Weth weth = Weth(wethVault.asset());
         weth.deposit{value: amount}();
         weth.approve(address(wethVault), amount);
         wethVault.deposit(amount, address(this));
         shares = wethVault.balanceOf(address(this));
+        vm.assume(shares != 0);
         wethVault.approve(address(reliquary), shares);
     }
 }

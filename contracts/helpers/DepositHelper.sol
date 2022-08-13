@@ -26,47 +26,20 @@ contract DepositHelper is IERC721Receiver {
     return(IERC721Receiver.onERC721Received.selector);
   }
 
-  function deposit(
-    uint pid,
-    uint amount,
-    uint relicId
-  ) external returns (uint) {
-    if (relicId != 0) {
-      require(pid == reliquary.getPositionForId(relicId).poolId, "incorrect pid for relicId");
-    }
-
-    IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
-    IERC20 token = IERC20(vault.asset());
-    token.safeTransferFrom(msg.sender, address(this), amount);
-
-    if (token.allowance(address(this), address(vault)) == 0) {
-      token.approve(address(vault), type(uint).max);
-    }
-    vault.deposit(amount, address(this));
-
-    if (IERC20(vault).allowance(address(this), address(reliquary)) == 0) {
-      IERC20(vault).approve(address(reliquary), type(uint).max);
-    }
-    if (relicId == 0) {
-      relicId = reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
-    } else {
-      reliquary.safeTransferFrom(msg.sender, address(this), relicId);
-      reliquary.deposit(vault.balanceOf(address(this)), relicId);
-      reliquary.safeTransferFrom(address(this), msg.sender, relicId);
-    }
-    return relicId;
+  function deposit(uint amount, uint relicId) external {
+    IERC4626 vault = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
+    reliquary.safeTransferFrom(msg.sender, address(this), relicId);
+    reliquary.deposit(vault.balanceOf(address(this)), relicId);
+    reliquary.safeTransferFrom(address(this), msg.sender, relicId);
   }
 
-  function withdraw(
-    uint pid,
-    uint amount,
-    uint relicId,
-    bool harvest
-  ) external {
-    if (relicId != 0) {
-      require(pid == reliquary.getPositionForId(relicId).poolId, "incorrect pid for relicId");
-    }
+  function createRelicAndDeposit(uint pid, uint amount) external returns (uint relicId) {
+    IERC4626 vault = _prepareDeposit(pid, amount);
+    relicId = reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
+  }
 
+  function withdraw(uint amount, uint relicId, bool harvest) external {
+    uint pid = reliquary.getPositionForId(relicId).poolId;
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 
     reliquary.safeTransferFrom(msg.sender, address(this), relicId);
@@ -84,6 +57,21 @@ contract DepositHelper is IERC721Receiver {
 
     vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
     reliquary.safeTransferFrom(address(this), msg.sender, relicId);
+  }
+
+  function _prepareDeposit(uint pid, uint amount) internal returns (IERC4626 vault) {
+    vault = IERC4626(address(reliquary.poolToken(pid)));
+    IERC20 token = IERC20(vault.asset());
+    token.safeTransferFrom(msg.sender, address(this), amount);
+
+    if (token.allowance(address(this), address(vault)) == 0) {
+      token.approve(address(vault), type(uint).max);
+    }
+    vault.deposit(amount, address(this));
+
+    if (vault.allowance(address(this), address(reliquary)) == 0) {
+      vault.approve(address(reliquary), type(uint).max);
+    }
   }
 
 }

@@ -46,24 +46,23 @@ contract EndToEndTest is Test {
 
         IERC20 weth = IERC20(wethCrypt.asset());
         weth.approve(address(helper), type(uint).max);
-        helper.deposit(0, 1 ether, 0);
-        uint relicId = reliquary.tokenOfOwnerByIndex(address(1), 0);
+        uint relicId = helper.createRelicAndDeposit(0, 1 ether);
 
         skip(10 days);
         reliquary.setApprovalForAll(address(helper), true);
-        helper.deposit(0, 25 ether, relicId);
+        helper.deposit(25 ether, relicId);
         skip(180 days);
         reliquary.updatePosition(relicId);
 
         console.log(reliquary.tokenURI(relicId));
 
-        uint newId = helper.deposit(0, 10, 0);
+        uint newId = helper.createRelicAndDeposit(0, 10);
         reliquary.merge(relicId, newId, wethCrypt.convertToShares(15 ether));
         console.log(reliquary.tokenURI(relicId));
         console.log(reliquary.tokenURI(newId));
 
-        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId, false);
-        helper.withdraw(0, wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId, false);
+        helper.withdraw(wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId, false);
+        helper.withdraw(wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId, false);
         assertApproxEqRel(weth.balanceOf(address(1)), 100 ether, 2e14);
 
         vm.stopPrank();

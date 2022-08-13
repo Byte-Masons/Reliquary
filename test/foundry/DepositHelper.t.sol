@@ -28,7 +28,7 @@ contract DepositHelperTest is Test {
     function testCreateNew(uint amount) public {
         amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
         vm.prank(WETH_WHALE);
-        uint relicId = helper.deposit(0, amount, 0);
+        uint relicId = helper.createRelicAndDeposit(0, amount);
 
         assertEq(reliquary.balanceOf(WETH_WHALE), 1, "no Relic given");
         assertEq(
@@ -43,8 +43,8 @@ contract DepositHelperTest is Test {
         vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
 
         vm.startPrank(WETH_WHALE);
-        uint relicId = helper.deposit(0, amountA, 0);
-        helper.deposit(0, amountB, relicId);
+        uint relicId = helper.createRelicAndDeposit(0, amountA);
+        helper.deposit(amountB, relicId);
         vm.stopPrank();
 
         uint relicAmount = reliquary.getPositionForId(relicId).amount;
@@ -57,8 +57,8 @@ contract DepositHelperTest is Test {
         amount = bound(amount, 10, initialBalance);
 
         vm.startPrank(WETH_WHALE);
-        uint relicId = helper.deposit(0, amount, 0);
-        helper.withdraw(0, amount, relicId, harvest);
+        uint relicId = helper.createRelicAndDeposit(0, amount);
+        helper.withdraw(amount, relicId, harvest);
         vm.stopPrank();
 
         assertApproxEqAbs(weth.balanceOf(WETH_WHALE), initialBalance, 10);
