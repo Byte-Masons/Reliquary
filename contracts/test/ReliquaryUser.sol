@@ -60,12 +60,19 @@ contract ReliquaryUser is IERC721Receiver, Test {
         reliquary.split(relicId, amount);
     }
 
-    function merge(uint amount, uint fromIndex, uint toIndex) external {
+    function shift(uint amount, uint fromIndex, uint toIndex) external {
         vm.assume(fromIndex != toIndex);
         uint fromId = _getOwnedRelicId(fromIndex);
         uint toId = _getOwnedRelicId(toIndex);
         amount = bound(amount, 1, reliquary.getPositionForId(fromId).amount);
-        reliquary.merge(fromId, toId, amount);
+        reliquary.shift(fromId, toId, amount);
+    }
+
+    function merge(uint fromIndex, uint toIndex) external {
+        vm.assume(fromIndex != toIndex);
+        uint fromId = _getOwnedRelicId(fromIndex);
+        uint toId = _getOwnedRelicId(toIndex);
+        reliquary.merge(fromId, toId);
     }
 
     function emergencyWithdraw(uint index) external {

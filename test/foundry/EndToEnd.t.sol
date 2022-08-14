@@ -57,7 +57,7 @@ contract EndToEndTest is Test {
         console.log(reliquary.tokenURI(relicId));
 
         uint newId = helper.createRelicAndDeposit(0, 10);
-        reliquary.merge(relicId, newId, wethCrypt.convertToShares(15 ether));
+        reliquary.shift(relicId, newId, wethCrypt.convertToShares(15 ether));
         console.log(reliquary.tokenURI(relicId));
         console.log(reliquary.tokenURI(newId));
 

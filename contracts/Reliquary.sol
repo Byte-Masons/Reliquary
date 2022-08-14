@@ -515,12 +515,13 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param amount Amount to move from existing Relic into the new one
     /// @return newId The NFT ID of the new Relic
     function split(uint fromId, uint amount) external override nonReentrant returns (uint newId) {
+        require(amount != 0, "cannot split zero amount");
         address to = ownerOf(fromId);
         require(to == msg.sender, "you do not own this position");
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        require(amount < fromAmount, "amount exceeds deposited");
+        require(amount <= fromAmount, "amount exceeds deposited");
         fromAmount -= amount;
         fromPosition.amount = fromAmount;
 
@@ -546,7 +547,9 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @notice Transfer amount from one Relic into another, updating maturity in the receiving Relic
     /// @param fromId The NFT ID of the Relic to transfer from
     /// @param toId The NFT ID of the Relic being transferred to
-    function merge(uint fromId, uint toId, uint amount) external override nonReentrant {
+    /// @param amount The amount being transferred
+    function shift(uint fromId, uint toId, uint amount) external override nonReentrant {
+        require(amount != 0, "cannot shift zero amount");
         require(fromId != toId, "cannot merge same Relic");
         address to = msg.sender;
         require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
@@ -601,6 +604,61 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         fromPosition.rewardDebt = newFromAmount * fromMultiplier / ACC_OATH_PRECISION;
         toPosition.rewardDebt = newToAmount * accOathPerShare * levels[poolId].allocPoint[newToLevel]
             / ACC_OATH_PRECISION;
+    }
+
+    /// @notice Transfer entire position (including rewards) from one Relic into another, burning it
+    /// and updating maturity in the receiving Relic
+    /// @param fromId The NFT ID of the Relic to transfer from
+    /// @param toId The NFT ID of the Relic being transferred to
+    function merge(uint fromId, uint toId) external override nonReentrant {
+        require(fromId != toId, "cannot merge same Relic");
+        address to = msg.sender;
+        require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
+
+        PositionInfo storage fromPosition = positionForId[fromId];
+        uint fromAmount = fromPosition.amount;
+        uint fromLevel = fromPosition.level;
+
+        uint poolId = fromPosition.poolId;
+        PositionInfo storage toPosition = positionForId[toId];
+        require(poolId == toPosition.poolId, "Relics not of the same pool");
+        _updatePool(poolId);
+
+        uint toAmount = toPosition.amount;
+        toPosition.entry = block.timestamp - _findWeight(fromAmount, toAmount) *
+            (2 * block.timestamp - fromPosition.entry - toPosition.entry) / 1e18;
+
+        uint newToAmount = toAmount + fromAmount;
+        toPosition.amount = newToAmount;
+
+        uint oldToLevel = toPosition.level;
+        uint newToLevel = _updateLevel(toId);
+        if (fromLevel != newToLevel) {
+            levels[poolId].balance[fromLevel] -= fromAmount;
+        }
+        if (oldToLevel != newToLevel) {
+            levels[poolId].balance[oldToLevel] -= toAmount;
+        }
+        if (fromLevel != newToLevel && oldToLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += newToAmount;
+        } else if (fromLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += fromAmount;
+        } else if (oldToLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += toAmount;
+        }
+
+        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        uint pendingTo = accOathPerShare * (fromAmount * levels[poolId].allocPoint[fromLevel]
+            + toAmount * levels[poolId].allocPoint[oldToLevel])
+            / ACC_OATH_PRECISION + fromPosition.rewardCredit - fromPosition.rewardDebt - toPosition.rewardDebt;
+        if (pendingTo != 0) {
+            toPosition.rewardCredit += pendingTo;
+        }
+        toPosition.rewardDebt = newToAmount * accOathPerShare * levels[poolId].allocPoint[newToLevel]
+            / ACC_OATH_PRECISION;
+
+        _burn(fromId);
+        delete positionForId[fromId];
     }
 
     /// @notice Calculate how much the owner will actually receive on harvest, given available OATH

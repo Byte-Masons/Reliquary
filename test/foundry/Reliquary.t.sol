@@ -198,4 +198,39 @@ contract ReliquaryTest is Test {
         reliquary.emergencyWithdraw(relicId);
         vm.stopPrank();
     }
+
+    function testSplit(uint depositAmount, uint splitAmount) public {
+        depositAmount = bound(depositAmount, 1, weth.balanceOf(WETH_WHALE));
+        splitAmount = bound(splitAmount, 1, depositAmount);
+        vm.startPrank(WETH_WHALE);
+        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount);
+        uint newRelicId = reliquary.split(relicId, splitAmount);
+        assertEq(reliquary.getPositionForId(relicId).amount, depositAmount - splitAmount);
+        assertEq(reliquary.getPositionForId(newRelicId).amount, splitAmount);
+        vm.stopPrank();
+    }
+
+    function testShift(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
+        depositAmount1 = bound(depositAmount1, 1, weth.balanceOf(WETH_WHALE));
+        depositAmount2 = bound(depositAmount2, 1, weth.balanceOf(WETH_WHALE) - depositAmount1);
+        shiftAmount = bound(shiftAmount, 1, depositAmount1);
+        vm.startPrank(WETH_WHALE);
+        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount1);
+        uint newRelicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount2);
+        reliquary.shift(relicId, newRelicId, shiftAmount);
+        assertEq(reliquary.getPositionForId(relicId).amount, depositAmount1 - shiftAmount);
+        assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount2 + shiftAmount);
+        vm.stopPrank();
+    }
+
+    function testMerge(uint depositAmount1, uint depositAmount2) public {
+        depositAmount1 = bound(depositAmount1, 1, weth.balanceOf(WETH_WHALE));
+        depositAmount2 = bound(depositAmount2, 1, weth.balanceOf(WETH_WHALE) - depositAmount1);
+        vm.startPrank(WETH_WHALE);
+        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount1);
+        uint newRelicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount2);
+        reliquary.merge(relicId, newRelicId);
+        assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
+        vm.stopPrank();
+    }
 }
