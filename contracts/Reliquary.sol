@@ -522,8 +522,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
         require(amount <= fromAmount, "amount exceeds deposited");
-        fromAmount -= amount;
-        fromPosition.amount = fromAmount;
+        fromPosition.amount = fromAmount - amount;
 
         newId = _mint(to);
         PositionInfo storage newPosition = positionForId[newId];
