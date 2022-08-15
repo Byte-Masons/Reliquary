@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 import "forge-std/Test.sol";
 import "contracts/interfaces/IReliquary.sol";
+import "./TestToken.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
@@ -12,11 +13,11 @@ interface Weth is IERC20{
 
 contract ReliquaryUser is IERC721Receiver, Test {
     IReliquary reliquary;
-    IERC4626 wethVault;
+    TestToken testToken;
 
-    constructor(address _reliquary, address _wethVault) {
+    constructor(address _reliquary, address _testToken) {
         reliquary = IReliquary(_reliquary);
-        wethVault = IERC4626(_wethVault);
+        testToken = TestToken(_testToken);
     }
 
     function onERC721Received(
@@ -29,14 +30,14 @@ contract ReliquaryUser is IERC721Receiver, Test {
     }
 
     function createRelicAndDeposit(uint128 amount) external {
-        uint shares = _getTokens(amount);
-        reliquary.createRelicAndDeposit(address(this), 0, shares);
+        _getTokens(amount);
+        reliquary.createRelicAndDeposit(address(this), 0, amount);
     }
 
     function depositExisting(uint128 amount, uint index) external {
         uint relicId = _getOwnedRelicId(index);
-        uint shares = _getTokens(amount);
-        reliquary.deposit(shares, relicId);
+        _getTokens(amount);
+        reliquary.deposit(amount, relicId);
     }
 
     function withdraw(uint amount, uint index, bool _harvest) external {
@@ -87,15 +88,9 @@ contract ReliquaryUser is IERC721Receiver, Test {
         relicId = reliquary.tokenOfOwnerByIndex(address(this), index);
     }
 
-    function _getTokens(uint amount) internal returns (uint shares) {
-        amount = bound(amount, 10, 2e26);
-        deal(address(this), amount);
-        Weth weth = Weth(wethVault.asset());
-        weth.deposit{value: amount}();
-        weth.approve(address(wethVault), amount);
-        wethVault.deposit(amount, address(this));
-        shares = wethVault.balanceOf(address(this));
-        vm.assume(shares != 0);
-        wethVault.approve(address(reliquary), shares);
+    function _getTokens(uint128 amount) internal {
+        vm.assume(amount != 0);
+        testToken.mint(address(this), amount);
+        testToken.approve(address(reliquary), amount);
     }
 }

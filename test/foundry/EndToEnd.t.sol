@@ -18,6 +18,7 @@ contract EndToEndTest is Test {
     IERC4626 wethCrypt;
 
     function setUp() public {
+        vm.createSelectFork("fantom");
         deployer = new Deploy();
         deployer.run();
         reliquary = Reliquary(deployer.reliquary());

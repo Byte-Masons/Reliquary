@@ -2,32 +2,32 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
-import "scripts/Deploy.s.sol";
+import "forge-std/console2.sol";
+import "contracts/Reliquary.sol";
+import "contracts/emission_curves/Constant.sol";
+import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/ReliquaryUser.sol";
 import "contracts/test/Skipper.sol";
-
-interface IERC20Mint {
-    function mint(address to, uint amount) external;
-}
+import "contracts/test/TestToken.sol";
 
 contract Invariants is Test {
     Reliquary reliquary;
 
     address[] private _targetContracts;
 
+    uint[] curve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
+    uint[] levels = [100, 120, 150, 200, 300, 400, 500, 750];
+
     function setUp() public {
-        Deploy deployer = new Deploy();
-        deployer.run();
-        reliquary = Reliquary(deployer.reliquary());
-
-        IERC20Mint oath = IERC20Mint(address(reliquary.oath()));
-        vm.prank(deployer.MULTISIG());
+        TestToken oath = new TestToken("Oath Token", "OATH", 18);
+        reliquary = new Reliquary(oath, IEmissionCurve(address(new Constant())));
         oath.mint(address(reliquary), 100_000_000 ether);
+        TestToken testToken = new TestToken("Test Token", "TT", 6);
+        INFTDescriptor nftDescriptor = INFTDescriptor(new NFTDescriptor(IReliquary(reliquary)));
+        reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
+        reliquary.addPool(1000, testToken, IRewarder(address(0)), curve, levels, "Test Token", nftDescriptor);
 
-        address wethCrypt = address(reliquary.poolToken(0));
-
-        ReliquaryUser user = new ReliquaryUser(address(reliquary), wethCrypt);
+        ReliquaryUser user = new ReliquaryUser(address(reliquary), address(testToken));
         Skipper skipper = new Skipper();
 
         _targetContracts.push(address(user));

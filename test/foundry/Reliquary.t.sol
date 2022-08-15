@@ -6,20 +6,17 @@ import "forge-std/console.sol";
 import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
+import "contracts/test/TestToken.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 
-interface IERC20Mint {
-    function mint(address to, uint amount) external;
-}
-
-contract ReliquaryTest is Test {
+contract ReliquaryTest is IERC721Receiver, Test {
     using Strings for address;
     using Strings for uint;
 
     Reliquary reliquary;
-    IERC20 oath;
-    IERC20 weth;
+    TestToken oath;
+    TestToken testToken;
     INFTDescriptor nftDescriptor;
-    address constant WETH_WHALE = 0x2400BB4D7221bA530Daee061D5Afe219E9223Eae;
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
@@ -50,22 +47,29 @@ contract ReliquaryTest is Test {
     );
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
 
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
+        return(IERC721Receiver.onERC721Received.selector);
+    }
+
     function setUp() public {
-        vm.createSelectFork("fantom", 43052549);
-        oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
+        oath = new TestToken("Oath Token", "OATH", 18);
         IEmissionCurve curve = IEmissionCurve(address(new Constant()));
         reliquary = new Reliquary(oath, curve);
 
-        vm.prank(address(0x111731A388743a75CF60CCA7b140C58e41D83635));
-        IERC20Mint(address(oath)).mint(address(reliquary), 100_000_000 ether);
+        oath.mint(address(reliquary), 100_000_000 ether);
 
-        weth = IERC20(0x74b23882a30290451A17c44f4F05243b6b58C76d);
+        testToken = new TestToken("Test Token", "TT", 6);
         nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
 
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(
             100,
-            weth,
+            testToken,
             IRewarder(address(0)),
             requiredMaturity,
             allocPoints,
@@ -73,8 +77,8 @@ contract ReliquaryTest is Test {
             nftDescriptor
         );
 
-        vm.prank(WETH_WHALE);
-        weth.approve(address(reliquary), type(uint).max);
+        testToken.mint(address(this), 100_000_000 ether);
+        testToken.approve(address(reliquary), type(uint).max);
     }
 
     function testPoolLength() public {
@@ -94,23 +98,20 @@ contract ReliquaryTest is Test {
 
     function testRevertOnUnauthorized() public {
         vm.expectRevert(bytes(string.concat(
-            "AccessControl: account ", WETH_WHALE.toHexString(),
+            "AccessControl: account ", address(1).toHexString(),
             " is missing role ", uint(keccak256(bytes("OPERATOR"))).toHexString()
         )));
-        vm.prank(WETH_WHALE);
+        vm.prank(address(1));
         reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
     }
 
     function testPendingOath(uint amount, uint time) public {
         vm.assume(time < 3650 days);
-        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
+        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
-        reliquary.updatePool(0);
         reliquary.updatePosition(relicId);
-        assertApproxEqAbs(reliquary.pendingOath(relicId), time * 1e17, 1e12);
-        vm.stopPrank();
+        assertApproxEqAbs(reliquary.pendingOath(relicId), time * 1e17, 1e16);
     }
 
     function testMassUpdatePools() public {
@@ -131,106 +132,91 @@ contract ReliquaryTest is Test {
     }
 
     function testCreateRelicAndDeposit(uint amount) public {
-        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
+        amount = bound(amount, 1, testToken.balanceOf(address(this)));
         vm.expectEmit(true, true, true, true);
-        emit Deposit(0, amount, WETH_WHALE, 1);
-        vm.prank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
+        emit Deposit(0, amount, address(this), 1);
+        reliquary.createRelicAndDeposit(address(this), 0, amount);
     }
 
     function testDepositExisting(uint amountA, uint amountB) public {
         amountA = bound(amountA, 1, type(uint).max / 2);
         amountB = bound(amountB, 1, type(uint).max / 2);
-        vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, amountA);
+        vm.assume(amountA + amountB <= testToken.balanceOf(address(this)));
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amountA);
         reliquary.deposit(amountB, relicId);
-        vm.stopPrank();
         assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
     }
 
     function testRevertOnDepositInvalidPool(uint pool) public {
         vm.assume(pool != 0);
         vm.expectRevert(bytes("invalid pool ID"));
-        vm.prank(WETH_WHALE);
-        reliquary.createRelicAndDeposit(WETH_WHALE, pool, 1);
+        reliquary.createRelicAndDeposit(address(this), pool, 1);
     }
 
     function testWithdraw(uint amount) public {
-        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
+        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(0, amount, WETH_WHALE, relicId);
+        emit Withdraw(0, amount, address(this), relicId);
         reliquary.withdraw(amount, relicId);
-        vm.stopPrank();
     }
 
     function testHarvest() public {
-        vm.prank(WETH_WHALE);
-        weth.transfer(address(1), 1.25 ether);
+        testToken.transfer(address(1), 1.25 ether);
 
         vm.startPrank(address(1));
-        weth.approve(address(reliquary), type(uint).max);
+        testToken.approve(address(reliquary), type(uint).max);
         uint relicIdA = reliquary.createRelicAndDeposit(address(1), 0, 1 ether);
         skip(180 days);
         reliquary.withdraw(0.75 ether, relicIdA);
         reliquary.deposit(1 ether, relicIdA);
 
-        changePrank(WETH_WHALE);
-        uint relicIdB = reliquary.createRelicAndDeposit(WETH_WHALE, 0, 100 ether);
+        vm.stopPrank();
+        uint relicIdB = reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
         skip(180 days);
         reliquary.harvest(relicIdB);
 
-        changePrank(address(1));
+        vm.startPrank(address(1));
         reliquary.harvest(relicIdA);
         vm.stopPrank();
 
-        assertEq((oath.balanceOf(address(1)) + oath.balanceOf(WETH_WHALE)) / 1e18, 3110399);
+        assertEq((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110399);
     }
 
     function testEmergencyWithdraw(uint amount) public {
-        amount = bound(amount, 1, weth.balanceOf(WETH_WHALE));
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, amount);
+        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdraw(0, amount, WETH_WHALE, relicId);
+        emit EmergencyWithdraw(0, amount, address(this), relicId);
         reliquary.emergencyWithdraw(relicId);
-        vm.stopPrank();
     }
 
     function testSplit(uint depositAmount, uint splitAmount) public {
-        depositAmount = bound(depositAmount, 1, weth.balanceOf(WETH_WHALE));
+        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)));
         splitAmount = bound(splitAmount, 1, depositAmount);
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount);
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
         uint newRelicId = reliquary.split(relicId, splitAmount);
         assertEq(reliquary.getPositionForId(relicId).amount, depositAmount - splitAmount);
         assertEq(reliquary.getPositionForId(newRelicId).amount, splitAmount);
-        vm.stopPrank();
     }
 
     function testShift(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
-        depositAmount1 = bound(depositAmount1, 1, weth.balanceOf(WETH_WHALE));
-        depositAmount2 = bound(depositAmount2, 1, weth.balanceOf(WETH_WHALE) - depositAmount1);
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)));
+        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
         shiftAmount = bound(shiftAmount, 1, depositAmount1);
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount1);
-        uint newRelicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount2);
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
         reliquary.shift(relicId, newRelicId, shiftAmount);
         assertEq(reliquary.getPositionForId(relicId).amount, depositAmount1 - shiftAmount);
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount2 + shiftAmount);
-        vm.stopPrank();
     }
 
     function testMerge(uint depositAmount1, uint depositAmount2) public {
-        depositAmount1 = bound(depositAmount1, 1, weth.balanceOf(WETH_WHALE));
-        depositAmount2 = bound(depositAmount2, 1, weth.balanceOf(WETH_WHALE) - depositAmount1);
-        vm.startPrank(WETH_WHALE);
-        uint relicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount1);
-        uint newRelicId = reliquary.createRelicAndDeposit(WETH_WHALE, 0, depositAmount2);
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)));
+        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
         reliquary.merge(relicId, newRelicId);
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
-        vm.stopPrank();
     }
 }
