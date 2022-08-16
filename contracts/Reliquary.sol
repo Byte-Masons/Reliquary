@@ -549,7 +549,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param amount The amount being transferred
     function shift(uint fromId, uint toId, uint amount) external override nonReentrant {
         require(amount != 0, "cannot shift zero amount");
-        require(fromId != toId, "cannot merge same Relic");
+        require(fromId != toId, "cannot shift into same Relic");
         address to = msg.sender;
         require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
 
@@ -560,19 +560,17 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
         require(poolId == toPosition.poolId, "Relics not of the same pool");
-        _updatePool(poolId);
 
         uint toAmount = toPosition.amount;
-        toPosition.entry = block.timestamp - _findWeight(amount, toAmount) *
-            (2 * block.timestamp - fromPosition.entry - toPosition.entry) / 1e18;
+        toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / (fromAmount + toAmount);
 
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
-        uint fromLevel = fromPosition.level;
 
         uint newToAmount = toAmount + amount;
         toPosition.amount = newToAmount;
 
+        uint fromLevel = fromPosition.level;
         uint oldToLevel = toPosition.level;
         uint newToLevel = _updateLevel(toId);
         if (fromLevel != newToLevel) {
@@ -589,6 +587,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[newToLevel] += toAmount;
         }
 
+        _updatePool(poolId);
         uint accOathPerShare = poolInfo[poolId].accOathPerShare;
         uint fromMultiplier = accOathPerShare * levels[poolId].allocPoint[fromLevel];
         uint pendingFrom = fromAmount * fromMultiplier / ACC_OATH_PRECISION - fromPosition.rewardDebt;
@@ -616,20 +615,19 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        uint fromLevel = fromPosition.level;
 
         uint poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
         require(poolId == toPosition.poolId, "Relics not of the same pool");
-        _updatePool(poolId);
 
         uint toAmount = toPosition.amount;
-        toPosition.entry = block.timestamp - _findWeight(fromAmount, toAmount) *
-            (2 * block.timestamp - fromPosition.entry - toPosition.entry) / 1e18;
-
         uint newToAmount = toAmount + fromAmount;
+        require(newToAmount != 0, "cannot merge empty Relics");
+        toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
+
         toPosition.amount = newToAmount;
 
+        uint fromLevel = fromPosition.level;
         uint oldToLevel = toPosition.level;
         uint newToLevel = _updateLevel(toId);
         if (fromLevel != newToLevel) {
@@ -646,6 +644,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[newToLevel] += toAmount;
         }
 
+        _updatePool(poolId);
         uint accOathPerShare = poolInfo[poolId].accOathPerShare;
         uint pendingTo = accOathPerShare * (fromAmount * levels[poolId].allocPoint[fromLevel]
             + toAmount * levels[poolId].allocPoint[oldToLevel])
