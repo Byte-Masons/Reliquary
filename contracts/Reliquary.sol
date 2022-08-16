@@ -299,24 +299,26 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     }
 
     /// @dev Internal _updatePool function without nonReentrant modifier
-    function _updatePool(uint pid) internal {
+    function _updatePool(uint pid) internal returns (uint accOathPerShare) {
         require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
         uint timestamp = block.timestamp;
         uint secondsSinceReward = timestamp - pool.lastRewardTime;
 
+        accOathPerShare = pool.accOathPerShare;
         if (secondsSinceReward != 0) {
             uint lpSupply = _poolBalance(pid);
 
             if (lpSupply != 0) {
                 uint oathReward = secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint /
                     totalAllocPoint;
-                pool.accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
+                accOathPerShare += oathReward * ACC_OATH_PRECISION / lpSupply;
+                pool.accOathPerShare = accOathPerShare;
             }
 
             pool.lastRewardTime = timestamp;
 
-            emit LogUpdatePool(pid, timestamp, lpSupply, pool.accOathPerShare);
+            emit LogUpdatePool(pid, timestamp, lpSupply, accOathPerShare);
         }
     }
 
@@ -449,7 +451,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         bool _harvest
     ) internal returns (uint poolId, uint _pendingOath) {
         PositionInfo storage position = positionForId[relicId];
-        _updatePool(position.poolId);
+        poolId = position.poolId;
+        uint accOathPerShare = _updatePool(poolId);
 
         uint oldAmount = position.amount;
         uint newAmount;
@@ -466,7 +469,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         uint oldLevel = position.level;
         uint newLevel = _updateLevel(relicId);
-        poolId = position.poolId;
         if (oldLevel != newLevel) {
             levels[poolId].balance[oldLevel] -= oldAmount;
             levels[poolId].balance[newLevel] += newAmount;
@@ -476,7 +478,6 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[oldLevel] -= amount;
         }
 
-        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
         _pendingOath = oldAmount * levels[poolId].allocPoint[oldLevel] * accOathPerShare
             / ACC_OATH_PRECISION - position.rewardDebt;
         position.rewardDebt = newAmount * levels[poolId].allocPoint[newLevel] * accOathPerShare
@@ -533,8 +534,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint poolId = fromPosition.poolId;
         newPosition.poolId = poolId;
 
-        _updatePool(poolId);
-        uint multiplier = poolInfo[poolId].accOathPerShare * levels[poolId].allocPoint[level];
+        uint multiplier = _updatePool(poolId) * levels[poolId].allocPoint[level];
         uint pendingFrom = fromAmount * multiplier / ACC_OATH_PRECISION - fromPosition.rewardDebt;
         if (pendingFrom != 0) {
             fromPosition.rewardCredit += pendingFrom;
@@ -587,8 +587,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[newToLevel] += toAmount;
         }
 
-        _updatePool(poolId);
-        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        uint accOathPerShare = _updatePool(poolId);
         uint fromMultiplier = accOathPerShare * levels[poolId].allocPoint[fromLevel];
         uint pendingFrom = fromAmount * fromMultiplier / ACC_OATH_PRECISION - fromPosition.rewardDebt;
         if (pendingFrom != 0) {
@@ -644,8 +643,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
             levels[poolId].balance[newToLevel] += toAmount;
         }
 
-        _updatePool(poolId);
-        uint accOathPerShare = poolInfo[poolId].accOathPerShare;
+        uint accOathPerShare = _updatePool(poolId);
         uint pendingTo = accOathPerShare * (fromAmount * levels[poolId].allocPoint[fromLevel]
             + toAmount * levels[poolId].allocPoint[oldToLevel])
             / ACC_OATH_PRECISION + fromPosition.rewardCredit - fromPosition.rewardDebt - toPosition.rewardDebt;
