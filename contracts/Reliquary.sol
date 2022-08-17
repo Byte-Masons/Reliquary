@@ -98,9 +98,17 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         IRewarder indexed rewarder,
         INFTDescriptor nftDescriptor
     );
+    event LogUpdatePool(
+        uint indexed pid,
+        uint lastRewardTime,
+        uint lpSupply,
+        uint accOathPerShare
+    );
     event LogSetEmissionCurve(IEmissionCurve indexed emissionCurveAddress);
-    event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
     event LevelChanged(uint indexed relicId, uint newLevel);
+    event Split(uint indexed fromId, uint indexed toId, uint amount);
+    event Shift(uint indexed fromId, uint indexed toId, uint amount);
+    event Merge(uint indexed fromId, uint indexed toId, uint amount);
 
     /*
      + @notice Constructs and initializes the contract
@@ -541,6 +549,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         }
         fromPosition.rewardDebt = fromAmount * multiplier / ACC_OATH_PRECISION;
         newPosition.rewardDebt = amount * multiplier / ACC_OATH_PRECISION;
+
+        emit Split(fromId, newId, amount);
     }
 
     /// @notice Transfer amount from one Relic into another, updating maturity in the receiving Relic
@@ -570,22 +580,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         uint newToAmount = toAmount + amount;
         toPosition.amount = newToAmount;
 
-        uint fromLevel = fromPosition.level;
-        uint oldToLevel = toPosition.level;
-        uint newToLevel = _updateLevel(toId);
-        if (fromLevel != newToLevel) {
-            levels[poolId].balance[fromLevel] -= amount;
-        }
-        if (oldToLevel != newToLevel) {
-            levels[poolId].balance[oldToLevel] -= toAmount;
-        }
-        if (fromLevel != newToLevel && oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += newToAmount;
-        } else if (fromLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += amount;
-        } else if (oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += toAmount;
-        }
+        (uint fromLevel, uint oldToLevel, uint newToLevel) =
+            _shiftLevelBalances(fromId, toId, poolId, amount, toAmount, newToAmount);
 
         uint accOathPerShare = _updatePool(poolId);
         uint fromMultiplier = accOathPerShare * levels[poolId].allocPoint[fromLevel];
@@ -601,6 +597,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         fromPosition.rewardDebt = newFromAmount * fromMultiplier / ACC_OATH_PRECISION;
         toPosition.rewardDebt = newToAmount * accOathPerShare * levels[poolId].allocPoint[newToLevel]
             / ACC_OATH_PRECISION;
+
+        emit Shift(fromId, toId, amount);
     }
 
     /// @notice Transfer entire position (including rewards) from one Relic into another, burning it
@@ -626,22 +624,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         toPosition.amount = newToAmount;
 
-        uint fromLevel = fromPosition.level;
-        uint oldToLevel = toPosition.level;
-        uint newToLevel = _updateLevel(toId);
-        if (fromLevel != newToLevel) {
-            levels[poolId].balance[fromLevel] -= fromAmount;
-        }
-        if (oldToLevel != newToLevel) {
-            levels[poolId].balance[oldToLevel] -= toAmount;
-        }
-        if (fromLevel != newToLevel && oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += newToAmount;
-        } else if (fromLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += fromAmount;
-        } else if (oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += toAmount;
-        }
+        (uint fromLevel, uint oldToLevel, uint newToLevel) =
+            _shiftLevelBalances(fromId, toId, poolId, fromAmount, toAmount, newToAmount);
 
         uint accOathPerShare = _updatePool(poolId);
         uint pendingTo = accOathPerShare * (fromAmount * levels[poolId].allocPoint[fromLevel]
@@ -655,6 +639,34 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         _burn(fromId);
         delete positionForId[fromId];
+
+        emit Merge(fromId, toId, fromAmount);
+    }
+
+    function _shiftLevelBalances(
+        uint fromId,
+        uint toId,
+        uint poolId,
+        uint amount,
+        uint toAmount,
+        uint newToAmount
+    ) internal returns (uint fromLevel, uint oldToLevel, uint newToLevel) {
+        fromLevel = positionForId[fromId].level;
+        oldToLevel = positionForId[toId].level;
+        newToLevel = _updateLevel(toId);
+        if (fromLevel != newToLevel) {
+            levels[poolId].balance[fromLevel] -= amount;
+        }
+        if (oldToLevel != newToLevel) {
+            levels[poolId].balance[oldToLevel] -= toAmount;
+        }
+        if (fromLevel != newToLevel && oldToLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += newToAmount;
+        } else if (fromLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += amount;
+        } else if (oldToLevel != newToLevel) {
+            levels[poolId].balance[newToLevel] += toAmount;
+        }
     }
 
     /// @notice Calculate how much the owner will actually receive on harvest, given available OATH
