@@ -55,10 +55,10 @@ contract ReliquaryUser is IERC721Receiver, Test {
         reliquary.harvest(relicId);
     }
 
-    function split(uint amount, uint index) external {
+    function split(uint amount, uint index, address to) external {
         uint relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
-        reliquary.split(relicId, amount);
+        reliquary.split(relicId, amount, address(this));
     }
 
     function shift(uint amount, uint fromIndex, uint toIndex) external {

@@ -195,7 +195,8 @@ contract ReliquaryTest is IERC721Receiver, Test {
         depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)));
         splitAmount = bound(splitAmount, 1, depositAmount);
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
-        uint newRelicId = reliquary.split(relicId, splitAmount);
+        uint newRelicId = reliquary.split(relicId, splitAmount, address(this));
+        assertEq(reliquary.balanceOf(address(this)), 2);
         assertEq(reliquary.getPositionForId(relicId).amount, depositAmount - splitAmount);
         assertEq(reliquary.getPositionForId(newRelicId).amount, splitAmount);
     }

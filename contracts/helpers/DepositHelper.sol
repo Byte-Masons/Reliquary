@@ -3,11 +3,10 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import "../interfaces/IReliquary.sol";
 
-contract DepositHelper is IERC721Receiver {
+contract DepositHelper {
 
   using SafeERC20 for IERC20;
 
@@ -17,20 +16,9 @@ contract DepositHelper is IERC721Receiver {
     reliquary = IReliquary(_reliquary);
   }
 
-  function onERC721Received(
-    address operator,
-    address from,
-    uint256 tokenId,
-    bytes calldata data
-  ) external pure override returns (bytes4) {
-    return(IERC721Receiver.onERC721Received.selector);
-  }
-
   function deposit(uint amount, uint relicId) external {
     IERC4626 vault = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
-    reliquary.safeTransferFrom(msg.sender, address(this), relicId);
     reliquary.deposit(vault.balanceOf(address(this)), relicId);
-    reliquary.safeTransferFrom(address(this), msg.sender, relicId);
   }
 
   function createRelicAndDeposit(uint pid, uint amount) external returns (uint relicId) {
@@ -42,7 +30,6 @@ contract DepositHelper is IERC721Receiver {
     uint pid = reliquary.getPositionForId(relicId).poolId;
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 
-    reliquary.safeTransferFrom(msg.sender, address(this), relicId);
     if (harvest) {
         reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId);
 
@@ -56,7 +43,6 @@ contract DepositHelper is IERC721Receiver {
     }
 
     vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
-    reliquary.safeTransferFrom(address(this), msg.sender, relicId);
   }
 
   function _prepareDeposit(uint pid, uint amount) internal returns (IERC4626 vault) {

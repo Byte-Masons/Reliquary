@@ -353,7 +353,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of `amount` deposit benefit.
     */
     function deposit(uint amount, uint relicId) external override nonReentrant {
-        require(ownerOf(relicId) == msg.sender, "you do not own this position");
+        _requireApprovedOrOwner(relicId);
         _deposit(amount, relicId);
     }
 
@@ -365,7 +365,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
         poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(poolId, amount, ownerOf(relicId), relicId);
+        emit Deposit(poolId, amount, msg.sender, relicId);
     }
 
     /*
@@ -374,15 +374,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
     function withdraw(uint amount, uint relicId) external override nonReentrant {
-        address to = ownerOf(relicId);
-        require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
+        _requireApprovedOrOwner(relicId);
 
         (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
 
-        poolToken[poolId].safeTransfer(to, amount);
+        poolToken[poolId].safeTransfer(msg.sender, amount);
 
-        emit Withdraw(poolId, amount, to, relicId);
+        emit Withdraw(poolId, amount, msg.sender, relicId);
     }
 
     /*
@@ -390,8 +389,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of OATH rewards.
     */
     function harvest(uint relicId) external override nonReentrant {
-        address to = ownerOf(relicId);
-        require(to == msg.sender, "you do not own this position");
+        _requireApprovedOrOwner(relicId);
 
         (uint poolId, uint _pendingOath) = _updatePosition(0, relicId, Kind.OTHER, true);
 
@@ -404,15 +402,14 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId NFT ID of the receiver of the tokens and OATH rewards.
     */
     function withdrawAndHarvest(uint amount, uint relicId) external override nonReentrant {
-        address to = ownerOf(relicId);
-        require(to == msg.sender, "you do not own this position");
         require(amount != 0, "withdrawing 0 amount");
+        _requireApprovedOrOwner(relicId);
 
         (uint poolId, uint _pendingOath) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
 
-        poolToken[poolId].safeTransfer(to, amount);
+        poolToken[poolId].safeTransfer(msg.sender, amount);
 
-        emit Withdraw(poolId, amount, to, relicId);
+        emit Withdraw(poolId, amount, msg.sender, relicId);
         emit Harvest(poolId, _pendingOath, relicId);
     }
 
@@ -523,10 +520,9 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param fromId The NFT ID of the Relic to split from
     /// @param amount Amount to move from existing Relic into the new one
     /// @return newId The NFT ID of the new Relic
-    function split(uint fromId, uint amount) external override nonReentrant returns (uint newId) {
+    function split(uint fromId, uint amount, address to) external override nonReentrant returns (uint newId) {
         require(amount != 0, "cannot split zero amount");
-        address to = ownerOf(fromId);
-        require(to == msg.sender, "you do not own this position");
+        _requireApprovedOrOwner(fromId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
@@ -560,8 +556,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     function shift(uint fromId, uint toId, uint amount) external override nonReentrant {
         require(amount != 0, "cannot shift zero amount");
         require(fromId != toId, "cannot shift into same Relic");
-        address to = msg.sender;
-        require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
+        _requireApprovedOrOwner(fromId);
+        _requireApprovedOrOwner(toId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
@@ -607,8 +603,8 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @param toId The NFT ID of the Relic being transferred to
     function merge(uint fromId, uint toId) external override nonReentrant {
         require(fromId != toId, "cannot merge same Relic");
-        address to = msg.sender;
-        require(to == ownerOf(fromId) && to == ownerOf(toId), "you do not own these positions");
+        _requireApprovedOrOwner(fromId);
+        _requireApprovedOrOwner(toId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
@@ -750,6 +746,12 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
         for (uint i; i < length; i = _uncheckedInc(i)) {
             total += levelInfo.balance[i] * levelInfo.allocPoint[i];
         }
+    }
+
+    /// @notice Require the sender is either the owner of the Relic or approved to transfer it
+    /// @param relicId The NFT ID of the Relic
+    function _requireApprovedOrOwner(uint relicId) internal view {
+        require(_isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
     }
 
     /// @dev Utility function to bypass overflow checking, saving gas
