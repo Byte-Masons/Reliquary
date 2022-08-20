@@ -7,9 +7,9 @@ import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/TestToken.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-contract ReliquaryTest is IERC721Receiver, Test {
+contract ReliquaryTest is ERC721Holder, Test {
     using Strings for address;
     using Strings for uint;
 
@@ -46,15 +46,6 @@ contract ReliquaryTest is IERC721Receiver, Test {
         INFTDescriptor nftDescriptor
     );
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
-
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external pure override returns (bytes4) {
-        return(IERC721Receiver.onERC721Received.selector);
-    }
 
     function setUp() public {
         oath = new TestToken("Oath Token", "OATH", 18);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 import "./interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
@@ -21,7 +22,7 @@ import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
  + increased composability without affecting accounting logic too much, and users can
  + trade their Relics without withdrawing liquidity or affecting the position's maturity.
 */
-contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Multicall, ReentrancyGuard {
+contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Access control roles.
@@ -126,12 +127,10 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     override(
         IReliquary,
         AccessControlEnumerable,
+        ERC721,
         ERC721Enumerable
     ) returns (bool) {
-        return interfaceId == type(IReliquary).interfaceId ||
-            interfaceId == type(IERC721Enumerable).interfaceId ||
-            interfaceId == type(IAccessControlEnumerable).interfaceId ||
-            super.supportsInterface(interfaceId);
+        return interfaceId == type(IReliquary).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @notice Returns the number of Reliquary pools.
@@ -160,6 +159,12 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
 
     function getLevelInfo(uint pid) external view override returns(LevelInfo memory levelInfo) {
         levelInfo = levels[pid];
+    }
+
+    function burn(uint256 tokenId) public override {
+        require(positionForId[tokenId].amount == 0, "contains deposit");
+        require(pendingOath(tokenId) == 0, "contains pending rewards");
+        super.burn(tokenId);
     }
 
     /*
@@ -270,7 +275,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
      + @param relicId ID of the position.
      + @return pending OATH reward for a given position owner.
     */
-    function pendingOath(uint relicId) external view override returns (uint pending) {
+    function pendingOath(uint relicId) public view override returns (uint pending) {
         PositionInfo storage position = positionForId[relicId];
         uint poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
@@ -519,6 +524,7 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     /// @notice Split an owned Relic into a new one, while maintaining maturity
     /// @param fromId The NFT ID of the Relic to split from
     /// @param amount Amount to move from existing Relic into the new one
+    /// @param to Address to mint the Relic to
     /// @return newId The NFT ID of the new Relic
     function split(uint fromId, uint amount, address to) external override nonReentrant returns (uint newId) {
         require(amount != 0, "cannot split zero amount");
@@ -771,5 +777,13 @@ contract Reliquary is IReliquary, ERC721Enumerable, AccessControlEnumerable, Mul
     function _mint(address to) private returns (uint id) {
         id = ++nonce;
         _safeMint(to, id);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint tokenId
+    ) internal override (ERC721, ERC721Enumerable) {
+        ERC721Enumerable._beforeTokenTransfer(from, to, tokenId);
     }
 }

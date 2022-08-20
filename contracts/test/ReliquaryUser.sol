@@ -4,29 +4,20 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 import "contracts/interfaces/IReliquary.sol";
 import "./TestToken.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 interface Weth is IERC20{
     function deposit() external payable;
 }
 
-contract ReliquaryUser is IERC721Receiver, Test {
+contract ReliquaryUser is ERC721Holder, Test {
     IReliquary reliquary;
     TestToken testToken;
 
     constructor(address _reliquary, address _testToken) {
         reliquary = IReliquary(_reliquary);
         testToken = TestToken(_testToken);
-    }
-
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external pure override returns (bytes4) {
-        return(IERC721Receiver.onERC721Received.selector);
     }
 
     function createRelicAndDeposit(uint128 amount) external {
@@ -55,7 +46,7 @@ contract ReliquaryUser is IERC721Receiver, Test {
         reliquary.harvest(relicId);
     }
 
-    function split(uint amount, uint index, address to) external {
+    function split(uint amount, uint index) external {
         uint relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
         reliquary.split(relicId, amount, address(this));
