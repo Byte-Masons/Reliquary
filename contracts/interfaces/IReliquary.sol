@@ -54,6 +54,7 @@ struct LevelInfo {
 
 interface IReliquary is IERC721Enumerable {
 
+  function burn(uint tokenId) external;
   function setEmissionCurve(IEmissionCurve _emissionCurve) external;
   function supportsInterface(bytes4 interfaceId) external view returns (bool);
   function addPool(

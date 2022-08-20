@@ -211,4 +211,19 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.merge(relicId, newRelicId);
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
     }
+
+    function testBurn() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
+        vm.expectRevert(bytes("contains deposit"));
+        reliquary.burn(relicId);
+
+        reliquary.withdrawAndHarvest(1 ether, relicId);
+        vm.expectRevert(bytes("ERC721: caller is not token owner or approved"));
+        vm.prank(address(1));
+        reliquary.burn(relicId);
+        assertEq(reliquary.balanceOf(address(this)), 1);
+
+        reliquary.burn(relicId);
+        assertEq(reliquary.balanceOf(address(this)), 0);
+    }
 }

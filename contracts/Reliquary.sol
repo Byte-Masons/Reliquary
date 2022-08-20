@@ -161,7 +161,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         levelInfo = levels[pid];
     }
 
-    function burn(uint256 tokenId) public override {
+    function burn(uint tokenId) public override (IReliquary, ERC721Burnable) {
         require(positionForId[tokenId].amount == 0, "contains deposit");
         require(pendingOath(tokenId) == 0, "contains pending rewards");
         super.burn(tokenId);
