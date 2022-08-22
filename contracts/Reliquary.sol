@@ -205,7 +205,9 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             _updatePool(i);
         }
 
-        totalAllocPoint += allocPoint;
+        uint totalAlloc = totalAllocPoint + allocPoint;
+        require(totalAlloc != 0, "totalAllocPoint cannot be 0");
+        totalAllocPoint = totalAlloc;
         poolToken.push(_poolToken);
         rewarder.push(_rewarder);
         nftDescriptor.push(_nftDescriptor);
@@ -256,8 +258,9 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         }
 
         PoolInfo storage pool = poolInfo[pid];
-        totalAllocPoint -= pool.allocPoint;
-        totalAllocPoint += allocPoint;
+        uint totalAlloc = totalAllocPoint + allocPoint - pool.allocPoint;
+        require(totalAlloc != 0, "totalAllocPoint cannot be 0");
+        totalAllocPoint = totalAlloc;
         pool.allocPoint = allocPoint;
 
         if (overwriteRewarder) {
