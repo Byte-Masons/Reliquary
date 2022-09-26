@@ -90,6 +90,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     event LogPoolAddition(
         uint indexed pid,
         uint allocPoint,
+        uint startTime,
         IERC20 indexed poolToken,
         IRewarder indexed rewarder,
         INFTDescriptor nftDescriptor
@@ -231,7 +232,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             })
         );
 
-        emit LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
+        emit LogPoolAddition((poolToken.length - 1), allocPoint, startTime, _poolToken, _rewarder, _nftDescriptor);
     }
 
     /*
