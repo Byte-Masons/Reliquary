@@ -39,6 +39,7 @@ contract Deploy is Script {
             IRewarder(address(0)),
             wethCurve,
             wethLevels,
+            block.timestamp,
             "ETH Pool",
             nftDescriptor
         );

@@ -25,7 +25,7 @@ contract Invariants is Test {
         TestToken testToken = new TestToken("Test Token", "TT", 6);
         INFTDescriptor nftDescriptor = INFTDescriptor(new NFTDescriptor(IReliquary(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        reliquary.addPool(1000, testToken, IRewarder(address(0)), curve, levels, "Test Token", nftDescriptor);
+        reliquary.addPool(1000, testToken, IRewarder(address(0)), curve, levels, block.timestamp, "Test Token", nftDescriptor);
 
         ReliquaryUser user = new ReliquaryUser(address(reliquary), address(testToken));
         Skipper skipper = new Skipper();

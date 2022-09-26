@@ -20,6 +20,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
+    uint startTime;
 
     event Deposit(
         uint indexed pid,
@@ -57,6 +58,8 @@ contract ReliquaryTest is ERC721Holder, Test {
         testToken = new TestToken("Test Token", "TT", 6);
         nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
 
+        startTime = block.timestamp + 2 days;
+
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(
             100,
@@ -64,6 +67,7 @@ contract ReliquaryTest is ERC721Holder, Test {
             IRewarder(address(0)),
             requiredMaturity,
             allocPoints,
+            startTime,
             "ETH Pool",
             nftDescriptor
         );
@@ -75,12 +79,33 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testPoolLength() public {
         assertTrue(reliquary.poolLength() == 1);
     }
+    function testMaturingOnlyOnceStartTimeReachedForPool() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 10 ether);
+        PositionInfo memory positionAfterDeposit = reliquary.getPositionForId(relicId);
+        assertEq(positionAfterDeposit.entry, startTime);
+        assertEq(positionAfterDeposit.level, 0);
+
+        skip(1 days);
+        // according to the level definition, we would be level 1 after 1 day
+        // but since we've set the start time to the future, it should still be level 0
+        reliquary.updatePosition(relicId);
+        PositionInfo memory positionAfter1Day = reliquary.getPositionForId(relicId);
+        assertEq(positionAfter1Day.level, 0);
+
+        skip(2 days);
+        // now we have passed the start time by 1 day and should therefore be level 1
+        reliquary.updatePosition(relicId);
+        PositionInfo memory positionAfter3Days= reliquary.getPositionForId(relicId);
+        assertEq(positionAfter3Days.level, 1);
+
+    }
 
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
         emit LogPoolModified(0, 100, IRewarder(address(0)), nftDescriptor);
         reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
     }
+
 
     function testRevertOnModifyInvalidPool() public {
         vm.expectRevert(bytes("set: pool does not exist"));
