@@ -296,6 +296,27 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     /*
+     + @notice View function to see current level without updating position
+     + @param relicId ID of the position.
+     + @return current level for given position
+    */
+    function currentLevel(uint relicId) public view override returns (uint) {
+        PositionInfo storage position = positionForId[relicId];
+        LevelInfo storage levelInfo = levels[position.poolId];
+        uint length = levelInfo.requiredMaturity.length;
+        if (length == 1) {
+            return 0;
+        }
+
+        uint maturity = block.timestamp - position.entry;
+        for (uint newLevel = length - 1; true; newLevel = _uncheckedDec(newLevel)) {
+            if (maturity >= levelInfo.requiredMaturity[newLevel]) {
+                return newLevel;
+            }
+        }
+    }
+
+    /*
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */

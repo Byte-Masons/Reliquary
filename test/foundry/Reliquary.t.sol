@@ -105,6 +105,20 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertApproxEqAbs(reliquary.pendingOath(relicId), time * 1e17, 1e16);
     }
 
+    function testCurrentLevel(uint maturity) public {
+        vm.assume(maturity < 500 days);
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, testToken.balanceOf(address(this)));
+        skip(maturity);
+        uint expectedLevel;
+        for (uint newLevel = requiredMaturity.length - 1; true; newLevel-- ) {
+            if (maturity >= requiredMaturity[newLevel]) {
+                expectedLevel = newLevel;
+                break;
+            }
+        }
+        assertEq(reliquary.currentLevel(relicId), expectedLevel);
+    }
+
     function testMassUpdatePools() public {
         skip(1);
         uint[] memory pools = new uint[](1);
