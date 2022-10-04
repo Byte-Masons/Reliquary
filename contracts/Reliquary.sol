@@ -536,7 +536,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
         require(amount <= fromAmount, "amount exceeds deposited");
-        fromPosition.amount = fromAmount - amount;
+        uint newFromAmount = fromAmount - amount;
+        fromPosition.amount = newFromAmount;
 
         newId = _mint(to);
         PositionInfo storage newPosition = positionForId[newId];
@@ -552,7 +553,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         if (pendingFrom != 0) {
             fromPosition.rewardCredit += pendingFrom;
         }
-        fromPosition.rewardDebt = fromAmount * multiplier / ACC_OATH_PRECISION;
+        fromPosition.rewardDebt = newFromAmount * multiplier / ACC_OATH_PRECISION;
         newPosition.rewardDebt = amount * multiplier / ACC_OATH_PRECISION;
 
         emit Split(fromId, newId, amount);

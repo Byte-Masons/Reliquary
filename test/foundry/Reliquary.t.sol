@@ -239,6 +239,18 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertApproxEqAbs(maturity1, maturity2, 1);
     }
 
+    function testMergeAfterSplit() public {
+        uint256 depositAmount1 = 100 ether;
+        uint256 depositAmount2 = 50 ether;
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+        skip(2 days);
+        reliquary.harvest(relicId);
+        reliquary.split(relicId, 50 ether, address(this));
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        reliquary.merge(relicId, newRelicId);
+        assertEq(reliquary.getPositionForId(newRelicId).amount, 100 ether);
+    }
+
     function testBurn() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
         vm.expectRevert(bytes("contains deposit"));
