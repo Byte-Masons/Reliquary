@@ -11,8 +11,8 @@ import "./IRewarder.sol";
 /*
  + @notice Info for each Reliquary position.
  + `amount` LP token amount the position owner has provided
- + `rewardDebt` OATH accumalated before the position's entry or last harvest
- + `rewardCredit` OATH owed to the user on next harvest
+ + `rewardDebt` Amount of reward token accumalated before the position's entry or last harvest
+ + `rewardCredit` Amount of reward token owed to the user on next harvest
  + `entry` Used to determine the maturity of the position
  + `poolId` ID of the pool to which this position belongs
  + `level` Index of this position's level within the pool's array of levels
@@ -28,13 +28,13 @@ struct PositionInfo {
 
 /*
  + @notice Info of each Reliquary pool
- + `accOathPerShare` Accumulated OATH per share of pool (1 / 1e12)
- + `lastRewardTime` Last timestamp the accumulated OATH was updated
+ + `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12)
+ + `lastRewardTime` Last timestamp the accumulated reward was updated
  + `allocPoint` Pool's individual allocation - ratio of the total allocation
  + `name` Name of pool to be displayed in NFT image
 */
 struct PoolInfo {
-    uint accOathPerShare;
+    uint accRewardPerShare;
     uint lastRewardTime;
     uint allocPoint;
     string name;
@@ -74,7 +74,7 @@ interface IReliquary is IERC721Enumerable {
         INFTDescriptor _nftDescriptor,
         bool overwriteRewarder
     ) external;
-  function pendingOath(uint relicId) external view returns (uint pending);
+  function pendingReward(uint relicId) external view returns (uint pending);
   function massUpdatePools(uint[] calldata pids) external;
   function updatePool(uint pid) external;
   function createRelicAndDeposit(
@@ -94,7 +94,7 @@ interface IReliquary is IERC721Enumerable {
 
   // State
 
-  function oath() external view returns (IERC20);
+  function rewardToken() external view returns (IERC20);
   function nftDescriptor(uint) external view returns (INFTDescriptor);
   function emissionCurve() external view returns (IEmissionCurve);
   function getPoolInfo(uint) external view returns (PoolInfo memory);

@@ -30,7 +30,7 @@ contract DepositHelperTest is Test {
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(1000, vault, IRewarder(address(0)), wethCurve, wethLevels, "ETH Crypt", nftDescriptor);
 
-        helper = new DepositHelper(address(reliquary));
+        helper = new DepositHelper(reliquary);
         weth = IERC20(vault.asset());
 
         vm.startPrank(WETH_WHALE);

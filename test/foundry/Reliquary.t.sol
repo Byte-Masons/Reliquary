@@ -102,7 +102,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
         reliquary.updatePosition(relicId);
-        assertApproxEqAbs(reliquary.pendingOath(relicId), time * 1e17, 1e16);
+        assertApproxEqAbs(reliquary.pendingReward(relicId), time * 1e17, 1e16);
     }
 
     function testMassUpdatePools() public {

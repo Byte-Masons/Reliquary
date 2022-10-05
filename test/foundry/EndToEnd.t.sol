@@ -24,7 +24,7 @@ contract EndToEndTest is Test {
         reliquary = Reliquary(deployer.reliquary());
         helper = deployer.helper();
 
-        IERC20Mint oath = IERC20Mint(address(reliquary.oath()));
+        IERC20Mint oath = IERC20Mint(address(reliquary.rewardToken()));
         vm.prank(deployer.MULTISIG());
         oath.mint(address(reliquary), 100_000_000 ether);
 

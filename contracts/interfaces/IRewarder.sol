@@ -5,9 +5,9 @@ pragma solidity ^0.8.15;
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IRewarder {
-    function onOathReward(
+    function onReward(
         uint relicId,
-        uint oathAmount
+        uint rewardAmount
     ) external;
 
     function onDeposit(
@@ -22,6 +22,6 @@ interface IRewarder {
 
     function pendingTokens(
         uint relicId,
-        uint oathAmount
+        uint rewardAmount
     ) external view returns (IERC20[] memory, uint[] memory);
 }

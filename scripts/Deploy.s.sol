@@ -49,7 +49,7 @@ contract Deploy is Script {
         reliquary.renounceRole(OPERATOR, tx.origin);
         reliquary.renounceRole(reliquary.DEFAULT_ADMIN_ROLE(), tx.origin);
 
-        helper = new DepositHelper(address(reliquary));
+        helper = new DepositHelper(reliquary);
 
         vm.stopBroadcast();
     }

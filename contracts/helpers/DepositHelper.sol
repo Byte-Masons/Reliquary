@@ -11,9 +11,11 @@ contract DepositHelper {
   using SafeERC20 for IERC20;
 
   IReliquary public immutable reliquary;
+  IERC20 public immutable rewardToken;
 
-  constructor(address _reliquary) {
-    reliquary = IReliquary(_reliquary);
+  constructor(IReliquary _reliquary) {
+    reliquary = _reliquary;
+    rewardToken = _reliquary.rewardToken();
   }
 
   function deposit(uint amount, uint relicId) external {
@@ -33,10 +35,9 @@ contract DepositHelper {
     if (harvest) {
         reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId);
 
-        IERC20 oath = reliquary.oath();
-        uint balance = oath.balanceOf(address(this));
+        uint balance = rewardToken.balanceOf(address(this));
         if (balance != 0) {
-            oath.safeTransfer(msg.sender, balance);
+            rewardToken.safeTransfer(msg.sender, balance);
         }
     } else {
         reliquary.withdraw(vault.convertToShares(amount), relicId);

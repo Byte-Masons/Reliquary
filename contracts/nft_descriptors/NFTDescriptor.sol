@@ -19,8 +19,8 @@ contract NFTDescriptor is INFTDescriptor {
     uint private constant GRAPH_HEIGHT = 30;
 
     // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmaayJ6EGM4JmK8P4eenopFrvExn6cwpeTapxti85ETJP4/';
-    uint private constant NUM_CHARACTERS = 3;
+    string private constant IPFS = 'https://gateway.pinata.cloud/ipfs/QmZgqnwcKxQhK23wiuVh1YfDg2YFcvhpJr3BNZfbCMQNvy/';
+    uint private constant NUM_CHARACTERS = 2;
 
     IReliquary public immutable reliquary;
 
@@ -35,7 +35,7 @@ contract NFTDescriptor is INFTDescriptor {
         LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
         address underlying = address(reliquary.poolToken(position.poolId));
         string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
-        string memory pendingOath = generateDecimalString(reliquary.pendingOath(relicId), 18);
+        string memory pendingReward = generateDecimalString(reliquary.pendingReward(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
 
         uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % NUM_CHARACTERS;
@@ -44,7 +44,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory attributes = generateAttributes(
             position,
             amount,
-            pendingOath,
+            pendingReward,
             maturity
         );
         string memory image =
@@ -59,7 +59,7 @@ contract NFTDescriptor is INFTDescriptor {
                         generateImageText(
                             relicId,
                             pool.name,
-                            pendingOath,
+                            pendingReward,
                             maturity
                         ),
                         generateTextFromToken(
@@ -113,12 +113,12 @@ contract NFTDescriptor is INFTDescriptor {
 
     /// @notice Generate attributes for NFT metadata
     /// @param position Position represented by this Relic
-    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param pendingReward Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateAttributes(
         PositionInfo memory position,
         string memory amount,
-        string memory pendingOath,
+        string memory pendingReward,
         uint maturity
     ) internal pure returns (string memory attributes) {
         attributes = string.concat(
@@ -127,7 +127,7 @@ contract NFTDescriptor is INFTDescriptor {
             '}, {"trait_type": "Amount Deposited", "value": "',
             amount,
             '"}, {"trait_type": "Pending Oath", "value": "',
-            pendingOath,
+            pendingReward,
             '"}, {"trait_type": "Maturity", "value": "',
             maturity.toString(), ' day', (maturity == 1) ? '' : 's',
             '"}, {"trait_type": "Level", "value": ',
@@ -159,18 +159,18 @@ contract NFTDescriptor is INFTDescriptor {
     /// @notice Generate the first part of text labels for this NFT image
     /// @param relicId ID of the NFT/position
     /// @param poolName Name of pool as provided by operator
-    /// @param pendingOath Amount of OATH that can currently be harvested from this position
+    /// @param pendingReward Amount of OATH that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateImageText(
         uint relicId,
         string memory poolName,
-        string memory pendingOath,
+        string memory pendingReward,
         uint maturity
     ) internal pure returns (string memory text) {
         text = string.concat(
             '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
             '</text><text x="50%" y="280" class="bit" style="font-size: 12">', poolName,
-            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingOath,
+            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingReward,
             ' OATH</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
             ' DAY', (maturity == 1) ? '' : 'S', '</text>'
         );

@@ -55,8 +55,8 @@ contract Rewarder is IRewarder {
 
     /// @notice Called by Reliquary harvest or withdrawAndHarvest function
     /// @param relicId The NFT ID of the position
-    /// @param rewardAmount Amount of oath reward owed for this position from the Reliquary
-    function onOathReward(
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    function onReward(
         uint relicId,
         uint rewardAmount
     ) external override onlyReliquary {
@@ -124,15 +124,15 @@ contract Rewarder is IRewarder {
     /// @notice Returns the amount of pending tokens for a position from this rewarder
     ///         Interface supports multiple tokens
     /// @param relicId The NFT ID of the position
-    /// @param oathAmount Amount of oath reward owed for this position from the Reliquary
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     function pendingTokens(
         uint relicId,
-        uint oathAmount
+        uint rewardAmount
     ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 
-        uint reward = oathAmount * rewardMultiplier / BASIS_POINTS;
+        uint reward = rewardAmount * rewardMultiplier / BASIS_POINTS;
         uint _lastDepositTime = lastDepositTime[relicId];
         if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
             reward += depositBonus;
