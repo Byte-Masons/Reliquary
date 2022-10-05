@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.15;
 
-contract Constant {
-    function getRate() external pure returns (uint rate) {
+import "../interfaces/IEmissionCurve.sol";
+
+contract Constant is IEmissionCurve{
+    function getRate(uint lastRewardTime) external pure override returns (uint rate) {
         rate = 1e17;
     }
 }

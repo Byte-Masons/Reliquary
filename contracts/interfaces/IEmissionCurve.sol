@@ -3,5 +3,5 @@
 pragma solidity ^0.8.15;
 
 interface IEmissionCurve {
-    function getRate() external view returns (uint rate);
+    function getRate(uint lastRewardTime) external view returns (uint rate);
 }

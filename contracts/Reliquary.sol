@@ -285,9 +285,10 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint accRewardPerShare = pool.accRewardPerShare;
         uint lpSupply = _poolBalance(position.poolId);
 
-        uint secondsSinceReward = block.timestamp - pool.lastRewardTime;
+        uint lastRewardTime = pool.lastRewardTime;
+        uint secondsSinceReward = block.timestamp - lastRewardTime;
         if (secondsSinceReward != 0 && lpSupply != 0) {
-            uint reward = secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint / totalAllocPoint;
+            uint reward = secondsSinceReward * _baseEmissionsPerSecond(lastRewardTime) * pool.allocPoint / totalAllocPoint;
             accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
         }
 
@@ -319,14 +320,15 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         require(pid < poolLength(), "invalid pool ID");
         PoolInfo storage pool = poolInfo[pid];
         uint timestamp = block.timestamp;
-        uint secondsSinceReward = timestamp - pool.lastRewardTime;
+        uint lastRewardTime = pool.lastRewardTime;
+        uint secondsSinceReward = timestamp - lastRewardTime;
 
         accRewardPerShare = pool.accRewardPerShare;
         if (secondsSinceReward != 0) {
             uint lpSupply = _poolBalance(pid);
 
             if (lpSupply != 0) {
-                uint reward = secondsSinceReward * _baseEmissionsPerSecond() * pool.allocPoint /
+                uint reward = secondsSinceReward * _baseEmissionsPerSecond(lastRewardTime) * pool.allocPoint /
                     totalAllocPoint;
                 accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
                 pool.accRewardPerShare = accRewardPerShare;
@@ -684,8 +686,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract
-    function _baseEmissionsPerSecond() internal view returns (uint rate) {
-        rate = emissionCurve.getRate();
+    function _baseEmissionsPerSecond(uint lastRewardTime) internal view returns (uint rate) {
+        rate = emissionCurve.getRate(lastRewardTime);
         require(rate <= 6e18, "maximum emission rate exceeded");
     }
 
