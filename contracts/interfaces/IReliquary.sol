@@ -34,6 +34,7 @@ struct PositionInfo {
  + `name` Name of pool to be displayed in NFT image
 */
 struct PoolInfo {
+    uint startTime;
     uint accOathPerShare;
     uint lastRewardTime;
     uint allocPoint;
@@ -63,6 +64,7 @@ interface IReliquary is IERC721Enumerable {
         IRewarder _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
+        uint startTime,
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external;

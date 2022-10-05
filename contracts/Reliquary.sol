@@ -5,6 +5,7 @@ import "./interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
@@ -89,6 +90,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     event LogPoolAddition(
         uint indexed pid,
         uint allocPoint,
+        uint startTime,
         IERC20 indexed poolToken,
         IRewarder indexed rewarder,
         INFTDescriptor nftDescriptor
@@ -185,6 +187,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         IRewarder _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
+        uint startTime,
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external override onlyRole(OPERATOR) {
@@ -214,6 +217,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         poolInfo.push(
             PoolInfo({
+                startTime: startTime,
                 allocPoint: allocPoint,
                 lastRewardTime: block.timestamp,
                 accOathPerShare: 0,
@@ -228,7 +232,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             })
         );
 
-        emit LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
+        emit LogPoolAddition((poolToken.length - 1), allocPoint, startTime, _poolToken, _rewarder, _nftDescriptor);
     }
 
     /*
@@ -716,9 +720,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     */
     function _updateEntry(uint amount, uint relicId) internal {
         PositionInfo storage position = positionForId[relicId];
-        uint weight = _findWeight(amount, position.amount);
-        uint maturity = block.timestamp - position.entry;
-        position.entry += maturity * weight / 1e18;
+        PoolInfo storage pool = poolInfo[position.poolId];
+        if(block.timestamp < pool.startTime) {
+            position.entry = pool.startTime;
+        } else {
+            uint weight = _findWeight(amount, position.amount);
+            uint maturity = block.timestamp - position.entry;
+            position.entry += maturity * weight / 1e18;
+        }
     }
 
     /*
@@ -733,7 +742,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             return 0;
         }
 
-        uint maturity = block.timestamp - position.entry;
+        uint maturity = block.timestamp - Math.min(position.entry, block.timestamp);
         for (newLevel = length - 1; true; newLevel = _uncheckedDec(newLevel)) {
             if (maturity >= levelInfo.requiredMaturity[newLevel]) {
                 if (position.level != newLevel) {

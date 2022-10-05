@@ -28,7 +28,7 @@ contract DepositHelperTest is Test {
         vault = IERC4626(0x58C60B6dF933Ff5615890dDdDCdD280bad53f1C1);
         INFTDescriptor nftDescriptor = INFTDescriptor(new NFTDescriptorSingle4626(IReliquary(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        reliquary.addPool(1000, vault, IRewarder(address(0)), wethCurve, wethLevels, "ETH Crypt", nftDescriptor);
+        reliquary.addPool(1000, vault, IRewarder(address(0)), wethCurve, wethLevels, block.timestamp, "ETH Crypt", nftDescriptor);
 
         helper = new DepositHelper(address(reliquary));
         weth = IERC20(vault.asset());
