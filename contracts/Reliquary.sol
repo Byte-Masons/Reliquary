@@ -63,6 +63,11 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint public totalAllocPoint;
 
+    event CreateRelic(
+        uint indexed pid,
+        address indexed to,
+        uint indexed relicId
+    );
     event Deposit(
         uint indexed pid,
         uint amount,
@@ -84,6 +89,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     event Harvest(
         uint indexed pid,
         uint amount,
+        address indexed to,
         uint indexed relicId
     );
     event LogPoolAddition(
@@ -355,6 +361,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         id = _mint(to);
         positionForId[id].poolId = pid;
         _deposit(amount, id);
+        emit CreateRelic(pid, to, id);
     }
 
     /*
@@ -375,7 +382,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(poolId, amount, msg.sender, relicId);
+        emit Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
     /*
@@ -403,7 +410,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         (uint poolId, uint _pendingReward) = _updatePosition(0, relicId, Kind.OTHER, true);
 
-        emit Harvest(poolId, _pendingReward, relicId);
+        emit Harvest(poolId, _pendingReward, msg.sender, relicId);
     }
 
     /*
@@ -420,7 +427,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         poolToken[poolId].safeTransfer(msg.sender, amount);
 
         emit Withdraw(poolId, amount, msg.sender, relicId);
-        emit Harvest(poolId, _pendingReward, relicId);
+        emit Harvest(poolId, _pendingReward, msg.sender, relicId);
     }
 
     /*
