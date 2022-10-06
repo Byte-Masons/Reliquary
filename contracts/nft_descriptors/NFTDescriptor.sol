@@ -37,6 +37,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
         string memory pendingReward = generateDecimalString(reliquary.pendingReward(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
+        string memory rewardSymbol = IERC20Values(address(reliquary.rewardToken())).symbol();
 
         uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % NUM_CHARACTERS;
 
@@ -45,6 +46,7 @@ contract NFTDescriptor is INFTDescriptor {
             position,
             amount,
             pendingReward,
+            rewardSymbol,
             maturity
         );
         string memory image =
@@ -60,6 +62,7 @@ contract NFTDescriptor is INFTDescriptor {
                             relicId,
                             pool.name,
                             pendingReward,
+                            rewardSymbol,
                             maturity
                         ),
                         generateTextFromToken(
@@ -113,12 +116,13 @@ contract NFTDescriptor is INFTDescriptor {
 
     /// @notice Generate attributes for NFT metadata
     /// @param position Position represented by this Relic
-    /// @param pendingReward Amount of OATH that can currently be harvested from this position
+    /// @param pendingReward Amount of reward token that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateAttributes(
         PositionInfo memory position,
         string memory amount,
         string memory pendingReward,
+        string memory rewardSymbol,
         uint maturity
     ) internal pure returns (string memory attributes) {
         attributes = string.concat(
@@ -126,7 +130,7 @@ contract NFTDescriptor is INFTDescriptor {
             position.poolId.toString(),
             '}, {"trait_type": "Amount Deposited", "value": "',
             amount,
-            '"}, {"trait_type": "Pending Oath", "value": "',
+            '"}, {"trait_type": "Pending ', rewardSymbol, '", "value": "',
             pendingReward,
             '"}, {"trait_type": "Maturity", "value": "',
             maturity.toString(), ' day', (maturity == 1) ? '' : 's',
@@ -159,19 +163,20 @@ contract NFTDescriptor is INFTDescriptor {
     /// @notice Generate the first part of text labels for this NFT image
     /// @param relicId ID of the NFT/position
     /// @param poolName Name of pool as provided by operator
-    /// @param pendingReward Amount of OATH that can currently be harvested from this position
+    /// @param pendingReward Amount of reward token that can currently be harvested from this position
     /// @param maturity Weighted average of the maturity deposits into this position
     function generateImageText(
         uint relicId,
         string memory poolName,
         string memory pendingReward,
+        string memory rewardSymbol,
         uint maturity
     ) internal pure returns (string memory text) {
         text = string.concat(
             '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #', relicId.toString(),
             '</text><text x="50%" y="280" class="bit" style="font-size: 12">', poolName,
-            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingReward,
-            ' OATH</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
+            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:', pendingReward, ' ', rewardSymbol, 
+            '</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:', maturity.toString(),
             ' DAY', (maturity == 1) ? '' : 'S', '</text>'
         );
     }
