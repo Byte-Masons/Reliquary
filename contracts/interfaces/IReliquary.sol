@@ -75,6 +75,7 @@ interface IReliquary is IERC721Enumerable {
         bool overwriteRewarder
     ) external;
   function pendingReward(uint relicId) external view returns (uint pending);
+  function levelOnUpdate(uint relicId) external view returns (uint level);
   function massUpdatePools(uint[] calldata pids) external;
   function updatePool(uint pid) external;
   function createRelicAndDeposit(

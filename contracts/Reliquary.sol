@@ -303,6 +303,27 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     /*
+     + @notice View function to see level of position if it were to be updated.
+     + @param relicId ID of the position.
+     + @return level Level for given position upon update.
+    */
+    function levelOnUpdate(uint relicId) public view override returns (uint level) {
+        PositionInfo storage position = positionForId[relicId];
+        LevelInfo storage levelInfo = levels[position.poolId];
+        uint length = levelInfo.requiredMaturity.length;
+        if (length == 1) {
+            return 0;
+        }
+
+        uint maturity = block.timestamp - position.entry;
+        for (level = length - 1; true; level = _uncheckedDec(level)) {
+            if (maturity >= levelInfo.requiredMaturity[level]) {
+                break;
+            }
+        }
+    }
+
+    /*
      + @notice Update reward variables for all pools. Be careful of gas spending!
      + @param pids Pool IDs of all to be updated. Make sure to update all active pools.
     */
@@ -733,24 +754,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /*
      + @notice Updates the position's level based on entry time
      + @param relicId The NFT ID of the position being updated
+     + @return newLevel Level of position after update
     */
     function _updateLevel(uint relicId) internal returns (uint newLevel) {
+        newLevel = levelOnUpdate(relicId);
         PositionInfo storage position = positionForId[relicId];
-        LevelInfo storage levelInfo = levels[position.poolId];
-        uint length = levelInfo.requiredMaturity.length;
-        if (length == 1) {
-            return 0;
-        }
-
-        uint maturity = block.timestamp - position.entry;
-        for (newLevel = length - 1; true; newLevel = _uncheckedDec(newLevel)) {
-            if (maturity >= levelInfo.requiredMaturity[newLevel]) {
-                if (position.level != newLevel) {
-                    position.level = newLevel;
-                    emit LevelChanged(relicId, newLevel);
-                }
-                break;
-            }
+        if (position.level != newLevel) {
+            position.level = newLevel;
+            emit LevelChanged(relicId, newLevel);
         }
     }
 
