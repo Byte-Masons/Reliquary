@@ -586,6 +586,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         fromPosition.rewardDebt = newFromAmount * multiplier / ACC_REWARD_PRECISION;
         newPosition.rewardDebt = amount * multiplier / ACC_REWARD_PRECISION;
 
+        emit CreateRelic(poolId, to, newId);
         emit Split(fromId, newId, amount);
     }
 
