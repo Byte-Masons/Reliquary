@@ -8,6 +8,7 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerabl
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/utils/math/SignedMath.sol";
 
 /*
  + @title Reliquary
@@ -24,10 +25,12 @@ import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 */
 contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using SignedMath for int;
 
     /// @notice Access control roles.
     bytes32 private constant OPERATOR = keccak256("OPERATOR");
     bytes32 private constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    bytes32 private constant MATURITY_MODIFIER = keccak256("MATURITY_MODIFIER");
 
     /// @notice Indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
@@ -91,6 +94,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint amount,
         address indexed to,
         uint indexed relicId
+    );
+    event MaturityBonus(
+        uint indexed pid,
+        address indexed to,
+        uint indexed relicId,
+        int bonus
     );
     event LogPoolAddition(
         uint indexed pid,
@@ -280,6 +289,23 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     /*
+     + @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity within set limits.
+     + @param relicId The NFT ID of the position being modified.
+     + @param bonus Number of seconds to modify the position's entry by.
+    */
+    function modifyMaturity(uint relicId, int bonus) external onlyRole(MATURITY_MODIFIER) {
+        require(bonus.abs() <= 10 days, "bonus too big");
+        PositionInfo storage position = positionForId[relicId];
+        uint lastMaturityBonus = position.lastMaturityBonus;
+        require(lastMaturityBonus == 0 || block.timestamp - lastMaturityBonus >= 1 days, "bonus already claimed");
+
+        position.entry = uint(int(position.entry) + bonus);
+        position.lastMaturityBonus = block.timestamp;
+
+        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, bonus);
+    }
+
+    /*
      + @notice View function to see pending reward tokens on frontend.
      + @param relicId ID of the position.
      + @return pending reward amount for a given position owner.
@@ -380,7 +406,9 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     ) external override nonReentrant returns (uint id) {
         require(pid < poolInfo.length, "invalid pool ID");
         id = _mint(to);
-        positionForId[id].poolId = pid;
+        PositionInfo storage position = positionForId[id];
+        position.poolId = pid;
+        position.genesis = block.timestamp;
         _deposit(amount, id);
         emit CreateRelic(pid, to, id);
     }
@@ -571,6 +599,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         newId = _mint(to);
         PositionInfo storage newPosition = positionForId[newId];
+        newPosition.genesis = block.timestamp;
         newPosition.amount = amount;
         newPosition.entry = fromPosition.entry;
         uint level = fromPosition.level;

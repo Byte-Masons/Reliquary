@@ -16,6 +16,8 @@ import "./IRewarder.sol";
  + `entry` Used to determine the maturity of the position
  + `poolId` ID of the pool to which this position belongs
  + `level` Index of this position's level within the pool's array of levels
+ + `genesis` Relic creation time
+ + `lastMaturityBonus` Last time the position had its entry altered by a MaturityModifier
 */
 struct PositionInfo {
     uint amount;
@@ -24,6 +26,8 @@ struct PositionInfo {
     uint entry; // position owner's relative entry into the pool.
     uint poolId; // ensures that a single Relic is only used for one pool.
     uint level;
+    uint genesis;
+    uint lastMaturityBonus;
 }
 
 /*
