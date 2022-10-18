@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerabl
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
-import "openzeppelin-contracts/contracts/utils/math/SignedMath.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 /*
  + @title Reliquary
@@ -25,7 +25,6 @@ import "openzeppelin-contracts/contracts/utils/math/SignedMath.sol";
 */
 contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessControlEnumerable, Multicall, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    using SignedMath for int;
 
     /// @notice Access control roles.
     bytes32 private constant OPERATOR = keccak256("OPERATOR");
@@ -99,7 +98,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint indexed pid,
         address indexed to,
         uint indexed relicId,
-        int bonus
+        uint bonus
     );
     event LogPoolAddition(
         uint indexed pid,
@@ -293,13 +292,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
      + @param relicId The NFT ID of the position being modified.
      + @param bonus Number of seconds to modify the position's entry by.
     */
-    function modifyMaturity(uint relicId, int bonus) external onlyRole(MATURITY_MODIFIER) {
-        require(bonus.abs() <= 10 days, "bonus too big");
+    function modifyMaturity(uint relicId, uint bonus) external onlyRole(MATURITY_MODIFIER) {
         PositionInfo storage position = positionForId[relicId];
         uint lastMaturityBonus = position.lastMaturityBonus;
         require(lastMaturityBonus == 0 || block.timestamp - lastMaturityBonus >= 1 days, "bonus already claimed");
 
-        position.entry = uint(int(position.entry) + bonus);
+        position.entry -= Math.max(2 days, bonus);
         position.lastMaturityBonus = block.timestamp;
 
         emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, bonus);
