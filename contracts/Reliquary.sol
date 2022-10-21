@@ -290,17 +290,22 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /*
      + @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity within set limits.
      + @param relicId The NFT ID of the position being modified.
-     + @param bonus Number of seconds to modify the position's entry by.
+     + @param points Number of seconds to reduce the position's entry by (increasing maturity), before maximum.
+     + @return receivedBonus Actual maturity bonus received after maximum.
     */
-    function modifyMaturity(uint relicId, uint bonus) external onlyRole(MATURITY_MODIFIER) {
+    function modifyMaturity(
+        uint relicId,
+        uint points
+    ) external onlyRole(MATURITY_MODIFIER) returns (uint receivedBonus) {
         PositionInfo storage position = positionForId[relicId];
         uint lastMaturityBonus = position.lastMaturityBonus;
         require(lastMaturityBonus == 0 || block.timestamp - lastMaturityBonus >= 1 days, "bonus already claimed");
 
-        position.entry -= Math.max(2 days, bonus);
+        receivedBonus = Math.max(2 days, points);
+        position.entry -= receivedBonus;
         position.lastMaturityBonus = block.timestamp;
 
-        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, bonus);
+        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
     }
 
     /*
