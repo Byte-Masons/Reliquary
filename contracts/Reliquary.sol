@@ -304,6 +304,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         receivedBonus = Math.max(2 days, points);
         position.entry -= receivedBonus;
         position.lastMaturityBonus = block.timestamp;
+        _updatePosition(0, relicId, Kind.OTHER, false);
 
         emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
     }
