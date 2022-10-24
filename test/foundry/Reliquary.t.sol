@@ -7,6 +7,7 @@ import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/TestToken.sol";
+import "contracts/Rewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
@@ -264,5 +265,33 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         reliquary.burn(relicId);
         assertEq(reliquary.balanceOf(address(this)), 0);
+    }
+
+    function testRewarder() public {
+        Rewarder rewarder = new Rewarder(
+            0,
+            1000 ether,
+            1 ether,
+            1 days,
+            oath,
+            reliquary
+        );
+        oath.mint(address(rewarder), 1_000_000 ether);
+
+        reliquary.addPool(
+            100,
+            testToken,
+            rewarder,
+            requiredMaturity,
+            allocPoints,
+            "ETH Pool",
+            nftDescriptor
+        );
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
+        skip(1 days);
+        rewarder.claimDepositBonus(relicId);
+
+        assertEq(oath.balanceOf(address(this)), 1000 ether);
     }
 }
