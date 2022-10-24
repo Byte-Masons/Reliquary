@@ -13,14 +13,12 @@ interface IRewarder {
 
     function onDeposit(
         uint relicId,
-        uint depositAmount,
-        address to
+        uint depositAmount
     ) external;
 
     function onWithdraw(
         uint relicId,
-        uint withdrawalAmount,
-        address to
+        uint withdrawalAmount
     ) external;
 
     function pendingTokens(

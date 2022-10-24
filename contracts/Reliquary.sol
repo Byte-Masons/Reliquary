@@ -579,12 +579,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         if (kind == Kind.DEPOSIT) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onDeposit(relicId, amount, harvestTo);
+              _rewarder.onDeposit(relicId, amount);
           }
         } else if (kind == Kind.WITHDRAW) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onWithdraw(relicId, amount, harvestTo);
+              _rewarder.onWithdraw(relicId, amount);
           }
         }
     }

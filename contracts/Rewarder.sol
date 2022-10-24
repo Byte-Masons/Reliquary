@@ -71,32 +71,28 @@ contract Rewarder is IRewarder {
     /// @notice Called by Reliquary _deposit function
     /// @param relicId The NFT ID of the position
     /// @param depositAmount Amount being deposited into the underlying Reliquary position
-    /// @param to Address to send the depositBonus to
     function onDeposit(
         uint relicId,
-        uint depositAmount,
-        address to
+        uint depositAmount
     ) external override onlyReliquary {
         if (depositAmount >= minimum) {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
             lastDepositTime[relicId] = timestamp;
-            _claimDepositBonus(to, timestamp, _lastDepositTime);
+            _claimDepositBonus(reliquary.ownerOf(relicId), timestamp, _lastDepositTime);
         }
     }
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
     /// @param relicId The NFT ID of the position
     /// @param withdrawalAmount Amount being withdrawn from the underlying Reliquary position
-    /// @param to Address to send the depositBonus to
     function onWithdraw(
         uint relicId,
-        uint withdrawalAmount,
-        address to
+        uint withdrawalAmount
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
-        _claimDepositBonus(to, block.timestamp, _lastDepositTime);
+        _claimDepositBonus(reliquary.ownerOf(relicId), block.timestamp, _lastDepositTime);
     }
 
     /// @notice Claim depositBonus without making another deposit
