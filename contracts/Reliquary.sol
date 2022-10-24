@@ -304,7 +304,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         receivedBonus = Math.max(2 days, points);
         position.entry -= receivedBonus;
         position.lastMaturityBonus = block.timestamp;
-        _updatePosition(0, relicId, Kind.OTHER, false);
+        _updatePosition(0, relicId, Kind.OTHER, address(0));
 
         emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
     }
@@ -431,7 +431,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     function _deposit(uint amount, uint relicId) internal {
         require(amount != 0, "depositing 0 amount");
 
-        (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, false);
+        (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, address(0));
 
         poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
@@ -447,7 +447,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         require(amount != 0, "withdrawing 0 amount");
         _requireApprovedOrOwner(relicId);
 
-        (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, false);
+        (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
         poolToken[poolId].safeTransfer(msg.sender, amount);
 
@@ -457,30 +457,32 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /*
      + @notice Harvest proceeds for transaction sender to owner of `relicId`.
      + @param relicId NFT ID of the position being harvested.
+     + @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
     */
-    function harvest(uint relicId) external override nonReentrant {
+    function harvest(uint relicId, address harvestTo) external override nonReentrant {
         _requireApprovedOrOwner(relicId);
 
-        (uint poolId, uint _pendingReward) = _updatePosition(0, relicId, Kind.OTHER, true);
+        (uint poolId, uint _pendingReward) = _updatePosition(0, relicId, Kind.OTHER, harvestTo);
 
-        emit Harvest(poolId, _pendingReward, msg.sender, relicId);
+        emit Harvest(poolId, _pendingReward, harvestTo, relicId);
     }
 
     /*
      + @notice Withdraw LP tokens and harvest proceeds for transaction sender to owner of `relicId`.
      + @param amount token amount to withdraw.
      + @param relicId NFT ID of the position being withdrawn and harvested.
+     + @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
     */
-    function withdrawAndHarvest(uint amount, uint relicId) external override nonReentrant {
+    function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external override nonReentrant {
         require(amount != 0, "withdrawing 0 amount");
         _requireApprovedOrOwner(relicId);
 
-        (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, true);
+        (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
 
         poolToken[poolId].safeTransfer(msg.sender, amount);
 
         emit Withdraw(poolId, amount, msg.sender, relicId);
-        emit Harvest(poolId, _pendingReward, msg.sender, relicId);
+        emit Harvest(poolId, _pendingReward, harvestTo, relicId);
     }
 
     /*
@@ -508,7 +510,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @notice Update position without performing a deposit/withdraw/harvest.
     /// @param relicId The NFT ID of the position being updated.
     function updatePosition(uint relicId) external override nonReentrant {
-        _updatePosition(0, relicId, Kind.OTHER, false);
+        _updatePosition(0, relicId, Kind.OTHER, address(0));
     }
 
     /*
@@ -516,14 +518,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
      + @param amount Amount of poolToken to deposit/withdraw.
      + @param relicId The NFT ID of the position being updated.
      + @param kind Indicates whether tokens are being added to, or removed from, a pool.
-     + @param _harvest Whether a harvest should be performed.
+     + @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
      + @return pending reward for a given position owner.
     */
     function _updatePosition(
         uint amount,
         uint relicId,
         Kind kind,
-        bool _harvest
+        address harvestTo
     ) internal returns (uint poolId, uint _pendingReward) {
         PositionInfo storage position = positionForId[relicId];
         poolId = position.poolId;
@@ -558,6 +560,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         position.rewardDebt = newAmount * levels[poolId].allocPoint[newLevel] * accRewardPerShare
             / ACC_REWARD_PRECISION;
 
+        bool _harvest = harvestTo != address(0);
         if (!_harvest && _pendingReward != 0) {
             position.rewardCredit += _pendingReward;
         } else if (_harvest) {
@@ -565,10 +568,10 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             uint received = _receivedReward(total);
             position.rewardCredit = total - received;
             if (received != 0) {
-                rewardToken.safeTransfer(msg.sender, received);
+                rewardToken.safeTransfer(harvestTo, received);
                 IRewarder _rewarder = rewarder[poolId];
                 if (address(_rewarder) != address(0)) {
-                    _rewarder.onReward(relicId, received);
+                    _rewarder.onReward(relicId, received, harvestTo);
                 }
             }
         }
@@ -576,12 +579,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         if (kind == Kind.DEPOSIT) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onDeposit(relicId, amount);
+              _rewarder.onDeposit(relicId, amount, harvestTo);
           }
         } else if (kind == Kind.WITHDRAW) {
           IRewarder _rewarder = rewarder[poolId];
           if (address(_rewarder) != address(0)) {
-              _rewarder.onWithdraw(relicId, amount);
+              _rewarder.onWithdraw(relicId, amount, harvestTo);
           }
         }
     }
@@ -810,6 +813,10 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         for (uint i; i < length; i = _uncheckedInc(i)) {
             total += levelInfo.balance[i] * levelInfo.allocPoint[i];
         }
+    }
+
+    function isApprovedOrOwner(address spender, uint relicId) external view override returns (bool) {
+        return _isApprovedOrOwner(spender, relicId);
     }
 
     /// @notice Require the sender is either the owner of the Relic or approved to transfer it

@@ -166,10 +166,10 @@ contract ReliquaryTest is ERC721Holder, Test {
         vm.stopPrank();
         uint relicIdB = reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
         skip(180 days);
-        reliquary.harvest(relicIdB);
+        reliquary.harvest(relicIdB, address(this));
 
         vm.startPrank(address(1));
-        reliquary.harvest(relicIdA);
+        reliquary.harvest(relicIdA, address(this));
         vm.stopPrank();
 
         assertEq((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110399);
@@ -245,7 +245,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 depositAmount2 = 50 ether;
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
         skip(2 days);
-        reliquary.harvest(relicId);
+        reliquary.harvest(relicId, address(this));
         reliquary.split(relicId, 50 ether, address(this));
         uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
         reliquary.merge(relicId, newRelicId);
@@ -257,7 +257,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         vm.expectRevert(bytes("contains deposit"));
         reliquary.burn(relicId);
 
-        reliquary.withdrawAndHarvest(1 ether, relicId);
+        reliquary.withdrawAndHarvest(1 ether, relicId, address(this));
         vm.expectRevert(bytes("ERC721: caller is not token owner or approved"));
         vm.prank(address(1));
         reliquary.burn(relicId);
@@ -290,7 +290,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
         skip(1 days);
-        rewarder.claimDepositBonus(relicId);
+        rewarder.claimDepositBonus(relicId, address(this));
 
         assertEq(oath.balanceOf(address(this)), 1000 ether);
     }

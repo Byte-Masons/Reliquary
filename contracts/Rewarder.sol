@@ -56,48 +56,54 @@ contract Rewarder is IRewarder {
     /// @notice Called by Reliquary harvest or withdrawAndHarvest function
     /// @param relicId The NFT ID of the position
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    /// @param to Address to send rewards to
     function onReward(
         uint relicId,
-        uint rewardAmount
+        uint rewardAmount,
+        address to
     ) external override onlyReliquary {
         if (rewardMultiplier != 0) {
             uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
-            rewardToken.safeTransfer(reliquary.ownerOf(relicId), pendingReward);
+            rewardToken.safeTransfer(to, pendingReward);
         }
     }
 
     /// @notice Called by Reliquary _deposit function
     /// @param relicId The NFT ID of the position
     /// @param depositAmount Amount being deposited into the underlying Reliquary position
+    /// @param to Address to send the depositBonus to
     function onDeposit(
         uint relicId,
-        uint depositAmount
+        uint depositAmount,
+        address to
     ) external override onlyReliquary {
         if (depositAmount >= minimum) {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
             lastDepositTime[relicId] = timestamp;
-            _claimDepositBonus(reliquary.ownerOf(relicId), timestamp, _lastDepositTime);
+            _claimDepositBonus(to, timestamp, _lastDepositTime);
         }
     }
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
     /// @param relicId The NFT ID of the position
     /// @param withdrawalAmount Amount being withdrawn from the underlying Reliquary position
+    /// @param to Address to send the depositBonus to
     function onWithdraw(
         uint relicId,
-        uint withdrawalAmount
+        uint withdrawalAmount,
+        address to
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
-        _claimDepositBonus(reliquary.ownerOf(relicId), block.timestamp, _lastDepositTime);
+        _claimDepositBonus(to, block.timestamp, _lastDepositTime);
     }
 
     /// @notice Claim depositBonus without making another deposit
     /// @param relicId The NFT ID of the position
-    function claimDepositBonus(uint relicId) external {
-        address to = msg.sender;
-        require(to == reliquary.ownerOf(relicId), "you do not own this Relic");
+    /// @param to Address to send the depositBonus to
+    function claimDepositBonus(uint relicId, address to) external {
+        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
         require(_claimDepositBonus(to, block.timestamp, _lastDepositTime), "nothing to claim");

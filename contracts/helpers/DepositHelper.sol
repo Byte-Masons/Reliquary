@@ -33,12 +33,7 @@ contract DepositHelper {
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 
     if (harvest) {
-        reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId);
-
-        uint balance = rewardToken.balanceOf(address(this));
-        if (balance != 0) {
-            rewardToken.safeTransfer(msg.sender, balance);
-        }
+        reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId, msg.sender);
     } else {
         reliquary.withdraw(vault.convertToShares(amount), relicId);
     }

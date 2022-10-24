@@ -35,7 +35,7 @@ contract ReliquaryUser is ERC721Holder, Test {
         uint relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
         if (_harvest) {
-            reliquary.withdrawAndHarvest(amount, relicId);
+            reliquary.withdrawAndHarvest(amount, relicId, address(this));
         } else {
             reliquary.withdraw(amount, relicId);
         }
@@ -43,7 +43,7 @@ contract ReliquaryUser is ERC721Holder, Test {
 
     function harvest(uint index) external {
         uint relicId = _getOwnedRelicId(index);
-        reliquary.harvest(relicId);
+        reliquary.harvest(relicId, address(this));
     }
 
     function split(uint amount, uint index) external {

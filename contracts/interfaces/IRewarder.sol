@@ -7,17 +7,20 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 interface IRewarder {
     function onReward(
         uint relicId,
-        uint rewardAmount
+        uint rewardAmount,
+        address to
     ) external;
 
     function onDeposit(
         uint relicId,
-        uint depositAmount
+        uint depositAmount,
+        address to
     ) external;
 
     function onWithdraw(
         uint relicId,
-        uint withdrawalAmount
+        uint withdrawalAmount,
+        address to
     ) external;
 
     function pendingTokens(

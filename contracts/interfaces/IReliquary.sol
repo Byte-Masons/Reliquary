@@ -89,8 +89,8 @@ interface IReliquary is IERC721Enumerable {
     ) external returns (uint id);
   function deposit(uint amount, uint relicId) external;
   function withdraw(uint amount, uint relicId) external;
-  function harvest(uint relicId) external;
-  function withdrawAndHarvest(uint amount, uint relicId) external;
+  function harvest(uint relicId, address harvestTo) external;
+  function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external;
   function emergencyWithdraw(uint relicId) external;
   function updatePosition(uint relicId) external;
   function split(uint relicId, uint amount, address to) external returns (uint newId);
@@ -110,5 +110,6 @@ interface IReliquary is IERC721Enumerable {
   function getPositionForId(uint) external view returns (PositionInfo memory);
   function totalAllocPoint() external view returns (uint);
   function poolLength() external view returns (uint);
+  function isApprovedOrOwner(address, uint) external view returns (bool);
 
 }
