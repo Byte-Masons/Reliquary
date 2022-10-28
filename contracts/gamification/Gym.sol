@@ -19,7 +19,7 @@ contract Gym is UseRandom {
 
     IReliquary public reliquary;
     mapping(address => Avatar) public avatars;
-    mapping(uint => bool) hasSpun;
+    mapping(uint => bool) hasTrained;
 
     constructor(IReliquary _reliquary) {
         reliquary = _reliquary;
@@ -31,29 +31,30 @@ contract Gym is UseRandom {
         require(
             block.timestamp - position.genesis >= 1 days &&
             (position.lastMaturityBonus == 0 || block.timestamp - position.lastMaturityBonus >= 1 days),
-            "too soon since last spin"
+            "too soon since last training"
         );
 
-        reliquary.updateLastMaturityBonus(relicId);
-        delete hasSpun[relicId];
+        delete hasTrained[relicId];
         seed = _createSeed();
+        reliquary.updateLastMaturityBonus(relicId);
     }
 
-    /*function multiSpin(uint[] calldata ids) external {
+    // might be possible with PRNG
+    /*function multiTrain(uint[] calldata ids) external {
         for (uint i; i < ids.length; ++i) {
-            spin(ids[i]);
+            train(ids[i]);
         }
     }*/
 
-    function spin(uint relicId, uint proof) public {
+    function train(uint relicId, uint proof) public {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
-        require(!hasSpun[relicId], "seed already used");
+        require(!hasTrained[relicId], "seed already used");
         _prove(proof);
-        hasSpun[relicId] = true;
-        _spin(relicId, proof);
+        hasTrained[relicId] = true;
+        _train(relicId, proof);
     }
 
-    function _spin(uint relicId, uint rand) internal {
+    function _train(uint relicId, uint rand) internal {
         uint n = rand % 1 days;
         Avatar memory ava = avatars[msg.sender];
         if (ava.id != 0) {
