@@ -13,7 +13,7 @@ interface IAvatar {
 contract Gym is UseRandom, Ownable {
     struct Avatar {
         IAvatar collection;
-        uint id;
+        uint96 id;
     }
 
     uint private constant BASIS_POINTS = 10_000;
@@ -44,7 +44,7 @@ contract Gym is UseRandom, Ownable {
         );
 
         uint n = rand % 1 days;
-        Avatar storage ava = avatars[msg.sender];
+        Avatar memory ava = avatars[msg.sender];
         if (ava.id != 0) {
             n = n * ava.collection.getBonus(ava.id) / BASIS_POINTS;
         }
