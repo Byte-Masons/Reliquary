@@ -4,19 +4,20 @@ import "../libraries/SlothVDF.sol";
 
 abstract contract UseRandom {
     // large prime
-    uint public constant PRIME = 432211379112113246928842014508850435796007;
+    uint private constant PRIME = 432211379112113246928842014508850435796007;
     // adjust for block finality
-    uint public constant ITERATIONS = 1000;
+    uint private constant ITERATIONS = 1000;
     // increment nonce to increase entropy
     uint private nonce;
     // address -> vdf seed
     mapping(address => uint) public seeds;
 
-    function createSeed() external {
-        // commit funds/tokens/etc here?
+    function _createSeed() internal returns (uint seed) {
+        // commit funds/tokens/etc before running this function
 
         // create a pseudo random seed as the input
-        seeds[msg.sender] = uint(keccak256(abi.encodePacked(msg.sender, nonce++, block.timestamp, blockhash(block.number - 1))));
+        seed = uint(keccak256(abi.encodePacked(msg.sender, nonce++, block.timestamp, blockhash(block.number - 1))));
+        seeds[msg.sender] = seed;
     }
 
     function _prove(uint proof) internal view {

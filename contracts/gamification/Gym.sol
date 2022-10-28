@@ -25,6 +25,19 @@ contract Gym is UseRandom, Ownable {
         reliquary = _reliquary;
     }
 
+    function createSeed(uint relicId) external returns (uint seed) {
+        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
+        PositionInfo memory position = reliquary.getPositionForId(relicId);
+        require(
+            block.timestamp - position.genesis >= 1 days &&
+            (position.lastMaturityBonus == 0 || block.timestamp - position.lastMaturityBonus >= 1 days),
+            "too soon since last spin"
+        );
+
+        reliquary.updateLastMaturityBonus(relicId);
+        seed = _createSeed();
+    }
+
     /*function multiSpin(uint[] calldata ids) external {
         for (uint i; i < ids.length; ++i) {
             spin(ids[i]);
@@ -38,11 +51,6 @@ contract Gym is UseRandom, Ownable {
     }
 
     function _spin(uint relicId, uint rand) internal {
-        require(
-            block.timestamp - reliquary.getPositionForId(relicId).lastMaturityBonus >= 1 days,
-            "too soon since last spin"
-        );
-
         uint n = rand % 1 days;
         Avatar memory ava = avatars[msg.sender];
         if (ava.id != 0) {

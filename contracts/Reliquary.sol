@@ -297,16 +297,17 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint relicId,
         uint points
     ) external onlyRole(MATURITY_MODIFIER) override returns (uint receivedBonus) {
+        receivedBonus = Math.max(1 days, points);
         PositionInfo storage position = positionForId[relicId];
-        uint lastMaturityBonus = position.lastMaturityBonus;
-        require(lastMaturityBonus == 0 || block.timestamp - lastMaturityBonus >= 1 days, "bonus already claimed");
-
-        receivedBonus = Math.max(2 days, points);
         position.entry -= receivedBonus;
-        position.lastMaturityBonus = block.timestamp;
         _updatePosition(0, relicId, Kind.OTHER, address(0));
 
         emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
+    }
+
+    function updateLastMaturityBonus(uint relicId) external override onlyRole(MATURITY_MODIFIER) {
+        PositionInfo storage position = positionForId[relicId];
+        position.lastMaturityBonus = block.timestamp;
     }
 
     /*
