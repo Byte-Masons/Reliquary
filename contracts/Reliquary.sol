@@ -510,6 +510,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @notice Update position without performing a deposit/withdraw/harvest.
     /// @param relicId The NFT ID of the position being updated.
     function updatePosition(uint relicId) external override nonReentrant {
+        require(_exists(relicId), "Relic doesn't exist");
         _updatePosition(0, relicId, Kind.OTHER, address(0));
     }
 
