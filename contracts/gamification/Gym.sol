@@ -1,5 +1,6 @@
 pragma solidity ^0.8.17;
 
+import "./UseRandom.sol";
 import "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
@@ -17,7 +18,7 @@ interface IItemSet is IERC721Enumerable {
     function isMintable() external returns (bool);
 }
 
-contract Gym is Ownable {
+contract Gym is UseRandom, Ownable {
     struct Avatar {
         IAvatar collection;
         uint id;
@@ -34,24 +35,25 @@ contract Gym is Ownable {
         reliquary = _reliquary;
     }
 
-    function multiSpin(uint[] calldata ids) external {
+    /*function multiSpin(uint[] calldata ids) external {
         for (uint i; i < ids.length; ++i) {
             spin(ids[i]);
         }
-    }
+    }*/
 
-    function spin(uint relicId) public {
+    function spin(uint relicId, uint proof) public {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
-        _spin(relicId);
+        _prove(proof);
+        _spin(relicId, proof);
     }
 
-    function _spin(uint relicId) internal {
+    function _spin(uint relicId, uint rand) internal {
         require(
             block.timestamp - reliquary.getPositionForId(relicId).lastMaturityBonus >= 1 days,
             "too soon since last spin"
         );
 
-        uint n = _rand() % 1 days;
+        uint n = rand % 1 days;
         if (n / 100 == 0 && _canMintItem()) {
             itemSet.mint(msg.sender);
         } else {
@@ -63,10 +65,6 @@ contract Gym is Ownable {
             n = n / 1 hours * 1 hours;
             reliquary.modifyMaturity(relicId, n);
         }
-    }
-
-    function _rand() internal view returns (uint random) {
-        //needs implementation
     }
 
     function _canMintItem() internal returns (bool) {
