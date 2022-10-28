@@ -20,6 +20,7 @@ contract Gym is UseRandom, Ownable {
 
     IReliquary public reliquary;
     mapping(address => Avatar) public avatars;
+    mapping(uint => bool) hasSpun;
 
     constructor(IReliquary _reliquary) {
         reliquary = _reliquary;
@@ -35,6 +36,7 @@ contract Gym is UseRandom, Ownable {
         );
 
         reliquary.updateLastMaturityBonus(relicId);
+        delete hasSpun[relicId];
         seed = _createSeed();
     }
 
@@ -46,7 +48,9 @@ contract Gym is UseRandom, Ownable {
 
     function spin(uint relicId, uint proof) public {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
+        require(!hasSpun[relicId], "seed already used");
         _prove(proof);
+        hasSpun[relicId] = true;
         _spin(relicId, proof);
     }
 
