@@ -2,7 +2,6 @@ pragma solidity ^0.8.17;
 
 import "./UseRandom.sol";
 import "../interfaces/IReliquary.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
 interface IAvatar {
@@ -10,7 +9,7 @@ interface IAvatar {
     function getBonus(uint id) external returns (uint);
 }
 
-contract Gym is UseRandom, Ownable {
+contract Gym is UseRandom {
     struct Avatar {
         IAvatar collection;
         uint96 id;
