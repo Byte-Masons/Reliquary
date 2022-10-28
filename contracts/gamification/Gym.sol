@@ -48,8 +48,6 @@ contract Gym is UseRandom, Ownable {
         if (ava.id != 0) {
             n = n * ava.collection.getBonus(ava.id) / BASIS_POINTS;
         }
-        //smarter rounding so it's an equal chance of hitting 24
-        n = n / 1 hours * 1 hours;
         reliquary.modifyMaturity(relicId, n);
     }
 }
