@@ -126,6 +126,62 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     event Merge(uint indexed fromId, uint indexed toId, uint amount);
 
     /*
+     + @notice structs defined in IReliquary
+
+     + @notice Info for each Reliquary position.
+     + `amount` LP token amount the position owner has provided
+     + `rewardDebt` Amount of reward token accumalated before the position's entry or last harvest
+     + `rewardCredit` Amount of reward token owed to the user on next harvest
+     + `entry` Used to determine the maturity of the position
+     + `poolId` ID of the pool to which this position belongs
+     + `level` Index of this position's level within the pool's array of levels
+     + `genesis` Relic creation time
+     + `lastMaturityBonus` Last time the position had its entry altered by a MaturityModifier
+    struct PositionInfo {
+        uint amount;
+        uint rewardDebt;
+        uint rewardCredit;
+        uint entry; // position owner's relative entry into the pool.
+        uint poolId; // ensures that a single Relic is only used for one pool.
+        uint level;
+        uint genesis;
+        uint lastMaturityBonus;
+    }
+
+     + @notice Info of each Reliquary pool
+     + `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12)
+     + `lastRewardTime` Last timestamp the accumulated reward was updated
+     + `allocPoint` Pool's individual allocation - ratio of the total allocation
+     + `name` Name of pool to be displayed in NFT image
+    struct PoolInfo {
+        uint accRewardPerShare;
+        uint lastRewardTime;
+        uint allocPoint;
+        string name;
+    }
+
+     + @notice Level that determines how maturity is rewarded
+     + `requiredMaturity` The minimum maturity (in seconds) required to reach this Level
+     + `allocPoint` Level's individual allocation - ratio of the total allocation
+     + `balance` Total number of tokens deposited in positions at this Level
+    struct LevelInfo {
+        uint[] requiredMaturity;
+        uint[] allocPoint;
+        uint[] balance;
+    }
+
+     + @notice Object representing pending rewards and related data for a position.
+     + `relicId` The NFT ID of the given position.
+     + `poolId` ID of the pool to which this position belongs.
+     + `pendingReward` pending reward amount for a given position.
+    struct PendingReward {
+        uint relicId;
+        uint poolId;
+        uint pendingReward;
+    }
+    */
+
+    /*
      + @notice Constructs and initializes the contract
      + @param _rewardToken The reward token contract address.
      + @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate
@@ -331,6 +387,42 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         uint leveledAmount = position.amount * levels[poolId].allocPoint[position.level];
         pending = leveledAmount * accRewardPerShare / ACC_REWARD_PRECISION + position.rewardCredit - position.rewardDebt;
+    }
+
+    /*
+     + @notice View function to retrieve the relicIds, poolIds, and pendingReward for each Relic owned by an address.
+     + @param owner Address of the owner to retrieve info for.
+     + @return pendingRewards Array of PendingReward objects.
+    */
+    function pendingRewardsOfOwner(address owner) external view override returns (PendingReward[] memory pendingRewards) {
+        uint balance = balanceOf(owner);
+        pendingRewards = new PendingReward[](balance);
+        for (uint i; i < balance; i = _uncheckedInc(i)) {
+            uint relicId = tokenOfOwnerByIndex(owner, i);
+            pendingRewards[i] = PendingReward({
+                relicId: relicId,
+                poolId: positionForId[relicId].poolId,
+                pendingReward: pendingReward(relicId)
+            });
+        }
+    }
+
+    /*
+     + @notice View function to retrieve owned positions for an address.
+     + @param owner Address of the owner to retrieve info for.
+     + @return relicIds Each relicId owned by the given address.
+     + @return positionInfos The PositionInfo object for each relicId.
+    */
+    function relicPositionsOfOwner(
+        address owner
+    ) external view override returns (uint[] memory relicIds, PositionInfo[] memory positionInfos) {
+        uint balance = balanceOf(owner);
+        relicIds = new uint[](balance);
+        positionInfos = new PositionInfo[](balance);
+        for (uint i; i < balance; i = _uncheckedInc(i)) {
+            relicIds[i] = tokenOfOwnerByIndex(owner, i);
+            positionInfos[i] = positionForId[relicIds[i]];
+        }
     }
 
     /*

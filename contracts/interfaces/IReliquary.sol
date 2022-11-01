@@ -56,6 +56,18 @@ struct LevelInfo {
     uint[] balance;
 }
 
+/*
+ + @notice Object representing pending rewards and related data for a position.
+ + `relicId` The NFT ID of the given position.
+ + `poolId` ID of the pool to which this position belongs.
+ + `pendingReward` pending reward amount for a given position.
+*/
+struct PendingReward {
+    uint relicId;
+    uint poolId;
+    uint pendingReward;
+}
+
 interface IReliquary is IERC721Enumerable {
 
   function burn(uint tokenId) external;
@@ -81,6 +93,10 @@ interface IReliquary is IERC721Enumerable {
   function modifyMaturity(uint relicId, uint points) external returns (uint receivedBonus);
   function updateLastMaturityBonus(uint relicId) external;
   function pendingReward(uint relicId) external view returns (uint pending);
+  function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
+  function relicPositionsOfOwner(
+      address owner
+    ) external view returns (uint[] memory relicIds, PositionInfo[] memory positionInfos);
   function levelOnUpdate(uint relicId) external view returns (uint level);
   function massUpdatePools(uint[] calldata pids) external;
   function updatePool(uint pid) external;
