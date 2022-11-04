@@ -303,14 +303,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
     /*
      + @notice Modify the given pool's properties.
-     +         Can only be called by the owner.
+     +         Can only be called by an operator.
      +
      + @param pid The index of the pool. See `poolInfo`.
      + @param allocPoint New AP of the pool.
      + @param _rewarder Address of the rewarder delegate.
      + @param name Name of pool to be displayed in NFT image
-     + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
      + @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI
+     + @param overwriteRewarder True if _rewarder should be set. Otherwise `_rewarder` is ignored.
     */
     function modifyPool(
         uint pid,
