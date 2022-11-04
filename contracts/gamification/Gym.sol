@@ -56,9 +56,9 @@ contract Gym is UseRandom {
 
     function _train(uint relicId, uint rand) internal {
         uint n = rand % 1 days;
-        Avatar memory ava = avatars[msg.sender];
-        if (ava.id != 0) {
-            n = n * ava.collection.getBonus(ava.id) / BASIS_POINTS;
+        Avatar memory avatar = avatars[msg.sender];
+        if (avatar.id != 0) {
+            n = n * avatar.collection.getBonus(avatar.id) / BASIS_POINTS;
         }
         reliquary.modifyMaturity(relicId, n);
     }
