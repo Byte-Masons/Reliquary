@@ -7,7 +7,7 @@ import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/TestToken.sol";
-import "contracts/Rewarder.sol";
+import "contracts/rewarders/DepositBonusRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
@@ -267,8 +267,8 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.balanceOf(address(this)), 0);
     }
 
-    function testRewarder() public {
-        Rewarder rewarder = new Rewarder(
+    function testDepositBonusRewarder() public {
+        DepositBonusRewarder rewarder = new DepositBonusRewarder(
             0,
             1000 ether,
             1 ether,

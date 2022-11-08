@@ -2,19 +2,13 @@
 
 pragma solidity ^0.8.15;
 
-import "./interfaces/IRewarder.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IReliquary.sol";
+import "./SingleAssetRewarder.sol";
 
-contract Rewarder is IRewarder {
+contract DepositBonusRewarder is SingleAssetRewarder {
 
     using SafeERC20 for IERC20;
 
     uint private constant BASIS_POINTS = 10_000;
-    uint public immutable rewardMultiplier;
-
-    IERC20 public immutable rewardToken;
-    IReliquary public immutable reliquary;
 
     uint public immutable depositBonus;
     uint public immutable minimum;
@@ -22,11 +16,6 @@ contract Rewarder is IRewarder {
 
     /// @notice Mapping from relicId to timestamp of last deposit
     mapping(uint => uint) public lastDepositTime;
-
-    modifier onlyReliquary() {
-        require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
-        _;
-    }
 
     /// @notice Contructor called on deployment of this contract
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
@@ -42,30 +31,12 @@ contract Rewarder is IRewarder {
         uint _cadence,
         IERC20 _rewardToken,
         IReliquary _reliquary
-    ) {
+    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
         require(_minimum != 0, "no minimum set!");
         require(_cadence >= 1 days, "please set a reasonable cadence");
-        rewardMultiplier = _rewardMultiplier;
         depositBonus = _depositBonus;
         minimum = _minimum;
         cadence = _cadence;
-        rewardToken = _rewardToken;
-        reliquary = _reliquary;
-    }
-
-    /// @notice Called by Reliquary harvest or withdrawAndHarvest function
-    /// @param relicId The NFT ID of the position
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
-    /// @param to Address to send rewards to
-    function onReward(
-        uint relicId,
-        uint rewardAmount,
-        address to
-    ) external override onlyReliquary {
-        if (rewardMultiplier != 0) {
-            uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
-            rewardToken.safeTransfer(to, pendingReward);
-        }
     }
 
     /// @notice Called by Reliquary _deposit function

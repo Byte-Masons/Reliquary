@@ -352,7 +352,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     function modifyMaturity(
         uint relicId,
         uint points
-    ) external onlyRole(MATURITY_MODIFIER) override returns (uint receivedBonus) {
+    ) external override onlyRole(MATURITY_MODIFIER) returns (uint receivedBonus) {
         receivedBonus = Math.max(1 days, points);
         PositionInfo storage position = positionForId[relicId];
         position.entry -= receivedBonus;
