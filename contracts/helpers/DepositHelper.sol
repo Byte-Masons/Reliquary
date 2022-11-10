@@ -19,6 +19,7 @@ contract DepositHelper {
   }
 
   function deposit(uint amount, uint relicId) external {
+    require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
     IERC4626 vault = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
     reliquary.deposit(vault.balanceOf(address(this)), relicId);
   }
@@ -29,6 +30,7 @@ contract DepositHelper {
   }
 
   function withdraw(uint amount, uint relicId, bool harvest) external {
+    require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
     uint pid = reliquary.getPositionForId(relicId).poolId;
     IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
 

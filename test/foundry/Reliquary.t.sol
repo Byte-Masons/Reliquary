@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
@@ -98,7 +97,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testPendingOath(uint amount, uint time) public {
-        vm.assume(time < 3650 days);
+        time = bound(time, 0, 3650 days);
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
@@ -196,7 +195,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testShift(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)));
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
         depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
         shiftAmount = bound(shiftAmount, 1, depositAmount1);
 
@@ -209,7 +208,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testMerge(uint depositAmount1, uint depositAmount2) public {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)));
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
         depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
@@ -220,7 +219,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testCompareDepositAndMerge(uint amount1, uint amount2, uint32 time) public {
-        amount1 = bound(amount1, 1, testToken.balanceOf(address(this)));
+        amount1 = bound(amount1, 1, testToken.balanceOf(address(this)) - 1);
         amount2 = bound(amount2, 1, testToken.balanceOf(address(this)) - amount1);
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);

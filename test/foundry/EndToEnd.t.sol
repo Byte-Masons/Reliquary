@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 import "scripts/Deploy.s.sol";
 
 interface IERC20Mint {
@@ -55,12 +55,12 @@ contract EndToEndTest is Test {
         skip(180 days);
         reliquary.updatePosition(relicId);
 
-        console.log(reliquary.tokenURI(relicId));
+        console2.log(reliquary.tokenURI(relicId));
 
         uint newId = helper.createRelicAndDeposit(0, 10);
         reliquary.shift(relicId, newId, wethCrypt.convertToShares(15 ether));
-        console.log(reliquary.tokenURI(relicId));
-        console.log(reliquary.tokenURI(newId));
+        console2.log(reliquary.tokenURI(relicId));
+        console2.log(reliquary.tokenURI(newId));
 
         helper.withdraw(wethCrypt.convertToAssets(reliquary.getPositionForId(relicId).amount), relicId, false);
         helper.withdraw(wethCrypt.convertToAssets(reliquary.getPositionForId(newId).amount), newId, false);
