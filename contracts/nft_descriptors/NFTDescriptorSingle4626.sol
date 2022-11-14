@@ -10,7 +10,7 @@ contract NFTDescriptorSingle4626 is NFTDescriptor {
     function generateTextFromToken(
         address underlying,
         uint amount,
-        string memory amountString
+        string memory //amountString
     ) internal view override returns (string memory text) {
         IERC4626 vault = IERC4626(underlying);
         IERC20Values asset = IERC20Values(vault.asset());

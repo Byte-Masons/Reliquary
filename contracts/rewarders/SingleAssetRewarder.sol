@@ -36,11 +36,10 @@ contract SingleAssetRewarder is IRewarder {
     }
 
     /// @notice Called by Reliquary harvest or withdrawAndHarvest function
-    /// @param relicId The NFT ID of the position
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     /// @param to Address to send rewards to
     function onReward(
-        uint relicId,
+        uint, //relicId
         uint rewardAmount,
         address to
     ) external override onlyReliquary {
@@ -51,29 +50,24 @@ contract SingleAssetRewarder is IRewarder {
     }
 
     /// @notice Called by Reliquary _deposit function
-    /// @param relicId The NFT ID of the position
-    /// @param depositAmount Amount being deposited into the underlying Reliquary position
     function onDeposit(
-        uint relicId,
-        uint depositAmount
+        uint, //relicId
+        uint //depositAmount
     ) external virtual override onlyReliquary {
     }
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
-    /// @param relicId The NFT ID of the position
-    /// @param withdrawalAmount Amount being withdrawn from the underlying Reliquary position
     function onWithdraw(
-        uint relicId,
-        uint withdrawalAmount
+        uint, //relicId
+        uint //withdrawalAmount
     ) external virtual override onlyReliquary {
     }
 
     /// @notice Returns the amount of pending tokens for a position from this rewarder
     ///         Interface supports multiple tokens
-    /// @param relicId The NFT ID of the position
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     function pendingTokens(
-        uint relicId,
+        uint, //relicId
         uint rewardAmount
     ) external view virtual override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         rewardTokens = new IERC20[](1);

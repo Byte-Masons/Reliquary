@@ -56,10 +56,9 @@ contract DepositBonusRewarder is SingleAssetRewarder {
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
     /// @param relicId The NFT ID of the position
-    /// @param withdrawalAmount Amount being withdrawn from the underlying Reliquary position
     function onWithdraw(
         uint relicId,
-        uint withdrawalAmount
+        uint //withdrawalAmount
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];

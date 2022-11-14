@@ -182,11 +182,10 @@ contract NFTDescriptor is INFTDescriptor {
     }
 
     /// @notice Generate further text labels specific to the underlying token
-    /// @param underlying Address of underlying token for this position
-    /// @param amount Amount of underlying tokens deposited in this position
+    /// @param amountString Amount of underlying tokens deposited in this position
     function generateTextFromToken(
-        address underlying,
-        uint amount,
+        address, //underlying
+        uint, //amount
         string memory amountString
     ) internal view virtual returns (string memory text) {
         text = string.concat(
