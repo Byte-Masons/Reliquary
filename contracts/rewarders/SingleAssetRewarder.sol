@@ -44,8 +44,7 @@ contract SingleAssetRewarder is IRewarder {
         address to
     ) external override onlyReliquary {
         if (rewardMultiplier != 0) {
-            uint pendingReward = rewardAmount * rewardMultiplier / BASIS_POINTS;
-            rewardToken.safeTransfer(to, pendingReward);
+            rewardToken.safeTransfer(to, pendingToken(rewardAmount));
         }
     }
 
@@ -63,6 +62,12 @@ contract SingleAssetRewarder is IRewarder {
     ) external virtual override onlyReliquary {
     }
 
+    /// @notice Returns the amount of pending rewardToken for a position from this rewarder
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    function pendingToken(uint rewardAmount) public view returns (uint pending) {
+        pending = rewardAmount * rewardMultiplier / BASIS_POINTS;
+    }
+
     /// @notice Returns the amount of pending tokens for a position from this rewarder
     ///         Interface supports multiple tokens
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
@@ -73,8 +78,7 @@ contract SingleAssetRewarder is IRewarder {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 
-        uint reward = rewardAmount * rewardMultiplier / BASIS_POINTS;
         rewardAmounts = new uint[](1);
-        rewardAmounts[0] = reward;
+        rewardAmounts[0] = pendingToken(rewardAmount);
     }
 }
