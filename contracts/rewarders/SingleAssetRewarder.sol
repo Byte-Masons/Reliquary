@@ -64,14 +64,14 @@ contract SingleAssetRewarder is IRewarder {
     function onDeposit(
         uint, //relicId
         uint //depositAmount
-    ) external virtual override onlyReliquary {
+    ) external virtual override {
     }
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
     function onWithdraw(
         uint, //relicId
         uint //withdrawalAmount
-    ) external virtual override onlyReliquary {
+    ) external virtual override {
     }
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder
