@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./SingleAssetRewarderOwnable.sol";
+import "./ChildRewarder.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 
@@ -36,7 +36,7 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
     }
 
     function createChild(IERC20 _rewardToken, uint _rewardMultiplier) external onlyRole(CHILD_SETTER) {
-        SingleAssetRewarderOwnable child = new SingleAssetRewarderOwnable(_rewardMultiplier, _rewardToken, reliquary);
+        ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
         Ownable(address(child)).transferOwnership(msg.sender);
         childrenRewarders.add(address(child));
         emit ChildCreated(address(child), address(_rewardToken));
@@ -64,10 +64,7 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         uint rewardAmount,
         address to
     ) external override onlyReliquary {
-        if (rewardMultiplier != 0) {
-            rewardToken.safeTransfer(to, pendingToken(rewardAmount));
-        }
-        emit LogOnReward(rewardAmount, to);
+        super._onReward(0, rewardAmount, to);
 
         uint len = childrenRewarders.length();
         for(uint i; i < len;) {

@@ -45,6 +45,14 @@ contract SingleAssetRewarder is IRewarder {
         uint rewardAmount,
         address to
     ) external virtual override onlyReliquary {
+        _onReward(0, rewardAmount, to);
+    }
+
+    function _onReward(
+        uint, //relicId
+        uint rewardAmount,
+        address to
+    ) internal {
         if (rewardMultiplier != 0) {
             rewardToken.safeTransfer(to, pendingToken(rewardAmount));
         }
