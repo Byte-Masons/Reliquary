@@ -6,6 +6,7 @@ import "../interfaces/IRewarder.sol";
 import "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
 contract SingleAssetRewarder is IRewarder {
 
     using SafeERC20 for IERC20;

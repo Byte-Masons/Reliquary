@@ -5,6 +5,7 @@ pragma solidity ^0.8.17;
 import "./SingleAssetRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
+/// Ownable extension of SingleAssetRewarder that allows the owner to change the rewardMultiplier
 contract SingleAssetRewarderOwnable is SingleAssetRewarder, Ownable {
 
     event LogRewardMultiplier(uint rewardMultiplier);

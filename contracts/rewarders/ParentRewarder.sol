@@ -6,6 +6,8 @@ import "./ChildRewarder.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 
+/// Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control and
+/// enumerable children contracts.
 contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
 
     using SafeERC20 for IERC20;
@@ -30,11 +32,18 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         IReliquary _reliquary
     ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {}
 
+    /// @notice Set the rewardMultiplier to a new value and emit a logging event.
+    /// Separate role from who can add/remove children
+    /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
     function setRewardMultiplier(uint _rewardMultiplier) external onlyRole(REWARD_SETTER) {
         rewardMultiplier = _rewardMultiplier;
         emit LogRewardMultiplier(_rewardMultiplier);
     }
 
+    /// @notice Deploys a ChildRewarder contract and adds it to the childrenRewarders set
+    /// @param _rewardToken Address of token rewards are distributed in
+    /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
+    /// @param owner Address to transfer ownership of the ChildRewarder contract to
     function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner) external onlyRole(CHILD_SETTER) {
         ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
         Ownable(address(child)).transferOwnership(owner);
@@ -42,16 +51,19 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         emit ChildCreated(address(child), address(_rewardToken));
     }
 
+    /// @notice Removes a ChildRewarder from the childrenRewarders set
+    /// @param childRewarder Address of the ChildRewarder contract to remove
     function removeChild(address childRewarder) external onlyRole(CHILD_SETTER) {
         if(!childrenRewarders.remove(childRewarder))
             revert("That is not my child rewarder!");
         emit ChildRemoved(childRewarder);
     }
 
-    //* WARNING: This operation will copy the entire childrenRewarders storage to memory, which can be quite expensive. This is designed
-    //* to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
-    //* this function has an unbounded cost, and using it as part of a state-changing function may render the function
-    //* uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+    /// @dev WARNING: This operation will copy the entire childrenRewarders storage to memory, which can be quite
+    /// expensive. This is designed to mostly be used by view accessors that are queried without any gas fees.
+    /// Developers should keep in mind that this function has an unbounded cost, and using it as part of a state-
+    /// changing function may render the function uncallable if the set grows to a point where copying to memory
+    /// consumes too much gas to fit in a block.
     function getChildrenRewarders() external view returns (address[] memory) {
         return childrenRewarders.values();
     }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 
 import "./SingleAssetRewarderOwnable.sol";
 
+/// Child rewarder contract to be deployed and called by a ParentRewarder, rather than directly by the Reliquary
 contract ChildRewarder is SingleAssetRewarderOwnable {
 
     address public immutable parent;
