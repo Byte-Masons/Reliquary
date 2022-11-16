@@ -11,7 +11,7 @@ contract SingleAssetRewarder is IRewarder {
     using SafeERC20 for IERC20;
 
     uint private constant BASIS_POINTS = 10_000;
-    uint public immutable rewardMultiplier;
+    uint public rewardMultiplier;
 
     IERC20 public immutable rewardToken;
     IReliquary public immutable reliquary;
@@ -20,6 +20,8 @@ contract SingleAssetRewarder is IRewarder {
         require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
         _;
     }
+
+    event LogOnReward(uint amount, address indexed to);
 
     /// @notice Contructor called on deployment of this contract
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
@@ -42,10 +44,11 @@ contract SingleAssetRewarder is IRewarder {
         uint, //relicId
         uint rewardAmount,
         address to
-    ) external override onlyReliquary {
+    ) external virtual override onlyReliquary {
         if (rewardMultiplier != 0) {
             rewardToken.safeTransfer(to, pendingToken(rewardAmount));
         }
+        emit LogOnReward(rewardAmount, to);
     }
 
     /// @notice Called by Reliquary _deposit function
