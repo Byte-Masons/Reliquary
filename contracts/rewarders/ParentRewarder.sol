@@ -35,9 +35,9 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         emit LogRewardMultiplier(_rewardMultiplier);
     }
 
-    function createChild(IERC20 _rewardToken, uint _rewardMultiplier) external onlyRole(CHILD_SETTER) {
+    function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner) external onlyRole(CHILD_SETTER) {
         ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
-        Ownable(address(child)).transferOwnership(msg.sender);
+        Ownable(address(child)).transferOwnership(owner);
         childrenRewarders.add(address(child));
         emit ChildCreated(address(child), address(_rewardToken));
     }
