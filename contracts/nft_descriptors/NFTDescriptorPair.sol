@@ -13,8 +13,8 @@ contract NFTDescriptorPair is NFTDescriptor {
         string memory //amountString
     ) internal view override returns (string memory text) {
         IUniswapV2Pair lp = IUniswapV2Pair(underlying);
-        IERC20Values token0 = IERC20Values(lp.token0());
-        IERC20Values token1 = IERC20Values(lp.token1());
+        IERC20Metadata token0 = IERC20Metadata(lp.token0());
+        IERC20Metadata token1 = IERC20Metadata(lp.token1());
 
         (uint reserves0, uint reserves1, ) = lp.getReserves();
         uint amount0 = amount * reserves0 / lp.totalSupply();

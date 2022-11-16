@@ -2,14 +2,10 @@
 pragma solidity ^0.8.15;
 
 import 'openzeppelin-contracts/contracts/utils/Strings.sol';
+import 'openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import 'base64/base64.sol';
 import '../interfaces/INFTDescriptor.sol';
 import '../interfaces/IReliquary.sol';
-
-interface IERC20Values {
-    function symbol() external view returns (string memory);
-    function decimals() external view returns (uint8);
-}
 
 contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
@@ -34,10 +30,10 @@ contract NFTDescriptor is INFTDescriptor {
         PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
         LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
         address underlying = address(reliquary.poolToken(position.poolId));
-        string memory amount = generateDecimalString(position.amount, IERC20Values(underlying).decimals());
+        string memory amount = generateDecimalString(position.amount, IERC20Metadata(underlying).decimals());
         string memory pendingReward = generateDecimalString(reliquary.pendingReward(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
-        string memory rewardSymbol = IERC20Values(address(reliquary.rewardToken())).symbol();
+        string memory rewardSymbol = IERC20Metadata(address(reliquary.rewardToken())).symbol();
 
         uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % NUM_CHARACTERS;
 
