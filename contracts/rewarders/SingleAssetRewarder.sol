@@ -22,7 +22,7 @@ contract SingleAssetRewarder is IRewarder {
         _;
     }
 
-    event LogOnReward(uint amount, address indexed to);
+    event LogOnReward(uint indexed relicId, uint amount, address indexed to);
 
     /// @notice Contructor called on deployment of this contract
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
@@ -42,7 +42,7 @@ contract SingleAssetRewarder is IRewarder {
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     /// @param to Address to send rewards to
     function onReward(
-        uint, //relicId
+        uint relicId,
         uint rewardAmount,
         address to
     ) external virtual override onlyReliquary {
@@ -50,14 +50,14 @@ contract SingleAssetRewarder is IRewarder {
     }
 
     function _onReward(
-        uint, //relicId
+        uint relicId,
         uint rewardAmount,
         address to
     ) internal {
         if (rewardMultiplier != 0) {
             rewardToken.safeTransfer(to, pendingToken(rewardAmount));
         }
-        emit LogOnReward(rewardAmount, to);
+        emit LogOnReward(relicId, rewardAmount, to);
     }
 
     /// @notice Called by Reliquary _deposit function

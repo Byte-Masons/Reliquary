@@ -10,7 +10,6 @@ import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 /// enumerable children contracts.
 contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
 
-    using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private childrenRewarders;
@@ -72,15 +71,15 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     /// @param to Address to send rewards to
     function onReward(
-        uint, //relicId
+        uint relicId,
         uint rewardAmount,
         address to
     ) external override onlyReliquary {
-        super._onReward(0, rewardAmount, to);
+        super._onReward(relicId, rewardAmount, to);
 
         uint len = childrenRewarders.length();
         for(uint i; i < len;) {
-            IRewarder(childrenRewarders.at(i)).onReward(0, rewardAmount, to);
+            IRewarder(childrenRewarders.at(i)).onReward(relicId, rewardAmount, to);
             unchecked {++i;}
         }
     }

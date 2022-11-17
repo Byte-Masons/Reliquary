@@ -30,10 +30,10 @@ contract ChildRewarder is SingleAssetRewarderOwnable {
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     /// @param to Address to send rewards to
     function onReward(
-        uint, //relicId
+        uint relicId,
         uint rewardAmount,
         address to
     ) external override onlyParent {
-        super._onReward(0, rewardAmount, to);
+        super._onReward(relicId, rewardAmount, to);
     }
 }
