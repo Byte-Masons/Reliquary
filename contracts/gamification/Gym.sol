@@ -44,7 +44,7 @@ contract Gym is UseRandom {
         return seed;
     }
 
-    function train(uint[] calldata relicIds, uint proof) public {
+    function train(uint[] calldata relicIds, uint proof) external {
         uint index = seedIndex[relicIds[0]];
         require(index != 0, "no seed");
         _prove(proof, index);
