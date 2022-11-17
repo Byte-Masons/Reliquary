@@ -703,6 +703,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         newPosition.genesis = block.timestamp;
         newPosition.amount = amount;
         newPosition.entry = fromPosition.entry;
+        newPosition.lastMaturityBonus = fromPosition.lastMaturityBonus;
         uint level = fromPosition.level;
         newPosition.level = level;
         uint poolId = fromPosition.poolId;
@@ -740,6 +741,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         uint toAmount = toPosition.amount;
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / (fromAmount + toAmount);
+
+        toPosition.lastMaturityBonus = Math.max(fromPosition.lastMaturityBonus, toPosition.lastMaturityBonus);
 
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
@@ -788,6 +791,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint newToAmount = toAmount + fromAmount;
         require(newToAmount != 0, "cannot merge empty Relics");
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
+
+        toPosition.lastMaturityBonus = Math.max(fromPosition.lastMaturityBonus, toPosition.lastMaturityBonus);
 
         toPosition.amount = newToAmount;
 
