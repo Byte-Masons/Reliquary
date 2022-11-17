@@ -46,7 +46,7 @@ contract SingleAssetRewarder is IRewarder {
         uint rewardAmount,
         address to
     ) external virtual override onlyReliquary {
-        _onReward(0, rewardAmount, to);
+        _onReward(relicId, rewardAmount, to);
     }
 
     function _onReward(
