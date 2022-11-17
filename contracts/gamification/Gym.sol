@@ -18,14 +18,14 @@ contract Gym is UseRandom {
 
     IReliquary public reliquary;
     //mapping(address => Avatar) public avatars;
-    mapping(uint => uint) seedIndex;
+    mapping(uint => uint) seeds;
 
     constructor(IReliquary _reliquary) {
         reliquary = _reliquary;
     }
 
-    function createSeed(uint[] calldata relicIds) external returns (uint) {
-        (uint seed, uint index) = _createSeed();
+    function createSeed(uint[] calldata relicIds) external returns (uint seed) {
+        seed = _createSeed();
 
         for (uint i; i < relicIds.length;) {
             require(reliquary.isApprovedOrOwner(msg.sender, relicIds[i]), "not authorized");
@@ -36,22 +36,20 @@ contract Gym is UseRandom {
                 "too soon since last bonus"
             );
 
-            seedIndex[relicIds[i]] = index;
+            seeds[relicIds[i]] = seed;
             reliquary.updateLastMaturityBonus(relicIds[i]);
             unchecked {++i;}
         }
-
-        return seed;
     }
 
     function train(uint[] calldata relicIds, uint proof) external {
-        uint index = seedIndex[relicIds[0]];
-        require(index != 0, "no seed");
-        _prove(proof, index);
+        uint seed = seeds[relicIds[0]];
+        require(seed != 0, "no seed");
+        _prove(proof, seed);
         _train(relicIds[0], proof);
 
         for (uint i = 1; i < relicIds.length;) {
-            require(seedIndex[relicIds[i]] == index, "Relic seed mismatch");
+            require(seeds[relicIds[i]] == seed, "Relic seed mismatch");
             _train(relicIds[i], proof);
             unchecked {++i;}
         }
@@ -60,7 +58,7 @@ contract Gym is UseRandom {
     function _train(uint relicId, uint rand) internal {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
 
-        delete seedIndex[relicId];
+        delete seeds[relicId];
 
         uint n = rand % 1 days;
         /*Avatar memory avatar = avatars[msg.sender];
