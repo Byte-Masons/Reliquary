@@ -46,23 +46,23 @@ contract Gym is UseRandom {
         uint seed = seeds[relicIds[0]];
         require(seed != 0, "no seed");
         _prove(proof, seed);
-        _train(relicIds[0], proof);
 
+        uint n = proof % 1 days;
+        /*Avatar memory avatar = avatars[msg.sender];
+        if (avatar.id != 0) {
+            n = n * avatar.collection.getBonus(avatar.id) / BASIS_POINTS;
+        }*/
+
+        _train(relicIds[0], n);
         for (uint i = 1; i < relicIds.length;) {
             require(seeds[relicIds[i]] == seed, "Relic seed mismatch");
-            _train(relicIds[i], proof);
+            _train(relicIds[i], n);
             unchecked {++i;}
         }
     }
 
     function _train(uint relicId, uint rand) internal {
         delete seeds[relicId];
-
-        uint n = rand % 1 days;
-        /*Avatar memory avatar = avatars[msg.sender];
-        if (avatar.id != 0) {
-            n = n * avatar.collection.getBonus(avatar.id) / BASIS_POINTS;
-        }*/
-        reliquary.modifyMaturity(relicId, n);
+        reliquary.modifyMaturity(relicId, rand);
     }
 }
