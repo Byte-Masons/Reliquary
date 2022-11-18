@@ -703,7 +703,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         newPosition.genesis = block.timestamp;
         newPosition.amount = amount;
         newPosition.entry = fromPosition.entry;
-        newPosition.lastMaturityBonus = fromPosition.lastMaturityBonus;
         uint level = fromPosition.level;
         newPosition.level = level;
         uint poolId = fromPosition.poolId;

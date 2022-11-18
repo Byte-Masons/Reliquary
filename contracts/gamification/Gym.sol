@@ -56,8 +56,6 @@ contract Gym is UseRandom {
     }
 
     function _train(uint relicId, uint rand) internal {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not authorized");
-
         delete seeds[relicId];
 
         uint n = rand % 1 days;
