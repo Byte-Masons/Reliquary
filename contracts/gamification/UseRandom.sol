@@ -4,9 +4,9 @@ import "../libraries/SlothVDF.sol";
 
 abstract contract UseRandom {
     // large prime
-    uint private constant PRIME = 432211379112113246928842014508850435796007;
+    uint public constant PRIME = 432211379112113246928842014508850435796007;
     // adjust for block finality
-    uint private constant ITERATIONS = 1000;
+    uint public constant ITERATIONS = 1000;
     // increment nonce to increase entropy
     uint private nonce;
 
