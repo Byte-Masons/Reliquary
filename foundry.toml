@@ -17,4 +17,9 @@ rpc_endpoints = { fantom = "https://rpcapi.fantom.network" }
 ffi = false
 #invariant_fail_on_revert = true
 
+# Do not use in production
+[profile.test]
+# Reduces compile times but produces poorly optimized code
+optimizerSteps = ''
+
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
