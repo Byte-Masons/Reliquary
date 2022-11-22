@@ -8,8 +8,6 @@ contract DepositBonusRewarder is SingleAssetRewarder {
 
     using SafeERC20 for IERC20;
 
-    uint private constant BASIS_POINTS = 10_000;
-
     uint public immutable depositBonus;
     uint public immutable minimum;
     uint public immutable cadence;
@@ -104,7 +102,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 
-        uint reward = rewardAmount * rewardMultiplier / BASIS_POINTS;
+        uint reward = pendingToken(rewardAmount);
         uint _lastDepositTime = lastDepositTime[relicId];
         if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
             reward += depositBonus;

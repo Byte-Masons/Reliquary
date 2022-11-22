@@ -5,13 +5,14 @@ pragma solidity ^0.8.15;
 import "../interfaces/IRewarder.sol";
 import "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
 contract SingleAssetRewarder is IRewarder {
 
     using SafeERC20 for IERC20;
 
-    uint private constant BASIS_POINTS = 10_000;
+    uint private immutable BASIS_POINTS;
     uint public rewardMultiplier;
 
     IERC20 public immutable rewardToken;
@@ -36,6 +37,7 @@ contract SingleAssetRewarder is IRewarder {
         rewardMultiplier = _rewardMultiplier;
         rewardToken = _rewardToken;
         reliquary = _reliquary;
+        BASIS_POINTS = 10 ** IERC20Metadata(address(_reliquary.rewardToken())).decimals();
     }
 
     /// @notice Called by Reliquary harvest or withdrawAndHarvest function
