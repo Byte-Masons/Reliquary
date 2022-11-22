@@ -56,12 +56,14 @@ library SlothVDF {
         uint256 _prime,
         uint256 _iterations
     ) internal pure returns (bool) {
-        for (uint256 i; i < _iterations; ++i) {
-            _proof = mulmod(_proof, _proof, _prime);
+        unchecked {
+            for (uint256 i; i < _iterations; ++i) {
+                _proof = mulmod(_proof, _proof, _prime);
+            }
+            _seed %= _prime;
+            if (_seed == _proof) return true;
+            if (_prime - _seed == _proof) return true;
         }
-        _seed %= _prime;
-        if (_seed == _proof) return true;
-        if (_prime - _seed == _proof) return true;
         return false;
     }
 }
