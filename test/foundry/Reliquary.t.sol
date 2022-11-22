@@ -7,6 +7,7 @@ import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/TestToken.sol";
 import "contracts/rewarders/DepositBonusRewarder.sol";
+import "contracts/rewarders/ParentRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
@@ -57,7 +58,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         testToken = new TestToken("Test Token", "TT", 6);
         nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
 
-        reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
+        reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
             100,
             testToken,
@@ -292,5 +293,34 @@ contract ReliquaryTest is ERC721Holder, Test {
         rewarder.claimDepositBonus(relicId, address(this));
 
         assertEq(oath.balanceOf(address(this)), 1000 ether);
+    }
+
+    function testParentRewarder() public {
+        TestToken parentToken = new TestToken("Parent Token", "PT", 18);
+        ParentRewarder parent = new ParentRewarder(5e17, parentToken, reliquary);
+        parentToken.mint(address(parent), 1_000_000 ether);
+        parent.grantRole(keccak256("CHILD_SETTER"), address(this));
+
+        TestToken childToken = new TestToken("Child Token", "CT", 6);
+        address child = parent.createChild(childToken, 2e6, address(this));
+        childToken.mint(child, 1_000_000 ether);
+
+        reliquary.addPool(
+            100,
+            testToken,
+            parent,
+            requiredMaturity,
+            allocPoints,
+            "ETH Pool",
+            nftDescriptor
+        );
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
+        skip(1 days);
+        reliquary.harvest(relicId, address(this));
+
+        assertEq(oath.balanceOf(address(this)), 4320 ether);
+        assertEq(parentToken.balanceOf(address(this)), 2160 ether);
+        assertEq(childToken.balanceOf(address(this)), 8640e6);
     }
 }
