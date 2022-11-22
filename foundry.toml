@@ -18,7 +18,7 @@ ffi = false
 #invariant_fail_on_revert = true
 
 # Do not use in production
-[profile.test]
+[profile.test.optimizer_details.yulDetails]
 # Reduces compile times but produces poorly optimized code
 optimizerSteps = ''
 
