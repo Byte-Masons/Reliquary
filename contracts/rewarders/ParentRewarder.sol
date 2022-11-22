@@ -95,7 +95,7 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
     /// @notice Returns the amount of pending tokens for a position from this rewarder
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
     function pendingTokens(
-        uint, //relicId
+        uint relicId,
         uint rewardAmount
     ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
         uint length = childrenRewarders.length() + 1;
@@ -103,12 +103,12 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         rewardTokens[0] = rewardToken;
 
         rewardAmounts = new uint[](length);
-        rewardAmounts[0] = pendingToken(rewardAmount);
+        rewardAmounts[0] = pendingToken(relicId, rewardAmount);
 
         for (uint i = 1; i < length;) {
             ChildRewarder rewarder = ChildRewarder(childrenRewarders.at(i - 1));
             rewardTokens[i] = rewarder.rewardToken();
-            rewardAmounts[i] = rewarder.pendingToken(rewardAmount);
+            rewardAmounts[i] = rewarder.pendingToken(relicId, rewardAmount);
             unchecked {++i;}
         }
     }

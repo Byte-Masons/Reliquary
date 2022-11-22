@@ -91,6 +91,20 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         }
     }
 
+    /// @notice Returns the amount of pending rewardToken for a position from this rewarder
+    /// @param relicId The NFT ID of the position
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    function pendingToken(
+        uint relicId,
+        uint rewardAmount
+    ) public view override returns (uint pending) {
+        pending = super.pendingToken(relicId, rewardAmount);
+        uint _lastDepositTime = lastDepositTime[relicId];
+        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
+            pending += depositBonus;
+        }
+    }
+
     /// @notice Returns the amount of pending tokens for a position from this rewarder
     ///         Interface supports multiple tokens
     /// @param relicId The NFT ID of the position
@@ -102,11 +116,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 
-        uint reward = pendingToken(rewardAmount);
-        uint _lastDepositTime = lastDepositTime[relicId];
-        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
-            reward += depositBonus;
-        }
+        uint reward = pendingToken(relicId, rewardAmount);
         rewardAmounts = new uint[](1);
         rewardAmounts[0] = reward;
     }
