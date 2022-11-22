@@ -29,7 +29,9 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
         uint _rewardMultiplier,
         IERC20 _rewardToken,
         IReliquary _reliquary
-    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {}
+    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
 
     /// @notice Set the rewardMultiplier to a new value and emit a logging event.
     /// Separate role from who can add/remove children
@@ -43,11 +45,17 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
     /// @param _rewardToken Address of token rewards are distributed in
     /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
     /// @param owner Address to transfer ownership of the ChildRewarder contract to
-    function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner) external onlyRole(CHILD_SETTER) {
+    /// @return Address of the new ChildRewarder
+    function createChild(
+        IERC20 _rewardToken,
+        uint _rewardMultiplier,
+        address owner
+    ) external onlyRole(CHILD_SETTER) returns (address) {
         ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
         Ownable(address(child)).transferOwnership(owner);
         childrenRewarders.add(address(child));
         emit ChildCreated(address(child), address(_rewardToken));
+        return address(child);
     }
 
     /// @notice Removes a ChildRewarder from the childrenRewarders set
