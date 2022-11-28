@@ -14,9 +14,9 @@ contract ReliquaryTest is ERC721Holder, Test {
     using Strings for address;
     using Strings for uint;
 
-    Reliquary public reliquary;
-    TestToken public oath;
-    TestToken public testToken;
+    Reliquary reliquary;
+    TestToken oath;
+    TestToken testToken;
     INFTDescriptor nftDescriptor;
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];

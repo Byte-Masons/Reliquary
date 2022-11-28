@@ -29,7 +29,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @notice Access control roles.
     bytes32 private constant OPERATOR = keccak256("OPERATOR");
     bytes32 private constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
-    bytes32 private constant MATURITY_MODIFIER = keccak256("MATURITY_MODIFIER");
 
     /// @notice Indicates whether tokens are being added to, or removed from, a pool
     enum Kind {
@@ -60,7 +59,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     IRewarder[] public rewarder;
 
     /// @notice Info of each staked position
-    mapping(uint => PositionInfo) private positionForId;
+    mapping(uint => PositionInfo) internal positionForId;
 
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint public totalAllocPoint;
@@ -126,62 +125,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     event Merge(uint indexed fromId, uint indexed toId, uint amount);
 
     /*
-     + @notice structs defined in IReliquary
-
-     + @notice Info for each Reliquary position.
-     + `amount` LP token amount the position owner has provided
-     + `rewardDebt` Amount of reward token accumalated before the position's entry or last harvest
-     + `rewardCredit` Amount of reward token owed to the user on next harvest
-     + `entry` Used to determine the maturity of the position
-     + `poolId` ID of the pool to which this position belongs
-     + `level` Index of this position's level within the pool's array of levels
-     + `genesis` Relic creation time
-     + `lastMaturityBonus` Last time the position had its entry altered by a MaturityModifier
-    struct PositionInfo {
-        uint amount;
-        uint rewardDebt;
-        uint rewardCredit;
-        uint entry; // position owner's relative entry into the pool.
-        uint poolId; // ensures that a single Relic is only used for one pool.
-        uint level;
-        uint genesis;
-        uint lastMaturityBonus;
-    }
-
-     + @notice Info of each Reliquary pool
-     + `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12)
-     + `lastRewardTime` Last timestamp the accumulated reward was updated
-     + `allocPoint` Pool's individual allocation - ratio of the total allocation
-     + `name` Name of pool to be displayed in NFT image
-    struct PoolInfo {
-        uint accRewardPerShare;
-        uint lastRewardTime;
-        uint allocPoint;
-        string name;
-    }
-
-     + @notice Level that determines how maturity is rewarded
-     + `requiredMaturity` The minimum maturity (in seconds) required to reach this Level
-     + `allocPoint` Level's individual allocation - ratio of the total allocation
-     + `balance` Total number of tokens deposited in positions at this Level
-    struct LevelInfo {
-        uint[] requiredMaturity;
-        uint[] allocPoint;
-        uint[] balance;
-    }
-
-     + @notice Object representing pending rewards and related data for a position.
-     + `relicId` The NFT ID of the given position.
-     + `poolId` ID of the pool to which this position belongs.
-     + `pendingReward` pending reward amount for a given position.
-    struct PendingReward {
-        uint relicId;
-        uint poolId;
-        uint pendingReward;
-    }
-    */
-
-    /*
      + @notice Constructs and initializes the contract
      + @param _rewardToken The reward token contract address.
      + @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate
@@ -193,7 +136,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     /// @notice Implement ERC165 to return which interfaces this contract conforms to
-    function supportsInterface(bytes4 interfaceId) public view
+    function supportsInterface(bytes4 interfaceId) public view virtual
     override(
         IReliquary,
         AccessControlEnumerable,
@@ -231,7 +174,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         levelInfo = levels[pid];
     }
 
-    function burn(uint tokenId) public override (IReliquary, ERC721Burnable) {
+    function burn(uint tokenId) public virtual override (IReliquary, ERC721Burnable) {
         require(positionForId[tokenId].amount == 0, "contains deposit");
         require(pendingReward(tokenId) == 0, "contains pending rewards");
         super.burn(tokenId);
@@ -341,29 +284,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         nftDescriptor[pid] = _nftDescriptor;
 
         emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor);
-    }
-
-    /*
-     + @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity within set limits.
-     + @param relicId The NFT ID of the position being modified.
-     + @param points Number of seconds to reduce the position's entry by (increasing maturity), before maximum.
-     + @return receivedBonus Actual maturity bonus received after maximum.
-    */
-    function modifyMaturity(
-        uint relicId,
-        uint points
-    ) external override onlyRole(MATURITY_MODIFIER) returns (uint receivedBonus) {
-        receivedBonus = Math.min(1 days, points);
-        PositionInfo storage position = positionForId[relicId];
-        position.entry -= receivedBonus;
-        _updatePosition(0, relicId, Kind.OTHER, address(0));
-
-        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
-    }
-
-    function updateLastMaturityBonus(uint relicId) external override onlyRole(MATURITY_MODIFIER) {
-        PositionInfo storage position = positionForId[relicId];
-        position.lastMaturityBonus = block.timestamp;
     }
 
     /*
@@ -500,12 +420,11 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         address to,
         uint pid,
         uint amount
-    ) external override nonReentrant returns (uint id) {
+    ) public virtual override nonReentrant returns (uint id) {
         require(pid < poolInfo.length, "invalid pool ID");
         id = _mint(to);
         PositionInfo storage position = positionForId[id];
         position.poolId = pid;
-        position.genesis = block.timestamp;
         _deposit(amount, id);
         emit CreateRelic(pid, to, id);
     }
@@ -688,7 +607,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @param amount Amount to move from existing Relic into the new one
     /// @param to Address to mint the Relic to
     /// @return newId The NFT ID of the new Relic
-    function split(uint fromId, uint amount, address to) external override nonReentrant returns (uint newId) {
+    function split(uint fromId, uint amount, address to) public virtual override nonReentrant returns (uint newId) {
         require(amount != 0, "cannot split zero amount");
         _requireApprovedOrOwner(fromId);
 
@@ -700,7 +619,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         newId = _mint(to);
         PositionInfo storage newPosition = positionForId[newId];
-        newPosition.genesis = block.timestamp;
         newPosition.amount = amount;
         newPosition.entry = fromPosition.entry;
         uint level = fromPosition.level;
@@ -724,7 +642,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @param fromId The NFT ID of the Relic to transfer from
     /// @param toId The NFT ID of the Relic being transferred to
     /// @param amount The amount being transferred
-    function shift(uint fromId, uint toId, uint amount) external override nonReentrant {
+    function shift(uint fromId, uint toId, uint amount) public virtual override nonReentrant {
         require(amount != 0, "cannot shift zero amount");
         require(fromId != toId, "cannot shift into same Relic");
         _requireApprovedOrOwner(fromId);
@@ -740,8 +658,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         uint toAmount = toPosition.amount;
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / (fromAmount + toAmount);
-
-        toPosition.lastMaturityBonus = Math.max(fromPosition.lastMaturityBonus, toPosition.lastMaturityBonus);
 
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
@@ -774,7 +690,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// and updating maturity in the receiving Relic
     /// @param fromId The NFT ID of the Relic to transfer from
     /// @param toId The NFT ID of the Relic being transferred to
-    function merge(uint fromId, uint toId) external override nonReentrant {
+    function merge(uint fromId, uint toId) public virtual override nonReentrant {
         require(fromId != toId, "cannot merge same Relic");
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
@@ -790,8 +706,6 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint newToAmount = toAmount + fromAmount;
         require(newToAmount != 0, "cannot merge empty Relics");
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
-
-        toPosition.lastMaturityBonus = Math.max(fromPosition.lastMaturityBonus, toPosition.lastMaturityBonus);
 
         toPosition.amount = newToAmount;
 

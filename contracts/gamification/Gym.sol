@@ -1,14 +1,14 @@
 pragma solidity ^0.8.17;
 
 import "./UseRandom.sol";
-import "../interfaces/IReliquary.sol";
+import "../interfaces/IReliquaryGamified.sol";
 
 contract Gym is UseRandom {
 
-    IReliquary public reliquary;
+    IReliquaryGamified public reliquary;
     mapping(uint => uint) seeds;
 
-    constructor(IReliquary _reliquary) {
+    constructor(IReliquaryGamified _reliquary) {
         reliquary = _reliquary;
     }
 
@@ -20,15 +20,15 @@ contract Gym is UseRandom {
 
         for (uint i; i < relicIds.length;) {
             require(reliquary.isApprovedOrOwner(msg.sender, relicIds[i]), "not authorized");
-            PositionInfo memory position = reliquary.getPositionForId(relicIds[i]);
+            uint lastBonus = reliquary.lastMaturityBonus(relicIds[i]);
             require(
-                block.timestamp - position.genesis >= 1 days &&
-                (position.lastMaturityBonus == 0 || block.timestamp - position.lastMaturityBonus >= 1 days),
+                block.timestamp - reliquary.genesis(relicIds[i]) >= 1 days &&
+                (lastBonus == 0 || block.timestamp - lastBonus >= 1 days),
                 "too soon since last bonus"
             );
 
             seeds[relicIds[i]] = seed;
-            reliquary.updateLastMaturityBonus(relicIds[i]);
+            reliquary.commitLastMaturityBonus(relicIds[i]);
             unchecked {++i;}
         }
     }
