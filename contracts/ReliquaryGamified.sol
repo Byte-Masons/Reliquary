@@ -87,6 +87,8 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     }
 
     function burn(uint tokenId) public override (IReliquary, Reliquary) {
+        delete genesis[tokenId];
+        delete lastMaturityBonus[tokenId];
         super.burn(tokenId);
     }
 
