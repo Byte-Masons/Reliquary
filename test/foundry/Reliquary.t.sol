@@ -22,32 +22,6 @@ contract ReliquaryTest is ERC721Holder, Test {
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
 
-    event Deposit(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event Withdraw(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event EmergencyWithdraw(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event LogPoolModified(
-        uint indexed pid,
-        uint allocPoint,
-        IRewarder indexed rewarder,
-        INFTDescriptor nftDescriptor
-    );
-    event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accOathPerShare);
-
     function setUp() public {
         oath = new TestToken("Oath Token", "OATH", 18);
         IEmissionCurve curve = IEmissionCurve(address(new Constant()));
@@ -79,12 +53,12 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
-        emit LogPoolModified(0, 100, IRewarder(address(0)), nftDescriptor);
+        emit ReliquaryEvents.LogPoolModified(0, 100, address(0), address(nftDescriptor));
         reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
     }
 
     function testRevertOnModifyInvalidPool() public {
-        vm.expectRevert(bytes("set: pool does not exist"));
+        vm.expectRevert(Reliquary.NonExistentPool.selector);
         reliquary.modifyPool(1, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
     }
 
@@ -111,7 +85,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint[] memory pools = new uint[](1);
         pools[0] = 0;
         vm.expectEmit(true, false, false, true);
-        emit LogUpdatePool(0, block.timestamp, 0, 0);
+        emit ReliquaryEvents.LogUpdatePool(0, block.timestamp, 0, 0);
         reliquary.massUpdatePools(pools);
     }
 
@@ -119,14 +93,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint[] memory pools = new uint[](2);
         pools[0] = 0;
         pools[1] = 1;
-        vm.expectRevert(bytes("invalid pool ID"));
+        vm.expectRevert(Reliquary.NonExistentPool.selector);
         reliquary.massUpdatePools(pools);
     }
 
     function testCreateRelicAndDeposit(uint amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         vm.expectEmit(true, true, true, true);
-        emit Deposit(0, amount, address(this), 1);
+        emit ReliquaryEvents.Deposit(0, amount, address(this), 1);
         reliquary.createRelicAndDeposit(address(this), 0, amount);
     }
 
@@ -141,7 +115,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnDepositInvalidPool(uint pool) public {
         vm.assume(pool != 0);
-        vm.expectRevert(bytes("invalid pool ID"));
+        vm.expectRevert(Reliquary.NonExistentPool.selector);
         reliquary.createRelicAndDeposit(address(this), pool, 1);
     }
 
@@ -149,7 +123,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(0, amount, address(this), relicId);
+        emit ReliquaryEvents.Withdraw(0, amount, address(this), relicId);
         reliquary.withdraw(amount, relicId);
     }
 
@@ -179,7 +153,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdraw(0, amount, address(this), relicId);
+        emit ReliquaryEvents.EmergencyWithdraw(0, amount, address(this), relicId);
         reliquary.emergencyWithdraw(relicId);
     }
 
@@ -254,7 +228,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testBurn() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
-        vm.expectRevert(bytes("contains deposit"));
+        vm.expectRevert(Reliquary.BurningPrincipal.selector);
         reliquary.burn(relicId);
 
         reliquary.withdrawAndHarvest(1 ether, relicId, address(this));

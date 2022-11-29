@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+import "./ReliquaryEvents.sol";
 import "./interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
@@ -64,65 +65,28 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
     uint public totalAllocPoint;
 
-    event CreateRelic(
-        uint indexed pid,
-        address indexed to,
-        uint indexed relicId
-    );
-    event Deposit(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event Withdraw(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event EmergencyWithdraw(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event Harvest(
-        uint indexed pid,
-        uint amount,
-        address indexed to,
-        uint indexed relicId
-    );
-    event MaturityBonus(
-        uint indexed pid,
-        address indexed to,
-        uint indexed relicId,
-        uint bonus
-    );
-    event LogPoolAddition(
-        uint indexed pid,
-        uint allocPoint,
-        IERC20 indexed poolToken,
-        IRewarder indexed rewarder,
-        INFTDescriptor nftDescriptor
-    );
-    event LogPoolModified(
-        uint indexed pid,
-        uint allocPoint,
-        IRewarder indexed rewarder,
-        INFTDescriptor nftDescriptor
-    );
-    event LogUpdatePool(
-        uint indexed pid,
-        uint lastRewardTime,
-        uint lpSupply,
-        uint accRewardPerShare
-    );
-    event LogSetEmissionCurve(IEmissionCurve indexed emissionCurveAddress);
-    event LevelChanged(uint indexed relicId, uint newLevel);
-    event Split(uint indexed fromId, uint indexed toId, uint amount);
-    event Shift(uint indexed fromId, uint indexed toId, uint amount);
-    event Merge(uint indexed fromId, uint indexed toId, uint amount);
+    error NonExistentRelic();
+    error BurningPrincipal();
+    error BurningRewards();
+    error RewardTokenAsPoolToken();
+    error EmptyArray();
+    error ArrayLengthMismatch();
+    error NonZeroFirstMaturity();
+    error UnsortedMaturityLevels();
+    error ZeroTotalAllocPoint();
+    error NonExistentPool();
+    error DepositZeroAmount();
+    error WithdrawZeroAmount();
+    error NotOwner();
+    error SplittingZeroAmount();
+    error AmountExceedsDeposited();
+    error ShiftingZeroAmount();
+    error ShiftingToSameRelic();
+    error RelicsNotOfSamePool();
+    error MergingToSameRelic();
+    error MergingEmptyRelics();
+    error MaxEmissionRateExceeded();
+    error NotApprovedOrOwner();
 
     /*
      + @notice Constructs and initializes the contract
@@ -152,14 +116,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
-        require(_exists(tokenId), "token does not exist");
+        if (!_exists(tokenId)) revert NonExistentRelic();
         return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
     }
 
     /// @param _emissionCurve The contract address for EmissionCurve, which will return the base emission rate
     function setEmissionCurve(IEmissionCurve _emissionCurve) external override onlyRole(EMISSION_CURVE) {
         emissionCurve = _emissionCurve;
-        emit LogSetEmissionCurve(_emissionCurve);
+        emit ReliquaryEvents.LogSetEmissionCurve(address(_emissionCurve));
     }
 
     function getPositionForId(uint relicId) external view override returns (PositionInfo memory position) {
@@ -175,8 +139,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     }
 
     function burn(uint tokenId) public virtual override (IReliquary, ERC721Burnable) {
-        require(positionForId[tokenId].amount == 0, "contains deposit");
-        require(pendingReward(tokenId) == 0, "contains pending rewards");
+        if (positionForId[tokenId].amount != 0) revert BurningPrincipal();
+        if (pendingReward(tokenId) != 0) revert BurningRewards();
         super.burn(tokenId);
     }
 
@@ -201,14 +165,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         string memory name,
         INFTDescriptor _nftDescriptor
     ) external override onlyRole(OPERATOR) {
-        require(_poolToken != rewardToken, "cannot add reward token as pool");
-        require(requiredMaturity.length != 0, "empty levels array");
-        require(requiredMaturity.length == allocPoints.length, "array length mismatch");
-        require(requiredMaturity[0] == 0, "requiredMaturity[0] != 0");
+        if (_poolToken == rewardToken) revert RewardTokenAsPoolToken();
+        if (requiredMaturity.length == 0) revert EmptyArray();
+        if (requiredMaturity.length != allocPoints.length) revert ArrayLengthMismatch();
+        if (requiredMaturity[0] != 0) revert NonZeroFirstMaturity();
         if (requiredMaturity.length > 1) {
             uint highestMaturity;
             for (uint i = 1; i < requiredMaturity.length; i = _uncheckedInc(i)) {
-                require(requiredMaturity[i] > highestMaturity, "unsorted levels array");
+                if (requiredMaturity[i] <= highestMaturity) revert UnsortedMaturityLevels();
                 highestMaturity = requiredMaturity[i];
             }
         }
@@ -219,7 +183,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         }
 
         uint totalAlloc = totalAllocPoint + allocPoint;
-        require(totalAlloc != 0, "totalAllocPoint cannot be 0");
+        if (totalAlloc == 0) revert ZeroTotalAllocPoint();
         totalAllocPoint = totalAlloc;
         poolToken.push(_poolToken);
         rewarder.push(_rewarder);
@@ -241,7 +205,13 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
             })
         );
 
-        emit LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
+        emit ReliquaryEvents.LogPoolAddition(
+            (poolToken.length - 1),
+            allocPoint,
+            address(_poolToken),
+            address(_rewarder),
+            address(_nftDescriptor)
+        );
     }
 
     /*
@@ -263,7 +233,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         INFTDescriptor _nftDescriptor,
         bool overwriteRewarder
     ) external override onlyRole(OPERATOR) {
-        require(pid < poolInfo.length, "set: pool does not exist");
+        if (pid >= poolInfo.length) revert NonExistentPool();
 
         uint length = poolLength();
         for (uint i; i < length; i = _uncheckedInc(i)) {
@@ -272,7 +242,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         PoolInfo storage pool = poolInfo[pid];
         uint totalAlloc = totalAllocPoint + allocPoint - pool.allocPoint;
-        require(totalAlloc != 0, "totalAllocPoint cannot be 0");
+        if (totalAlloc == 0) revert ZeroTotalAllocPoint();
         totalAllocPoint = totalAlloc;
         pool.allocPoint = allocPoint;
 
@@ -283,7 +253,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         pool.name = name;
         nftDescriptor[pid] = _nftDescriptor;
 
-        emit LogPoolModified(pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor);
+        emit ReliquaryEvents.LogPoolModified(
+            pid,
+            allocPoint,
+            overwriteRewarder ? address(_rewarder) : address(rewarder[pid]),
+            address(_nftDescriptor)
+        );
     }
 
     /*
@@ -387,7 +362,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
     /// @dev Internal _updatePool function without nonReentrant modifier
     function _updatePool(uint pid) internal returns (uint accRewardPerShare) {
-        require(pid < poolLength(), "invalid pool ID");
+        if (pid >= poolLength()) revert NonExistentPool();
         PoolInfo storage pool = poolInfo[pid];
         uint timestamp = block.timestamp;
         uint lastRewardTime = pool.lastRewardTime;
@@ -406,7 +381,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
             pool.lastRewardTime = timestamp;
 
-            emit LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
+            emit ReliquaryEvents.LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
         }
     }
 
@@ -421,12 +396,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         uint pid,
         uint amount
     ) public virtual override nonReentrant returns (uint id) {
-        require(pid < poolInfo.length, "invalid pool ID");
+        if (pid >= poolInfo.length) revert NonExistentPool();
         id = _mint(to);
         PositionInfo storage position = positionForId[id];
         position.poolId = pid;
         _deposit(amount, id);
-        emit CreateRelic(pid, to, id);
+        emit ReliquaryEvents.CreateRelic(pid, to, id);
     }
 
     /*
@@ -441,13 +416,13 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
     /// @dev Internal deposit function that assumes relicId is valid.
     function _deposit(uint amount, uint relicId) internal {
-        require(amount != 0, "depositing 0 amount");
+        if (amount == 0) revert DepositZeroAmount();
 
         (uint poolId, ) = _updatePosition(amount, relicId, Kind.DEPOSIT, address(0));
 
         poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
 
-        emit Deposit(poolId, amount, ownerOf(relicId), relicId);
+        emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
     /*
@@ -456,14 +431,14 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
      + @param relicId NFT ID of the position being withdrawn.
     */
     function withdraw(uint amount, uint relicId) external override nonReentrant {
-        require(amount != 0, "withdrawing 0 amount");
+        if (amount == 0) revert WithdrawZeroAmount();
         _requireApprovedOrOwner(relicId);
 
         (uint poolId, ) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
         poolToken[poolId].safeTransfer(msg.sender, amount);
 
-        emit Withdraw(poolId, amount, msg.sender, relicId);
+        emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
 
     /*
@@ -476,7 +451,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         (uint poolId, uint _pendingReward) = _updatePosition(0, relicId, Kind.OTHER, harvestTo);
 
-        emit Harvest(poolId, _pendingReward, harvestTo, relicId);
+        emit ReliquaryEvents.Harvest(poolId, _pendingReward, harvestTo, relicId);
     }
 
     /*
@@ -486,15 +461,15 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
      + @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
     */
     function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external override nonReentrant {
-        require(amount != 0, "withdrawing 0 amount");
+        if (amount == 0) revert WithdrawZeroAmount();
         _requireApprovedOrOwner(relicId);
 
         (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
 
         poolToken[poolId].safeTransfer(msg.sender, amount);
 
-        emit Withdraw(poolId, amount, msg.sender, relicId);
-        emit Harvest(poolId, _pendingReward, harvestTo, relicId);
+        emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
+        emit ReliquaryEvents.Harvest(poolId, _pendingReward, harvestTo, relicId);
     }
 
     /*
@@ -503,7 +478,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     */
     function emergencyWithdraw(uint relicId) external override nonReentrant {
         address to = ownerOf(relicId);
-        require(to == msg.sender, "you do not own this position");
+        if (to != msg.sender) revert NotOwner();
 
         PositionInfo storage position = positionForId[relicId];
         uint amount = position.amount;
@@ -516,13 +491,13 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         poolToken[poolId].safeTransfer(to, amount);
 
-        emit EmergencyWithdraw(poolId, amount, to, relicId);
+        emit ReliquaryEvents.EmergencyWithdraw(poolId, amount, to, relicId);
     }
 
     /// @notice Update position without performing a deposit/withdraw/harvest.
     /// @param relicId The NFT ID of the position being updated.
     function updatePosition(uint relicId) external override nonReentrant {
-        require(_exists(relicId), "Relic doesn't exist");
+        if (!_exists(relicId)) revert NonExistentRelic();
         _updatePosition(0, relicId, Kind.OTHER, address(0));
     }
 
@@ -608,12 +583,12 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @param to Address to mint the Relic to
     /// @return newId The NFT ID of the new Relic
     function split(uint fromId, uint amount, address to) public virtual override nonReentrant returns (uint newId) {
-        require(amount != 0, "cannot split zero amount");
+        if (amount == 0) revert SplittingZeroAmount();
         _requireApprovedOrOwner(fromId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        require(amount <= fromAmount, "amount exceeds deposited");
+        if(amount > fromAmount) revert AmountExceedsDeposited();
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
 
@@ -634,8 +609,8 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         fromPosition.rewardDebt = newFromAmount * multiplier / ACC_REWARD_PRECISION;
         newPosition.rewardDebt = amount * multiplier / ACC_REWARD_PRECISION;
 
-        emit CreateRelic(poolId, to, newId);
-        emit Split(fromId, newId, amount);
+        emit ReliquaryEvents.CreateRelic(poolId, to, newId);
+        emit ReliquaryEvents.Split(fromId, newId, amount);
     }
 
     /// @notice Transfer amount from one Relic into another, updating maturity in the receiving Relic
@@ -643,18 +618,18 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @param toId The NFT ID of the Relic being transferred to
     /// @param amount The amount being transferred
     function shift(uint fromId, uint toId, uint amount) public virtual override nonReentrant {
-        require(amount != 0, "cannot shift zero amount");
-        require(fromId != toId, "cannot shift into same Relic");
+        if (amount == 0) revert ShiftingZeroAmount();
+        if (fromId == toId) revert ShiftingToSameRelic();
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        require(amount <= fromAmount, "amount exceeds deposited");
+        if (amount > fromAmount) revert AmountExceedsDeposited();
 
         uint poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
-        require(poolId == toPosition.poolId, "Relics not of the same pool");
+        if (poolId != toPosition.poolId) revert RelicsNotOfSamePool();
 
         uint toAmount = toPosition.amount;
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / (fromAmount + toAmount);
@@ -683,7 +658,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         toPosition.rewardDebt = newToAmount * accRewardPerShare * levels[poolId].allocPoint[newToLevel]
             / ACC_REWARD_PRECISION;
 
-        emit Shift(fromId, toId, amount);
+        emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
 
     /// @notice Transfer entire position (including rewards) from one Relic into another, burning it
@@ -691,7 +666,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @param fromId The NFT ID of the Relic to transfer from
     /// @param toId The NFT ID of the Relic being transferred to
     function merge(uint fromId, uint toId) public virtual override nonReentrant {
-        require(fromId != toId, "cannot merge same Relic");
+        if (fromId == toId) revert MergingToSameRelic();
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
 
@@ -700,11 +675,11 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
 
         uint poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
-        require(poolId == toPosition.poolId, "Relics not of the same pool");
+        if (poolId != toPosition.poolId) revert RelicsNotOfSamePool();
 
         uint toAmount = toPosition.amount;
         uint newToAmount = toAmount + fromAmount;
-        require(newToAmount != 0, "cannot merge empty Relics");
+        if (newToAmount == 0) revert MergingEmptyRelics();
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
 
         toPosition.amount = newToAmount;
@@ -725,7 +700,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         _burn(fromId);
         delete positionForId[fromId];
 
-        emit Merge(fromId, toId, fromAmount);
+        emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
     }
 
     function _shiftLevelBalances(
@@ -765,7 +740,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @notice Gets the base emission rate from external, upgradable contract
     function _baseEmissionsPerSecond(uint lastRewardTime) internal view returns (uint rate) {
         rate = emissionCurve.getRate(lastRewardTime);
-        require(rate <= 6e18, "maximum emission rate exceeded");
+        if (rate > 6e18) revert MaxEmissionRateExceeded();
     }
 
     /*
@@ -810,7 +785,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
         PositionInfo storage position = positionForId[relicId];
         if (position.level != newLevel) {
             position.level = newLevel;
-            emit LevelChanged(relicId, newLevel);
+            emit ReliquaryEvents.LevelChanged(relicId, newLevel);
         }
     }
 
@@ -834,7 +809,7 @@ contract Reliquary is IReliquary, ERC721Burnable, ERC721Enumerable, AccessContro
     /// @notice Require the sender is either the owner of the Relic or approved to transfer it
     /// @param relicId The NFT ID of the Relic
     function _requireApprovedOrOwner(uint relicId) internal view {
-        require(_isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        if (!_isApprovedOrOwner(msg.sender, relicId)) revert NotApprovedOrOwner();
     }
 
     /// @dev Utility function to bypass overflow checking, saving gas

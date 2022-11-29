@@ -12,6 +12,13 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     /// @notice relicId => timestamp of last committed maturity bonus
     mapping(uint => uint) public lastMaturityBonus;
 
+    event MaturityBonus(
+        uint indexed pid,
+        address indexed to,
+        uint indexed relicId,
+        uint bonus
+    );
+
     constructor(IERC20 _rewardToken, IEmissionCurve _emissionCurve) Reliquary(_rewardToken, _emissionCurve) {}
 
     /*
