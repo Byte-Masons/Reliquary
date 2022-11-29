@@ -9,7 +9,6 @@ import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.s
 
 /// @title Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
 contract SingleAssetRewarder is IRewarder {
-
     using SafeERC20 for IERC20;
 
     uint private immutable BASIS_POINTS;
@@ -32,11 +31,7 @@ contract SingleAssetRewarder is IRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(
-        uint _rewardMultiplier,
-        IERC20 _rewardToken,
-        IReliquary _reliquary
-    ) {
+    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary) {
         rewardMultiplier = _rewardMultiplier;
         rewardToken = _rewardToken;
         reliquary = _reliquary;
@@ -48,20 +43,12 @@ contract SingleAssetRewarder is IRewarder {
      * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
      * @param to Address to send rewards to.
      */
-    function onReward(
-        uint relicId,
-        uint rewardAmount,
-        address to
-    ) external virtual override onlyReliquary {
+    function onReward(uint relicId, uint rewardAmount, address to) external virtual override onlyReliquary {
         _onReward(relicId, rewardAmount, to);
     }
 
     /// @dev Separate internal function that may be called by inheriting contracts.
-    function _onReward(
-        uint relicId,
-        uint rewardAmount,
-        address to
-    ) internal {
+    function _onReward(uint relicId, uint rewardAmount, address to) internal {
         if (rewardMultiplier != 0) {
             rewardToken.safeTransfer(to, pendingToken(relicId, rewardAmount));
         }
@@ -72,15 +59,13 @@ contract SingleAssetRewarder is IRewarder {
     function onDeposit(
         uint, //relicId
         uint //depositAmount
-    ) external virtual override {
-    }
+    ) external virtual override {}
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
     function onWithdraw(
         uint, //relicId
         uint //withdrawalAmount
-    ) external virtual override {
-    }
+    ) external virtual override {}
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
@@ -96,10 +81,13 @@ contract SingleAssetRewarder is IRewarder {
      * Interface supports multiple tokens.
      * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
      */
-    function pendingTokens(
-        uint relicId,
-        uint rewardAmount
-    ) external view virtual override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
+    function pendingTokens(uint relicId, uint rewardAmount)
+        external
+        view
+        virtual
+        override
+        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
+    {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 

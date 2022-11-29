@@ -19,6 +19,6 @@ abstract contract UseRandom {
     /// @dev Checks if the proof is valid for the seed associated with the address.
     /// `proof` may be used as a provable random number.
     function _prove(uint proof, uint seed) internal pure {
-        require(SlothVDF.verify(proof, seed, PRIME, ITERATIONS), 'Invalid proof');
+        require(SlothVDF.verify(proof, seed, PRIME, ITERATIONS), "Invalid proof");
     }
 }

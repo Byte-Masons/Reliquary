@@ -30,17 +30,11 @@ contract GymTest is ERC721Holder, Test {
         testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint).max);
 
-	INFTDescriptor nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
+        INFTDescriptor nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            100,
-            testToken,
-            IRewarder(address(0)),
-            requiredMaturity,
-            allocPoints,
-            "ETH Pool",
-            nftDescriptor
+            100, testToken, IRewarder(address(0)), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor
         );
 
         gym = new Gym(reliquary);

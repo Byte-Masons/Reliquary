@@ -6,7 +6,6 @@ import "../interfaces/IReliquaryGamified.sol";
 
 /// @title Distributes a random maturity bonus up to once a day.
 contract Gym is UseRandom {
-
     IReliquaryGamified public reliquary;
     mapping(uint => uint) seeds;
 
@@ -26,14 +25,16 @@ contract Gym is UseRandom {
             require(reliquary.isApprovedOrOwner(msg.sender, relicIds[i]), "not authorized");
             uint lastBonus = reliquary.lastMaturityBonus(relicIds[i]);
             require(
-                block.timestamp - reliquary.genesis(relicIds[i]) >= 1 days &&
-                (lastBonus == 0 || block.timestamp - lastBonus >= 1 days),
+                block.timestamp - reliquary.genesis(relicIds[i]) >= 1 days
+                    && (lastBonus == 0 || block.timestamp - lastBonus >= 1 days),
                 "too soon since last bonus"
             );
 
             seeds[relicIds[i]] = seed;
             reliquary.commitLastMaturityBonus(relicIds[i]);
-            unchecked {++i;}
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -54,7 +55,9 @@ contract Gym is UseRandom {
         for (uint i = 1; i < relicIds.length;) {
             require(seeds[relicIds[i]] == seed, "Relic seed mismatch");
             _train(relicIds[i], n);
-            unchecked {++i;}
+            unchecked {
+                ++i;
+            }
         }
     }
 

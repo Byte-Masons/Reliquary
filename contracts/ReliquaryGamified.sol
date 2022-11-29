@@ -14,12 +14,7 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     mapping(uint => uint) public lastMaturityBonus;
 
     /// @dev Event emitted when a maturity bonus is actually applied.
-    event MaturityBonus(
-        uint indexed pid,
-        address indexed to,
-        uint indexed relicId,
-        uint bonus
-    );
+    event MaturityBonus(uint indexed pid, address indexed to, uint indexed relicId, uint bonus);
 
     constructor(IERC20 _rewardToken, IEmissionCurve _emissionCurve) Reliquary(_rewardToken, _emissionCurve) {}
 
@@ -29,10 +24,12 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
      * @param points Number of seconds to reduce the position's entry by (increasing maturity), before maximum.
      * @return receivedBonus Actual maturity bonus received after maximum.
      */
-    function modifyMaturity(
-        uint relicId,
-        uint points
-    ) external override onlyRole(MATURITY_MODIFIER) returns (uint receivedBonus) {
+    function modifyMaturity(uint relicId, uint points)
+        external
+        override
+        onlyRole(MATURITY_MODIFIER)
+        returns (uint receivedBonus)
+    {
         receivedBonus = Math.min(1 days, points);
         PositionInfo storage position = positionForId[relicId];
         position.entry -= receivedBonus;
@@ -48,11 +45,11 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     }
 
     /// @inheritdoc Reliquary
-    function createRelicAndDeposit(
-        address to,
-        uint pid,
-        uint amount
-    ) public override (IReliquary, Reliquary) returns (uint id) {
+    function createRelicAndDeposit(address to, uint pid, uint amount)
+        public
+        override (IReliquary, Reliquary)
+        returns (uint id)
+    {
         id = super.createRelicAndDeposit(to, pid, amount);
         genesis[id] = block.timestamp;
     }

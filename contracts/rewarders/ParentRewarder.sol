@@ -9,7 +9,6 @@ import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
 contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private childrenRewarders;
@@ -28,11 +27,9 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(
-        uint _rewardMultiplier,
-        IERC20 _rewardToken,
-        IReliquary _reliquary
-    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
+    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
+        SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary)
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -53,11 +50,11 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
      * @param owner Address to transfer ownership of the ChildRewarder contract to.
      * @return Address of the new ChildRewarder.
      */
-    function createChild(
-        IERC20 _rewardToken,
-        uint _rewardMultiplier,
-        address owner
-    ) external onlyRole(CHILD_SETTER) returns (address) {
+    function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner)
+        external
+        onlyRole(CHILD_SETTER)
+        returns (address)
+    {
         ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
         Ownable(address(child)).transferOwnership(owner);
         childrenRewarders.add(address(child));
@@ -68,8 +65,9 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
     /// @notice Removes a ChildRewarder from the childrenRewarders set.
     /// @param childRewarder Address of the ChildRewarder contract to remove.
     function removeChild(address childRewarder) external onlyRole(CHILD_SETTER) {
-        if(!childrenRewarders.remove(childRewarder))
+        if (!childrenRewarders.remove(childRewarder)) {
             revert("That is not my child rewarder!");
+        }
         emit ChildRemoved(childRewarder);
     }
 
@@ -86,25 +84,25 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
 
     /// Call onReward function of each child.
     /// @inheritdoc SingleAssetRewarder
-    function onReward(
-        uint relicId,
-        uint rewardAmount,
-        address to
-    ) external override onlyReliquary {
+    function onReward(uint relicId, uint rewardAmount, address to) external override onlyReliquary {
         super._onReward(relicId, rewardAmount, to);
 
         uint length = childrenRewarders.length();
-        for(uint i; i < length;) {
+        for (uint i; i < length;) {
             IRewarder(childrenRewarders.at(i)).onReward(relicId, rewardAmount, to);
-            unchecked {++i;}
+            unchecked {
+                ++i;
+            }
         }
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingTokens(
-        uint relicId,
-        uint rewardAmount
-    ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
+    function pendingTokens(uint relicId, uint rewardAmount)
+        external
+        view
+        override
+        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
+    {
         uint length = childrenRewarders.length() + 1;
         rewardTokens = new IERC20[](length);
         rewardTokens[0] = rewardToken;
@@ -116,7 +114,9 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
             ChildRewarder rewarder = ChildRewarder(childrenRewarders.at(i - 1));
             rewardTokens[i] = rewarder.rewardToken();
             rewardAmounts[i] = rewarder.pendingToken(relicId, rewardAmount);
-            unchecked {++i;}
+            unchecked {
+                ++i;
+            }
         }
     }
 }

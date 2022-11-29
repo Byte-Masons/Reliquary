@@ -7,7 +7,7 @@ import "./TestToken.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-interface Weth is IERC20{
+interface Weth is IERC20 {
     function deposit() external payable;
 }
 
@@ -72,7 +72,7 @@ contract ReliquaryUser is ERC721Holder, Test {
         reliquary.emergencyWithdraw(relicId);
     }
 
-    function _getOwnedRelicId(uint index) internal view returns(uint relicId) {
+    function _getOwnedRelicId(uint index) internal view returns (uint relicId) {
         uint balance = reliquary.balanceOf(address(this));
         require(balance != 0, "no existing Relics");
         index = bound(index, 0, balance - 1);

@@ -45,7 +45,8 @@ contract DepositHelperTest is Test {
 
         assertEq(reliquary.balanceOf(WETH_WHALE), 1, "no Relic given");
         assertEq(
-            reliquary.getPositionForId(relicId).amount, vault.convertToShares(amount),
+            reliquary.getPositionForId(relicId).amount,
+            vault.convertToShares(amount),
             "deposited amount not expected amount"
         );
     }

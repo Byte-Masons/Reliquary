@@ -16,8 +16,7 @@ contract NFTDescriptorSingle4626 is NFTDescriptor {
         IERC20Metadata asset = IERC20Metadata(vault.asset());
 
         string memory assetAmount = generateDecimalString(vault.convertToAssets(amount), asset.decimals());
-        text = string.concat(
-            '<text x="50%" y="340" class="bit" style="font-size: 8">', asset.symbol(), ':', assetAmount
-        );
+        text =
+            string.concat('<text x="50%" y="340" class="bit" style="font-size: 8">', asset.symbol(), ":", assetAmount);
     }
 }

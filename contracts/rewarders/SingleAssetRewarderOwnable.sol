@@ -7,7 +7,6 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// @title Ownable extension of SingleAssetRewarder that allows the owner to change the rewardMultiplier
 contract SingleAssetRewarderOwnable is SingleAssetRewarder, Ownable {
-
     event LogRewardMultiplier(uint rewardMultiplier);
 
     /**
@@ -16,11 +15,9 @@ contract SingleAssetRewarderOwnable is SingleAssetRewarder, Ownable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(
-        uint _rewardMultiplier,
-        IERC20 _rewardToken,
-        IReliquary _reliquary
-    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {}
+    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
+        SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary)
+    {}
 
     /// @notice Set a new rewardMultiplier. Only callable by `owner`.
     function setRewardMultiplier(uint _rewardMultiplier) external onlyOwner {

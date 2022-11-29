@@ -12,7 +12,7 @@ contract TestToken is ERC20 {
         decimals_ = _decimals;
     }
 
-    function mint(address to, uint256 amount) external returns (bool) {
+    function mint(address to, uint amount) external returns (bool) {
         _mint(to, amount);
         return true;
     }

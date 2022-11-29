@@ -7,7 +7,6 @@ import "./SingleAssetRewarder.sol";
 /// @title Extension of SingleAssetRewarder contract that distributes a bonus for deposits of a minimum size made on a
 /// regular cadence.
 contract DepositBonusRewarder is SingleAssetRewarder {
-
     using SafeERC20 for IERC20;
 
     uint public immutable depositBonus;
@@ -42,10 +41,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function onDeposit(
-        uint relicId,
-        uint depositAmount
-    ) external override onlyReliquary {
+    function onDeposit(uint relicId, uint depositAmount) external override onlyReliquary {
         if (depositAmount >= minimum) {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
@@ -83,11 +79,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
      * @param _lastDepositTime Time of last deposit into this position, before being updated.
      * @return claimed Whether depositBonus was actually claimed.
      */
-    function _claimDepositBonus(
-        address to,
-        uint timestamp,
-        uint _lastDepositTime
-    ) internal returns (bool claimed) {
+    function _claimDepositBonus(address to, uint timestamp, uint _lastDepositTime) internal returns (bool claimed) {
         if (_lastDepositTime != 0 && timestamp - _lastDepositTime >= cadence) {
             rewardToken.safeTransfer(to, depositBonus);
             claimed = true;
@@ -97,10 +89,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingToken(
-        uint relicId,
-        uint rewardAmount
-    ) public view override returns (uint pending) {
+    function pendingToken(uint relicId, uint rewardAmount) public view override returns (uint pending) {
         pending = super.pendingToken(relicId, rewardAmount);
         uint _lastDepositTime = lastDepositTime[relicId];
         if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
@@ -109,10 +98,12 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingTokens(
-        uint relicId,
-        uint rewardAmount
-    ) external view override returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts) {
+    function pendingTokens(uint relicId, uint rewardAmount)
+        external
+        view
+        override
+        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
+    {
         rewardTokens = new IERC20[](1);
         rewardTokens[0] = rewardToken;
 

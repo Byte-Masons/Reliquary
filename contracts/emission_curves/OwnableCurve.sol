@@ -12,7 +12,7 @@ contract OwnableCurve is IEmissionCurve, Ownable {
     constructor(uint _rate) {
         _setRate(_rate);
     }
-    
+
     function setRate(uint _rate) external onlyOwner {
         _setRate(_rate);
     }

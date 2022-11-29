@@ -33,15 +33,7 @@ contract Deploy is Script {
         IERC20 wethCrypt = IERC20(0xD8E353151e5AEaFd08e8b631Ff9484Bc0fc18371);
 
         reliquary.grantRole(OPERATOR, tx.origin);
-        reliquary.addPool(
-            100,
-            wethCrypt,
-            IRewarder(address(0)),
-            wethCurve,
-            wethLevels,
-            "ETH Pool",
-            nftDescriptor
-        );
+        reliquary.addPool(100, wethCrypt, IRewarder(address(0)), wethCurve, wethLevels, "ETH Pool", nftDescriptor);
 
         reliquary.grantRole(reliquary.DEFAULT_ADMIN_ROLE(), MULTISIG);
         reliquary.grantRole(OPERATOR, MULTISIG);
