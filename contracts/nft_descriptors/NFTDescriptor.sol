@@ -10,7 +10,7 @@ import '../interfaces/IReliquary.sol';
 contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
 
-    /// @notice Constants for drawing graph
+    /// @notice Constants for drawing graph.
     uint private constant GRAPH_WIDTH = 210;
     uint private constant GRAPH_HEIGHT = 30;
 
@@ -24,7 +24,7 @@ contract NFTDescriptor is INFTDescriptor {
         reliquary = _reliquary;
     }
 
-    /// @notice Generate tokenURI as a base64 encoding from live on-chain values
+    /// @notice Generate tokenURI as a base64 encoding from live on-chain values.
     function constructTokenURI(uint relicId) external view override returns (string memory uri) {
         PositionInfo memory position = reliquary.getPositionForId(relicId);
         PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
@@ -99,8 +99,8 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate description of the liquidity position for NFT metadata
-    /// @param poolName Name of pool as provided by operator
+    /// @notice Generate description of the liquidity position for NFT metadata.
+    /// @param poolName Name of pool as provided by operator.
     function generateDescription(
         string memory poolName
     ) internal pure returns (string memory description) {
@@ -110,10 +110,12 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate attributes for NFT metadata
-    /// @param position Position represented by this Relic
-    /// @param pendingReward Amount of reward token that can currently be harvested from this position
-    /// @param maturity Weighted average of the maturity deposits into this position
+    /**
+     * @notice Generate attributes for NFT metadata.
+     * @param position Position represented by this Relic.
+     * @param pendingReward Amount of reward token that can currently be harvested from this position.
+     * @param maturity Weighted average of the maturity deposits into this position.
+     */
     function generateAttributes(
         PositionInfo memory position,
         string memory amount,
@@ -135,9 +137,11 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate the first part of the SVG for this NFT
-    /// @param level Current maturity level of the position
-    /// @param numLevels Total number of levels in the pool
+    /**
+     * @notice Generate the first part of the SVG for this NFT.
+     * @param level Current maturity level of the position.
+     * @param numLevels Total number of levels in the pool.
+     */
     function generateSVGImage(
         uint level,
         uint numLevels,
@@ -156,11 +160,13 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate the first part of text labels for this NFT image
-    /// @param relicId ID of the NFT/position
-    /// @param poolName Name of pool as provided by operator
-    /// @param pendingReward Amount of reward token that can currently be harvested from this position
-    /// @param maturity Weighted average of the maturity deposits into this position
+    /**
+     * @notice Generate the first part of text labels for this NFT image.
+     * @param relicId ID of the NFT/position.
+     * @param poolName Name of pool as provided by operator.
+     * @param pendingReward Amount of reward token that can currently be harvested from this position.
+     * @param maturity Weighted average of the maturity deposits into this position.
+     */
     function generateImageText(
         uint relicId,
         string memory poolName,
@@ -177,8 +183,8 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate further text labels specific to the underlying token
-    /// @param amountString Amount of underlying tokens deposited in this position
+    /// @notice Generate further text labels specific to the underlying token.
+    /// @param amountString Amount of underlying tokens deposited in this position.
     function generateTextFromToken(
         address, //underlying
         uint, //amount
@@ -189,9 +195,11 @@ contract NFTDescriptor is INFTDescriptor {
         );
     }
 
-    /// @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement
-    /// @param level Current level of the position
-    /// @param levelInfo Level info for this pool
+    /**
+     * @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement.
+     * @param level Current level of the position.
+     * @param levelInfo Level info for this pool.
+     */
     function generateBars(uint level, LevelInfo memory levelInfo) internal pure returns (string memory bars) {
         uint highestAllocPoint = levelInfo.allocPoint[0];
         for (uint i = 1; i < levelInfo.allocPoint.length; i++) {
@@ -218,10 +226,12 @@ contract NFTDescriptor is INFTDescriptor {
         }
     }
 
-    /// @notice Generate human-readable string from a number with given decimal places.
-    /// Does not work for amounts with more than 18 digits before decimal point.
-    /// @param num A number
-    /// @param decimals Number of decimal places
+    /**
+     * @notice Generate human-readable string from a number with given decimal places.
+     * Does not work for amounts with more than 18 digits before decimal point.
+     * @param num A number.
+     * @param decimals Number of decimal places.
+     */
     function generateDecimalString(uint num, uint decimals) internal pure returns (string memory decString) {
         if (num == 0) {
             return '0';

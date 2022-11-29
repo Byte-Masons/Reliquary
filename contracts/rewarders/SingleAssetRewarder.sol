@@ -7,7 +7,7 @@ import "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-/// Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
+/// @title Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
 contract SingleAssetRewarder is IRewarder {
 
     using SafeERC20 for IERC20;
@@ -18,6 +18,7 @@ contract SingleAssetRewarder is IRewarder {
     IERC20 public immutable rewardToken;
     IReliquary public immutable reliquary;
 
+    /// @dev Limits function calls to address of Reliquary contract `reliquary`
     modifier onlyReliquary() {
         require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
         _;
@@ -25,10 +26,12 @@ contract SingleAssetRewarder is IRewarder {
 
     event LogOnReward(uint indexed relicId, uint amount, address indexed to);
 
-    /// @notice Contructor called on deployment of this contract
-    /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
-    /// @param _rewardToken Address of token rewards are distributed in
-    /// @param _reliquary Address of Reliquary this rewarder will read state from
+    /**
+     * @dev Contructor called on deployment of this contract.
+     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
+     * @param _rewardToken Address of token rewards are distributed in.
+     * @param _reliquary Address of Reliquary this rewarder will read state from.
+     */
     constructor(
         uint _rewardMultiplier,
         IERC20 _rewardToken,
@@ -40,9 +43,11 @@ contract SingleAssetRewarder is IRewarder {
         BASIS_POINTS = 10 ** IERC20Metadata(address(_reliquary.rewardToken())).decimals();
     }
 
-    /// @notice Called by Reliquary harvest or withdrawAndHarvest function
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
-    /// @param to Address to send rewards to
+    /**
+     * @notice Called by Reliquary harvest or withdrawAndHarvest function.
+     * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+     * @param to Address to send rewards to.
+     */
     function onReward(
         uint relicId,
         uint rewardAmount,
@@ -51,6 +56,7 @@ contract SingleAssetRewarder is IRewarder {
         _onReward(relicId, rewardAmount, to);
     }
 
+    /// @dev Separate internal function that may be called by inheriting contracts.
     function _onReward(
         uint relicId,
         uint rewardAmount,
@@ -62,22 +68,22 @@ contract SingleAssetRewarder is IRewarder {
         emit LogOnReward(relicId, rewardAmount, to);
     }
 
-    /// @notice Called by Reliquary _deposit function
+    /// @notice Called by Reliquary _deposit function.
     function onDeposit(
         uint, //relicId
         uint //depositAmount
     ) external virtual override {
     }
 
-    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
+    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
     function onWithdraw(
         uint, //relicId
         uint //withdrawalAmount
     ) external virtual override {
     }
 
-    /// @notice Returns the amount of pending rewardToken for a position from this rewarder
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
     function pendingToken(
         uint, //relicId
         uint rewardAmount
@@ -85,9 +91,11 @@ contract SingleAssetRewarder is IRewarder {
         pending = rewardAmount * rewardMultiplier / BASIS_POINTS;
     }
 
-    /// @notice Returns the amount of pending tokens for a position from this rewarder
-    ///         Interface supports multiple tokens
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    /**
+     * @notice Returns the amount of pending tokens for a position from this rewarder.
+     * Interface supports multiple tokens.
+     * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+     */
     function pendingTokens(
         uint relicId,
         uint rewardAmount

@@ -4,6 +4,8 @@ pragma solidity ^0.8.15;
 
 import "./SingleAssetRewarder.sol";
 
+/// @title Extension of SingleAssetRewarder contract that distributes a bonus for deposits of a minimum size made on a
+/// regular cadence.
 contract DepositBonusRewarder is SingleAssetRewarder {
 
     using SafeERC20 for IERC20;
@@ -12,16 +14,18 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     uint public immutable minimum;
     uint public immutable cadence;
 
-    /// @notice Mapping from relicId to timestamp of last deposit
+    /// @notice Mapping from relicId to timestamp of last deposit.
     mapping(uint => uint) public lastDepositTime;
 
-    /// @notice Contructor called on deployment of this contract
-    /// @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS
-    /// @param _depositBonus Bonus owed when cadence has elapsed since lastDepositTime
-    /// @param _minimum The minimum deposit amount to be eligible for depositBonus
-    /// @param _cadence The minimum elapsed time since lastDepositTime
-    /// @param _rewardToken Address of token rewards are distributed in
-    /// @param _reliquary Address of Reliquary this rewarder will read state from
+    /**
+     * @dev Contructor called on deployment of this contract.
+     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
+     * @param _depositBonus Bonus owed when cadence has elapsed since lastDepositTime.
+     * @param _minimum The minimum deposit amount to be eligible for depositBonus.
+     * @param _cadence The minimum elapsed time since lastDepositTime.
+     * @param _rewardToken Address of token rewards are distributed in.
+     * @param _reliquary Address of Reliquary this rewarder will read state from.
+     */
     constructor(
         uint _rewardMultiplier,
         uint _depositBonus,
@@ -37,9 +41,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         cadence = _cadence;
     }
 
-    /// @notice Called by Reliquary _deposit function
-    /// @param relicId The NFT ID of the position
-    /// @param depositAmount Amount being deposited into the underlying Reliquary position
+    /// @inheritdoc SingleAssetRewarder
     function onDeposit(
         uint relicId,
         uint depositAmount
@@ -52,8 +54,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         }
     }
 
-    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function
-    /// @param relicId The NFT ID of the position
+    /// @inheritdoc SingleAssetRewarder
     function onWithdraw(
         uint relicId,
         uint //withdrawalAmount
@@ -63,9 +64,11 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         _claimDepositBonus(reliquary.ownerOf(relicId), block.timestamp, _lastDepositTime);
     }
 
-    /// @notice Claim depositBonus without making another deposit
-    /// @param relicId The NFT ID of the position
-    /// @param to Address to send the depositBonus to
+    /**
+     * @notice Claim depositBonus without making another deposit.
+     * @param relicId The NFT ID of the position.
+     * @param to Address to send the depositBonus to.
+     */
     function claimDepositBonus(uint relicId, address to) external {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
         uint _lastDepositTime = lastDepositTime[relicId];
@@ -73,11 +76,13 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         require(_claimDepositBonus(to, block.timestamp, _lastDepositTime), "nothing to claim");
     }
 
-    /// @dev Internal claimDepositBonus function
-    /// @param to Address to send the depositBonus to
-    /// @param timestamp The current timestamp, passed in for gas efficiency
-    /// @param _lastDepositTime Time of last deposit into this position, before being updated
-    /// @return claimed Whether depositBonus was actually claimed
+    /**
+     * @dev Internal claimDepositBonus function.
+     * @param to Address to send the depositBonus to.
+     * @param timestamp The current timestamp, passed in for gas efficiency.
+     * @param _lastDepositTime Time of last deposit into this position, before being updated.
+     * @return claimed Whether depositBonus was actually claimed.
+     */
     function _claimDepositBonus(
         address to,
         uint timestamp,
@@ -91,9 +96,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         }
     }
 
-    /// @notice Returns the amount of pending rewardToken for a position from this rewarder
-    /// @param relicId The NFT ID of the position
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    /// @inheritdoc SingleAssetRewarder
     function pendingToken(
         uint relicId,
         uint rewardAmount
@@ -105,10 +108,7 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         }
     }
 
-    /// @notice Returns the amount of pending tokens for a position from this rewarder
-    ///         Interface supports multiple tokens
-    /// @param relicId The NFT ID of the position
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary
+    /// @inheritdoc SingleAssetRewarder
     function pendingTokens(
         uint relicId,
         uint rewardAmount
