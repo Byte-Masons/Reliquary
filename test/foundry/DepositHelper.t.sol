@@ -21,20 +21,20 @@ contract DepositHelperTest is Test {
         vm.createSelectFork("fantom", 43052549);
 
         reliquary = new Reliquary(
-            IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6),
-            IEmissionCurve(address(new Constant()))
+            0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6,
+            address(new Constant())
         );
         vault = IERC4626(0x58C60B6dF933Ff5615890dDdDCdD280bad53f1C1);
-        INFTDescriptor nftDescriptor = INFTDescriptor(new NFTDescriptorSingle4626(IReliquary(reliquary)));
+        address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        reliquary.addPool(1000, vault, IRewarder(address(0)), wethCurve, wethLevels, "ETH Crypt", nftDescriptor);
+        reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", address(nftDescriptor));
 
-        helper = new DepositHelper(reliquary);
+        helper = new DepositHelper(address(reliquary));
         weth = IERC20(vault.asset());
 
         vm.startPrank(WETH_WHALE);
         weth.approve(address(helper), type(uint).max);
-        helper.reliquary().setApprovalForAll(address(helper), true);
+        Reliquary(helper.reliquary()).setApprovalForAll(address(helper), true);
         vm.stopPrank();
     }
 

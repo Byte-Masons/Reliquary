@@ -20,12 +20,12 @@ contract Invariants is Test {
 
     function setUp() public {
         TestToken oath = new TestToken("Oath Token", "OATH", 18);
-        reliquary = new Reliquary(oath, IEmissionCurve(address(new Constant())));
+        reliquary = new Reliquary(address(oath), address(new Constant()));
         oath.mint(address(reliquary), 100_000_000 ether);
         TestToken testToken = new TestToken("Test Token", "TT", 6);
-        INFTDescriptor nftDescriptor = INFTDescriptor(new NFTDescriptor(IReliquary(reliquary)));
+        address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        reliquary.addPool(1000, testToken, IRewarder(address(0)), curve, levels, "Test Token", nftDescriptor);
+        reliquary.addPool(1000, address(testToken), address(0), curve, levels, "Test Token", nftDescriptor);
 
         ReliquaryUser user = new ReliquaryUser(address(reliquary), address(testToken));
         Skipper skipper = new Skipper();
@@ -42,7 +42,7 @@ contract Invariants is Test {
             for (uint j; j < level.balance.length; ++j) {
                 totals[i] += level.balance[j];
             }
-            uint balance = reliquary.poolToken(i).balanceOf(address(reliquary));
+            uint balance = IERC20(reliquary.poolToken(i)).balanceOf(address(reliquary));
             assertEq(totals[i], balance);
         }
     }

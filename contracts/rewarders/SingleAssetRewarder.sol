@@ -3,16 +3,14 @@
 pragma solidity ^0.8.15;
 
 import "../interfaces/IRewarder.sol";
-import "../interfaces/IReliquary.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract SingleAssetRewarder is IRewarder {
-    IERC20 public immutable rewardToken;
-    IReliquary public immutable reliquary;
+    address public immutable rewardToken;
+    address public immutable reliquary;
 
     /// @dev Limits function calls to address of Reliquary contract `reliquary`
     modifier onlyReliquary() {
-        require(msg.sender == address(reliquary), "Only Reliquary can call this function.");
+        require(msg.sender == reliquary, "Only Reliquary can call this function.");
         _;
     }
 
@@ -21,7 +19,7 @@ abstract contract SingleAssetRewarder is IRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(IERC20 _rewardToken, IReliquary _reliquary) {
+    constructor(address _rewardToken, address _reliquary) {
         rewardToken = _rewardToken;
         reliquary = _reliquary;
     }
@@ -53,9 +51,9 @@ abstract contract SingleAssetRewarder is IRewarder {
         view
         virtual
         override
-        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
+        returns (address[] memory rewardTokens, uint[] memory rewardAmounts)
     {
-        rewardTokens = new IERC20[](1);
+        rewardTokens = new address[](1);
         rewardTokens[0] = rewardToken;
 
         rewardAmounts = new uint[](1);

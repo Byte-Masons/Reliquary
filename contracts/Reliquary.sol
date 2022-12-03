@@ -3,6 +3,9 @@ pragma solidity ^0.8.15;
 
 import "./ReliquaryEvents.sol";
 import "./interfaces/IReliquary.sol";
+import "./interfaces/IEmissionCurve.sol";
+import "./interfaces/IRewarder.sol";
+import "./interfaces/INFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
@@ -52,19 +55,19 @@ contract Reliquary is
     uint private idNonce;
 
     /// @notice Address of the reward token contract.
-    IERC20 public immutable rewardToken;
+    address public immutable rewardToken;
     /// @notice Address of each NFTDescriptor contract.
-    INFTDescriptor[] public nftDescriptor;
+    address[] public nftDescriptor;
     /// @notice Address of EmissionCurve contract.
-    IEmissionCurve public emissionCurve;
+    address public emissionCurve;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
     /// @notice Level system for each Reliquary pool.
     LevelInfo[] private levels;
     /// @notice Address of the LP token for each Reliquary pool.
-    IERC20[] public poolToken;
+    address[] public poolToken;
     /// @notice Address of IRewarder contract for each Reliquary pool.
-    IRewarder[] public rewarder;
+    address[] public rewarder;
 
     /// @notice Info of each staked position.
     mapping(uint => PositionInfo) internal positionForId;
@@ -100,7 +103,7 @@ contract Reliquary is
      * @param _rewardToken The reward token contract address.
      * @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate.
      */
-    constructor(IERC20 _rewardToken, IEmissionCurve _emissionCurve) ERC721("Reliquary Deposit", "RELIC") {
+    constructor(address _rewardToken, address _emissionCurve) ERC721("Reliquary Deposit", "RELIC") {
         rewardToken = _rewardToken;
         emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -129,14 +132,14 @@ contract Reliquary is
      */
     function tokenURI(uint tokenId) public view override (ERC721) returns (string memory) {
         if (!_exists(tokenId)) revert NonExistentRelic();
-        return nftDescriptor[positionForId[tokenId].poolId].constructTokenURI(tokenId);
+        return INFTDescriptor(nftDescriptor[positionForId[tokenId].poolId]).constructTokenURI(tokenId);
     }
 
     /// @notice Sets a new EmissionCurve for overall rewardToken emissions. Can only be called with the proper role.
     /// @param _emissionCurve The contract address for the EmissionCurve, which will return the base emission rate.
-    function setEmissionCurve(IEmissionCurve _emissionCurve) external override onlyRole(EMISSION_CURVE) {
+    function setEmissionCurve(address _emissionCurve) external override onlyRole(EMISSION_CURVE) {
         emissionCurve = _emissionCurve;
-        emit ReliquaryEvents.LogSetEmissionCurve(address(_emissionCurve));
+        emit ReliquaryEvents.LogSetEmissionCurve(_emissionCurve);
     }
 
     /// @notice Returns a PositionInfo object for the given relicId.
@@ -173,12 +176,12 @@ contract Reliquary is
      */
     function addPool(
         uint allocPoint,
-        IERC20 _poolToken,
-        IRewarder _rewarder,
+        address _poolToken,
+        address _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
         string memory name,
-        INFTDescriptor _nftDescriptor
+        address _nftDescriptor
     ) external override onlyRole(OPERATOR) {
         if (_poolToken == rewardToken) revert RewardTokenAsPoolToken();
         if (requiredMaturity.length == 0) revert EmptyArray();
@@ -215,9 +218,7 @@ contract Reliquary is
             })
         );
 
-        emit ReliquaryEvents.LogPoolAddition(
-            (poolToken.length - 1), allocPoint, address(_poolToken), address(_rewarder), address(_nftDescriptor)
-            );
+        emit ReliquaryEvents.LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
     }
 
     /**
@@ -232,9 +233,9 @@ contract Reliquary is
     function modifyPool(
         uint pid,
         uint allocPoint,
-        IRewarder _rewarder,
+        address _rewarder,
         string calldata name,
-        INFTDescriptor _nftDescriptor,
+        address _nftDescriptor,
         bool overwriteRewarder
     ) external override onlyRole(OPERATOR) {
         if (pid >= poolInfo.length) revert NonExistentPool();
@@ -258,7 +259,7 @@ contract Reliquary is
         nftDescriptor[pid] = _nftDescriptor;
 
         emit ReliquaryEvents.LogPoolModified(
-            pid, allocPoint, overwriteRewarder ? address(_rewarder) : address(rewarder[pid]), address(_nftDescriptor)
+            pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor
             );
     }
 
@@ -429,7 +430,7 @@ contract Reliquary is
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.DEPOSIT, address(0));
 
-        poolToken[poolId].safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(poolToken[poolId]).safeTransferFrom(msg.sender, address(this), amount);
 
         emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
@@ -445,7 +446,7 @@ contract Reliquary is
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
-        poolToken[poolId].safeTransfer(msg.sender, amount);
+        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
@@ -475,7 +476,7 @@ contract Reliquary is
 
         (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
 
-        poolToken[poolId].safeTransfer(msg.sender, amount);
+        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
         emit ReliquaryEvents.Harvest(poolId, _pendingReward, harvestTo, relicId);
@@ -498,7 +499,7 @@ contract Reliquary is
         _burn(relicId);
         delete positionForId[relicId];
 
-        poolToken[poolId].safeTransfer(to, amount);
+        IERC20(poolToken[poolId]).safeTransfer(to, amount);
 
         emit ReliquaryEvents.EmergencyWithdraw(poolId, amount, to, relicId);
     }
@@ -563,23 +564,23 @@ contract Reliquary is
             uint received = _receivedReward(total);
             position.rewardCredit = total - received;
             if (received != 0) {
-                rewardToken.safeTransfer(harvestTo, received);
-                IRewarder _rewarder = rewarder[poolId];
-                if (address(_rewarder) != address(0)) {
-                    _rewarder.onReward(relicId, received, harvestTo);
+                IERC20(rewardToken).safeTransfer(harvestTo, received);
+                address _rewarder = rewarder[poolId];
+                if (_rewarder != address(0)) {
+                    IRewarder(_rewarder).onReward(relicId, received, harvestTo);
                 }
             }
         }
 
         if (kind == Kind.DEPOSIT) {
-            IRewarder _rewarder = rewarder[poolId];
-            if (address(_rewarder) != address(0)) {
-                _rewarder.onDeposit(relicId, amount);
+            address _rewarder = rewarder[poolId];
+            if (_rewarder != address(0)) {
+                IRewarder(_rewarder).onDeposit(relicId, amount);
             }
         } else if (kind == Kind.WITHDRAW) {
-            IRewarder _rewarder = rewarder[poolId];
-            if (address(_rewarder) != address(0)) {
-                _rewarder.onWithdraw(relicId, amount);
+            address _rewarder = rewarder[poolId];
+            if (_rewarder != address(0)) {
+                IRewarder(_rewarder).onWithdraw(relicId, amount);
             }
         }
     }
@@ -745,13 +746,13 @@ contract Reliquary is
      * @return received The minimum between amount owed and amount available.
      */
     function _receivedReward(uint _pendingReward) internal view returns (uint received) {
-        uint available = rewardToken.balanceOf(address(this));
+        uint available = IERC20(rewardToken).balanceOf(address(this));
         received = (available > _pendingReward) ? _pendingReward : available;
     }
 
     /// @notice Gets the base emission rate from external, upgradable contract.
     function _baseEmissionsPerSecond(uint lastRewardTime) internal view returns (uint rate) {
-        rate = emissionCurve.getRate(lastRewardTime);
+        rate = IEmissionCurve(emissionCurve).getRate(lastRewardTime);
         if (rate > 6e18) revert MaxEmissionRateExceeded();
     }
 

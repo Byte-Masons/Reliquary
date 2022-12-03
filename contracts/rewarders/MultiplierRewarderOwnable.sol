@@ -15,7 +15,7 @@ contract MultiplierRewarderOwnable is MultiplierRewarder, Ownable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
+    constructor(uint _rewardMultiplier, address _rewardToken, address _reliquary)
         MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
     {}
 

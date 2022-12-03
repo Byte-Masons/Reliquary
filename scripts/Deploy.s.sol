@@ -17,7 +17,7 @@ contract Deploy is Script {
     address public constant MULTISIG = 0x111731A388743a75CF60CCA7b140C58e41D83635;
 
     Reliquary public reliquary;
-    INFTDescriptor public nftDescriptor;
+    address public nftDescriptor;
     DepositHelper public helper;
 
     function run() external {
@@ -25,15 +25,15 @@ contract Deploy is Script {
         vm.startBroadcast();
 
         IERC20 oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
-        IEmissionCurve curve = IEmissionCurve(address(new Constant()));
-        reliquary = new Reliquary(oath, curve);
+        address curve = address(new Constant());
+        reliquary = new Reliquary(address(oath), curve);
 
-        nftDescriptor = INFTDescriptor(address(new NFTDescriptorSingle4626(IReliquary(address(reliquary)))));
+        nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
 
-        IERC20 wethCrypt = IERC20(0xD8E353151e5AEaFd08e8b631Ff9484Bc0fc18371);
+        address wethCrypt = 0xD8E353151e5AEaFd08e8b631Ff9484Bc0fc18371;
 
         reliquary.grantRole(OPERATOR, tx.origin);
-        reliquary.addPool(100, wethCrypt, IRewarder(address(0)), wethCurve, wethLevels, "ETH Pool", nftDescriptor);
+        reliquary.addPool(100, wethCrypt, address(0), wethCurve, wethLevels, "ETH Pool", nftDescriptor);
 
         reliquary.grantRole(reliquary.DEFAULT_ADMIN_ROLE(), MULTISIG);
         reliquary.grantRole(OPERATOR, MULTISIG);
@@ -41,7 +41,7 @@ contract Deploy is Script {
         reliquary.renounceRole(OPERATOR, tx.origin);
         reliquary.renounceRole(reliquary.DEFAULT_ADMIN_ROLE(), tx.origin);
 
-        helper = new DepositHelper(reliquary);
+        helper = new DepositHelper(address(reliquary));
 
         vm.stopBroadcast();
     }

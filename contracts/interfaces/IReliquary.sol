@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import "./IEmissionCurve.sol";
-import "./INFTDescriptor.sol";
-import "./IRewarder.sol";
 
 /**
  * @notice Info for each Reliquary position.
@@ -65,23 +61,23 @@ struct PendingReward {
 
 interface IReliquary is IERC721Enumerable {
     function burn(uint tokenId) external;
-    function setEmissionCurve(IEmissionCurve _emissionCurve) external;
+    function setEmissionCurve(address _emissionCurve) external;
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
     function addPool(
         uint allocPoint,
-        IERC20 _poolToken,
-        IRewarder _rewarder,
+        address _poolToken,
+        address _rewarder,
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
         string memory name,
-        INFTDescriptor _nftDescriptor
+        address _nftDescriptor
     ) external;
     function modifyPool(
         uint pid,
         uint allocPoint,
-        IRewarder _rewarder,
+        address _rewarder,
         string calldata name,
-        INFTDescriptor _nftDescriptor,
+        address _nftDescriptor,
         bool overwriteRewarder
     ) external;
     function pendingReward(uint relicId) external view returns (uint pending);
@@ -105,13 +101,13 @@ interface IReliquary is IERC721Enumerable {
     function merge(uint fromId, uint toId) external;
 
     // State
-    function rewardToken() external view returns (IERC20);
-    function nftDescriptor(uint) external view returns (INFTDescriptor);
-    function emissionCurve() external view returns (IEmissionCurve);
+    function rewardToken() external view returns (address);
+    function nftDescriptor(uint) external view returns (address);
+    function emissionCurve() external view returns (address);
     function getPoolInfo(uint) external view returns (PoolInfo memory);
     function getLevelInfo(uint) external view returns (LevelInfo memory);
-    function poolToken(uint) external view returns (IERC20);
-    function rewarder(uint) external view returns (IRewarder);
+    function poolToken(uint) external view returns (address);
+    function rewarder(uint) external view returns (address);
     function getPositionForId(uint) external view returns (PositionInfo memory);
     function totalAllocPoint() external view returns (uint);
     function poolLength() external view returns (uint);

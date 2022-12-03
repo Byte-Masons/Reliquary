@@ -5,7 +5,7 @@ import "./NFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract NFTDescriptorSingle4626 is NFTDescriptor {
-    constructor(IReliquary _reliquary) NFTDescriptor(_reliquary) {}
+    constructor(address _reliquary) NFTDescriptor(_reliquary) {}
 
     function generateTextFromToken(
         address underlying,

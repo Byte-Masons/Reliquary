@@ -16,7 +16,7 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     /// @dev Event emitted when a maturity bonus is actually applied.
     event MaturityBonus(uint indexed pid, address indexed to, uint indexed relicId, uint bonus);
 
-    constructor(IERC20 _rewardToken, IEmissionCurve _emissionCurve) Reliquary(_rewardToken, _emissionCurve) {}
+    constructor(address _rewardToken, address _emissionCurve) Reliquary(_rewardToken, _emissionCurve) {}
 
     /**
      * @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity within set limits.

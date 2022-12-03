@@ -27,7 +27,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
+    constructor(uint _rewardMultiplier, address _rewardToken, address _reliquary)
         MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -50,7 +50,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @param owner Address to transfer ownership of the ChildRewarder contract to.
      * @return child Address of the new ChildRewarder.
      */
-    function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner)
+    function createChild(address _rewardToken, uint _rewardMultiplier, address owner)
         external
         onlyRole(CHILD_SETTER)
         returns (address child)
@@ -98,10 +98,10 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
         external
         view
         override
-        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
+        returns (address[] memory rewardTokens, uint[] memory rewardAmounts)
     {
         uint length = childrenRewarders.length() + 1;
-        rewardTokens = new IERC20[](length);
+        rewardTokens = new address[](length);
         rewardTokens[0] = rewardToken;
 
         rewardAmounts = new uint[](length);

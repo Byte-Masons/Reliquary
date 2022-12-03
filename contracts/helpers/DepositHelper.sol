@@ -9,41 +9,43 @@ import "../interfaces/IReliquary.sol";
 contract DepositHelper {
     using SafeERC20 for IERC20;
 
-    IReliquary public immutable reliquary;
-    IERC20 public immutable rewardToken;
+    address public immutable reliquary;
+    address public immutable rewardToken;
 
-    constructor(IReliquary _reliquary) {
+    constructor(address _reliquary) {
         reliquary = _reliquary;
-        rewardToken = _reliquary.rewardToken();
+        rewardToken = IReliquary(_reliquary).rewardToken();
     }
 
     function deposit(uint amount, uint relicId) external {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
-        IERC4626 vault = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
-        reliquary.deposit(vault.balanceOf(address(this)), relicId);
+        IReliquary _reliquary = IReliquary(reliquary);
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        IERC4626 vault = _prepareDeposit(_reliquary.getPositionForId(relicId).poolId, amount);
+        _reliquary.deposit(vault.balanceOf(address(this)), relicId);
     }
 
     function createRelicAndDeposit(uint pid, uint amount) external returns (uint relicId) {
         IERC4626 vault = _prepareDeposit(pid, amount);
-        relicId = reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
+        relicId = IReliquary(reliquary).createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
     }
 
     function withdraw(uint amount, uint relicId, bool harvest) external {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
-        uint pid = reliquary.getPositionForId(relicId).poolId;
-        IERC4626 vault = IERC4626(address(reliquary.poolToken(pid)));
+        IReliquary _reliquary = IReliquary(reliquary);
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        uint pid = _reliquary.getPositionForId(relicId).poolId;
+        IERC4626 vault = IERC4626(_reliquary.poolToken(pid));
 
         if (harvest) {
-            reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId, msg.sender);
+            _reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId, msg.sender);
         } else {
-            reliquary.withdraw(vault.convertToShares(amount), relicId);
+            _reliquary.withdraw(vault.convertToShares(amount), relicId);
         }
 
         vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
     }
 
     function _prepareDeposit(uint pid, uint amount) internal returns (IERC4626 vault) {
-        vault = IERC4626(address(reliquary.poolToken(pid)));
+        vault = IERC4626(IReliquary(reliquary).poolToken(pid));
         IERC20 token = IERC20(vault.asset());
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -53,7 +55,7 @@ contract DepositHelper {
         vault.deposit(amount, address(this));
 
         if (vault.allowance(address(this), address(reliquary)) == 0) {
-            vault.approve(address(reliquary), type(uint).max);
+            vault.approve(reliquary, type(uint).max);
         }
     }
 }

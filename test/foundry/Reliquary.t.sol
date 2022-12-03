@@ -17,7 +17,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     Reliquary reliquary;
     TestToken oath;
     TestToken testToken;
-    INFTDescriptor nftDescriptor;
+    address nftDescriptor;
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
@@ -25,17 +25,15 @@ contract ReliquaryTest is ERC721Holder, Test {
     function setUp() public {
         oath = new TestToken("Oath Token", "OATH", 18);
         IEmissionCurve curve = IEmissionCurve(address(new Constant()));
-        reliquary = new Reliquary(oath, curve);
+        reliquary = new Reliquary(address(oath), address(curve));
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
         testToken = new TestToken("Test Token", "TT", 6);
-        nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
+        nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(
-            100, testToken, IRewarder(address(0)), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor
-        );
+        reliquary.addPool(100, address(testToken), address(0), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor);
 
         testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint).max);
@@ -48,12 +46,12 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
         emit ReliquaryEvents.LogPoolModified(0, 100, address(0), address(nftDescriptor));
-        reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
     function testRevertOnModifyInvalidPool() public {
         vm.expectRevert(Reliquary.NonExistentPool.selector);
-        reliquary.modifyPool(1, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(1, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
     function testRevertOnUnauthorized() public {
@@ -68,7 +66,7 @@ contract ReliquaryTest is ERC721Holder, Test {
             )
         );
         vm.prank(address(1));
-        reliquary.modifyPool(0, 100, IRewarder(address(0)), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
     function testPendingOath(uint amount, uint time) public {
@@ -246,12 +244,14 @@ contract ReliquaryTest is ERC721Holder, Test {
             1000 ether,
             1 ether,
             1 days,
-            oath,
-            reliquary
+            address(oath),
+            address(reliquary)
         );
         oath.mint(address(rewarder), 1_000_000 ether);
 
-        reliquary.addPool(100, testToken, rewarder, requiredMaturity, allocPoints, "ETH Pool", nftDescriptor);
+        reliquary.addPool(
+            100, address(testToken), address(rewarder), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor
+        );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
         skip(1 days);
@@ -262,15 +262,17 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testParentRewarder() public {
         TestToken parentToken = new TestToken("Parent Token", "PT", 18);
-        ParentRewarder parent = new ParentRewarder(5e17, parentToken, reliquary);
+        ParentRewarder parent = new ParentRewarder(5e17, address(parentToken), address(reliquary));
         parentToken.mint(address(parent), 1_000_000 ether);
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
 
         TestToken childToken = new TestToken("Child Token", "CT", 6);
-        address child = parent.createChild(childToken, 2e6, address(this));
+        address child = parent.createChild(address(childToken), 2e6, address(this));
         childToken.mint(child, 1_000_000 ether);
 
-        reliquary.addPool(100, testToken, parent, requiredMaturity, allocPoints, "ETH Pool", nftDescriptor);
+        reliquary.addPool(
+            100, address(testToken), address(parent), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor
+        );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
         skip(1 days);

@@ -22,22 +22,20 @@ contract GymTest is ERC721Holder, Test {
         vm.createSelectFork("fantom");
 
         TestToken oath = new TestToken("Oath Token", "OATH", 18);
-        IEmissionCurve curve = IEmissionCurve(address(new Constant()));
+        address curve = address(new Constant());
 
-        reliquary = new ReliquaryGamified(oath, curve);
+        reliquary = new ReliquaryGamified(address(oath), curve);
 
         TestToken testToken = new TestToken("Test Token", "TT", 6);
         testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint).max);
 
-        INFTDescriptor nftDescriptor = INFTDescriptor(address(new NFTDescriptor(IReliquary(address(reliquary)))));
+        address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(
-            100, testToken, IRewarder(address(0)), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor
-        );
+        reliquary.addPool(100, address(testToken), address(0), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor);
 
-        gym = new Gym(reliquary);
+        gym = new Gym(address(reliquary));
         reliquary.grantRole(MATURITY_MODIFIER, address(gym));
     }
 

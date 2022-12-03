@@ -6,10 +6,10 @@ import "../interfaces/IReliquaryGamified.sol";
 
 /// @title Distributes a random maturity bonus up to once a day.
 contract Gym is UseRandom {
-    IReliquaryGamified public reliquary;
+    address public reliquary;
     mapping(uint => uint) seeds;
 
-    constructor(IReliquaryGamified _reliquary) {
+    constructor(address _reliquary) {
         reliquary = _reliquary;
     }
 
@@ -21,17 +21,18 @@ contract Gym is UseRandom {
     function createSeed(uint[] calldata relicIds) external returns (uint seed) {
         seed = _createSeed();
 
+        IReliquaryGamified _reliquary = IReliquaryGamified(reliquary);
         for (uint i; i < relicIds.length;) {
-            require(reliquary.isApprovedOrOwner(msg.sender, relicIds[i]), "not authorized");
-            uint lastBonus = reliquary.lastMaturityBonus(relicIds[i]);
+            require(_reliquary.isApprovedOrOwner(msg.sender, relicIds[i]), "not authorized");
+            uint lastBonus = _reliquary.lastMaturityBonus(relicIds[i]);
             require(
-                block.timestamp - reliquary.genesis(relicIds[i]) >= 1 days
+                block.timestamp - _reliquary.genesis(relicIds[i]) >= 1 days
                     && (lastBonus == 0 || block.timestamp - lastBonus >= 1 days),
                 "too soon since last bonus"
             );
 
             seeds[relicIds[i]] = seed;
-            reliquary.commitLastMaturityBonus(relicIds[i]);
+            _reliquary.commitLastMaturityBonus(relicIds[i]);
             unchecked {
                 ++i;
             }
@@ -68,6 +69,6 @@ contract Gym is UseRandom {
      */
     function _train(uint relicId, uint rand) internal {
         delete seeds[relicId];
-        reliquary.modifyMaturity(relicId, rand);
+        IReliquaryGamified(reliquary).modifyMaturity(relicId, rand);
     }
 }

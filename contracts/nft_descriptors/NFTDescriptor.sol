@@ -18,24 +18,25 @@ contract NFTDescriptor is INFTDescriptor {
     string private constant IPFS = "https://gateway.pinata.cloud/ipfs/QmZgqnwcKxQhK23wiuVh1YfDg2YFcvhpJr3BNZfbCMQNvy/";
     uint private constant NUM_CHARACTERS = 2;
 
-    IReliquary public immutable reliquary;
+    address public immutable reliquary;
 
-    constructor(IReliquary _reliquary) {
+    constructor(address _reliquary) {
         reliquary = _reliquary;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values.
     function constructTokenURI(uint relicId) external view override returns (string memory uri) {
-        PositionInfo memory position = reliquary.getPositionForId(relicId);
-        PoolInfo memory pool = reliquary.getPoolInfo(position.poolId);
-        LevelInfo memory levelInfo = reliquary.getLevelInfo(position.poolId);
-        address underlying = address(reliquary.poolToken(position.poolId));
+        IReliquary _reliquary = IReliquary(reliquary);
+        PositionInfo memory position = _reliquary.getPositionForId(relicId);
+        PoolInfo memory pool = _reliquary.getPoolInfo(position.poolId);
+        LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
+        address underlying = address(_reliquary.poolToken(position.poolId));
         string memory amount = generateDecimalString(position.amount, IERC20Metadata(underlying).decimals());
-        string memory pendingReward = generateDecimalString(reliquary.pendingReward(relicId), 18);
+        string memory pendingReward = generateDecimalString(_reliquary.pendingReward(relicId), 18);
         uint maturity = (block.timestamp - position.entry) / 1 days;
-        string memory rewardSymbol = IERC20Metadata(address(reliquary.rewardToken())).symbol();
+        string memory rewardSymbol = IERC20Metadata(address(_reliquary.rewardToken())).symbol();
 
-        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(reliquary)))) % NUM_CHARACTERS;
+        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(_reliquary)))) % NUM_CHARACTERS;
 
         string memory description = generateDescription(pool.name);
         string memory attributes = generateAttributes(position, amount, pendingReward, rewardSymbol, maturity);
