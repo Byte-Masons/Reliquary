@@ -3,6 +3,7 @@
 pragma solidity ^0.8.15;
 
 import "./SingleAssetRewarder.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
 contract MultiplierRewarder is SingleAssetRewarder {

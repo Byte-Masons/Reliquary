@@ -5,7 +5,6 @@ pragma solidity ^0.8.15;
 import "../interfaces/IRewarder.sol";
 import "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 abstract contract SingleAssetRewarder is IRewarder {
     IERC20 public immutable rewardToken;
