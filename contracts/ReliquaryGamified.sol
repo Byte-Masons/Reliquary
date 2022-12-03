@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "./Reliquary.sol";
 import "./interfaces/IReliquaryGamified.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     /// @dev Access control role.
@@ -19,23 +20,16 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     constructor(address _rewardToken, address _emissionCurve) Reliquary(_rewardToken, _emissionCurve) {}
 
     /**
-     * @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity within set limits.
+     * @notice Allows an address with the MATURITY_MODIFIER role to modify a position's maturity.
      * @param relicId The NFT ID of the position being modified.
-     * @param points Number of seconds to reduce the position's entry by (increasing maturity), before maximum.
-     * @return receivedBonus Actual maturity bonus received after maximum.
+     * @param bonus Number of seconds to reduce the position's entry by (increasing maturity).
      */
-    function modifyMaturity(uint relicId, uint points)
-        external
-        override
-        onlyRole(MATURITY_MODIFIER)
-        returns (uint receivedBonus)
-    {
-        receivedBonus = Math.min(1 days, points);
+    function modifyMaturity(uint relicId, uint bonus) external override onlyRole(MATURITY_MODIFIER) {
         PositionInfo storage position = positionForId[relicId];
-        position.entry -= receivedBonus;
+        position.entry -= bonus;
         _updatePosition(0, relicId, Kind.OTHER, address(0));
 
-        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, receivedBonus);
+        emit MaturityBonus(position.poolId, ownerOf(relicId), relicId, bonus);
     }
 
     /// @dev Commit or "spend" the last maturity bonus time of the Relic before value of bonus is revealed, resetting
