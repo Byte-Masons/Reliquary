@@ -46,18 +46,6 @@ contract MultiplierRewarder is SingleAssetRewarder {
         emit LogOnReward(relicId, rewardAmount, to);
     }
 
-    /// @notice Called by Reliquary _deposit function.
-    function onDeposit(
-        uint, //relicId
-        uint //depositAmount
-    ) external virtual override {}
-
-    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
-    function onWithdraw(
-        uint, //relicId
-        uint //withdrawalAmount
-    ) external virtual override {}
-
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
     /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
     function pendingToken(
