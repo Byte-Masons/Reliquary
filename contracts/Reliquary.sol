@@ -9,7 +9,6 @@ import "./interfaces/INFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
@@ -28,7 +27,6 @@ import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
  * trade their Relics without withdrawing liquidity or affecting the position's maturity.
  */
 contract Reliquary is
-    ERC165,
     IReliquary,
     ERC721Burnable,
     ERC721Enumerable,
@@ -626,7 +624,7 @@ contract Reliquary is
         public
         view
         virtual
-        override (IERC165, ERC165, AccessControlEnumerable, ERC721, ERC721Enumerable)
+        override (IERC165, AccessControlEnumerable, ERC721, ERC721Enumerable)
         returns (bool)
     {
         return interfaceId == type(IReliquary).interfaceId || super.supportsInterface(interfaceId);

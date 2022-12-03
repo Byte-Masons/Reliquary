@@ -60,7 +60,7 @@ struct PendingReward {
     uint pendingReward;
 }
 
-interface IReliquary is IERC165, IERC721Enumerable {
+interface IReliquary is IERC721Enumerable {
     function setEmissionCurve(address _emissionCurve) external;
     function addPool(
         uint allocPoint,
