@@ -68,6 +68,17 @@ contract DepositBonusRewarder is SingleAssetRewarder {
         require(_claimDepositBonus(to, block.timestamp, _lastDepositTime), "nothing to claim");
     }
 
+    /// @inheritdoc SingleAssetRewarder
+    function pendingToken(
+        uint relicId,
+        uint //rewardAmount
+    ) public view override returns (uint pending) {
+        uint _lastDepositTime = lastDepositTime[relicId];
+        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
+            pending += depositBonus;
+        }
+    }
+
     /**
      * @dev Internal claimDepositBonus function.
      * @param to Address to send the depositBonus to.
@@ -81,17 +92,6 @@ contract DepositBonusRewarder is SingleAssetRewarder {
             claimed = true;
         } else {
             claimed = false;
-        }
-    }
-
-    /// @inheritdoc SingleAssetRewarder
-    function pendingToken(
-        uint relicId,
-        uint //rewardAmount
-    ) public view override returns (uint pending) {
-        uint _lastDepositTime = lastDepositTime[relicId];
-        if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
-            pending += depositBonus;
         }
     }
 }

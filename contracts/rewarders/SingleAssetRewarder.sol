@@ -37,10 +37,6 @@ abstract contract SingleAssetRewarder is IRewarder {
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
     function onWithdraw(uint relicId, uint withdrawalAmount) external virtual override {}
 
-    /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
-    function pendingToken(uint relicId, uint rewardAmount) public view virtual returns (uint pending) {}
-
     /**
      * @notice Returns the amount of pending tokens for a position from this rewarder.
      * Interface supports multiple tokens.
@@ -59,4 +55,8 @@ abstract contract SingleAssetRewarder is IRewarder {
         rewardAmounts = new uint[](1);
         rewardAmounts[0] = pendingToken(relicId, rewardAmount);
     }
+
+    /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+    function pendingToken(uint relicId, uint rewardAmount) public view virtual returns (uint pending) {}
 }

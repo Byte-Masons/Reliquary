@@ -76,7 +76,7 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     }
 
     /// @inheritdoc Reliquary
-    function supportsInterface(bytes4 interfaceId) public view override (IReliquary, Reliquary) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override (IERC165, Reliquary) returns (bool) {
         return interfaceId == type(IReliquaryGamified).interfaceId || super.supportsInterface(interfaceId);
     }
 }

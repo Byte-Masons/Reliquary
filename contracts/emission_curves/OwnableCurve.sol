@@ -17,13 +17,13 @@ contract OwnableCurve is IEmissionCurve, Ownable {
         _setRate(_rate);
     }
 
+    function getRate(uint) external view override returns (uint) {
+        return rate;
+    }
+
     function _setRate(uint _rate) internal {
         require(_rate <= 6e18, "maximum emission rate exceeded");
         rate = _rate;
         emit LogRate(_rate);
-    }
-
-    function getRate(uint) external view override returns (uint) {
-        return rate;
     }
 }

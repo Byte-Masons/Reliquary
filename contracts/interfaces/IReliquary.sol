@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @notice Info for each Reliquary position.
@@ -59,10 +60,8 @@ struct PendingReward {
     uint pendingReward;
 }
 
-interface IReliquary is IERC721Enumerable {
-    function burn(uint tokenId) external;
+interface IReliquary is IERC165, IERC721Enumerable {
     function setEmissionCurve(address _emissionCurve) external;
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
     function addPool(
         uint allocPoint,
         address _poolToken,
@@ -80,36 +79,36 @@ interface IReliquary is IERC721Enumerable {
         address _nftDescriptor,
         bool overwriteRewarder
     ) external;
-    function pendingReward(uint relicId) external view returns (uint pending);
-    function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
-    function relicPositionsOfOwner(address owner)
-        external
-        view
-        returns (uint[] memory relicIds, PositionInfo[] memory positionInfos);
-    function levelOnUpdate(uint relicId) external view returns (uint level);
     function massUpdatePools(uint[] calldata pids) external;
     function updatePool(uint pid) external;
-    function createRelicAndDeposit(address to, uint pid, uint amount) external returns (uint id);
     function deposit(uint amount, uint relicId) external;
     function withdraw(uint amount, uint relicId) external;
     function harvest(uint relicId, address harvestTo) external;
     function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external;
     function emergencyWithdraw(uint relicId) external;
     function updatePosition(uint relicId) external;
+    function getPositionForId(uint) external view returns (PositionInfo memory);
+    function getPoolInfo(uint) external view returns (PoolInfo memory);
+    function getLevelInfo(uint) external view returns (LevelInfo memory);
+    function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
+    function relicPositionsOfOwner(address owner)
+        external
+        view
+        returns (uint[] memory relicIds, PositionInfo[] memory positionInfos);
+    function isApprovedOrOwner(address, uint) external view returns (bool);
+    function createRelicAndDeposit(address to, uint pid, uint amount) external returns (uint id);
     function split(uint relicId, uint amount, address to) external returns (uint newId);
     function shift(uint fromId, uint toId, uint amount) external;
     function merge(uint fromId, uint toId) external;
+    function burn(uint tokenId) external;
+    function pendingReward(uint relicId) external view returns (uint pending);
+    function levelOnUpdate(uint relicId) external view returns (uint level);
+    function poolLength() external view returns (uint);
 
-    // State
     function rewardToken() external view returns (address);
     function nftDescriptor(uint) external view returns (address);
     function emissionCurve() external view returns (address);
-    function getPoolInfo(uint) external view returns (PoolInfo memory);
-    function getLevelInfo(uint) external view returns (LevelInfo memory);
     function poolToken(uint) external view returns (address);
     function rewarder(uint) external view returns (address);
-    function getPositionForId(uint) external view returns (PositionInfo memory);
     function totalAllocPoint() external view returns (uint);
-    function poolLength() external view returns (uint);
-    function isApprovedOrOwner(address, uint) external view returns (bool);
 }
