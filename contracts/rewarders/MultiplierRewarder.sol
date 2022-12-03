@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.15;
+
+import "./SingleAssetRewarder.sol";
+
+/// @title Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
+contract MultiplierRewarder is SingleAssetRewarder {
+    using SafeERC20 for IERC20;
+
+    uint private immutable BASIS_POINTS;
+    uint public rewardMultiplier;
+
+    event LogOnReward(uint indexed relicId, uint amount, address indexed to);
+
+    /**
+     * @dev Contructor called on deployment of this contract.
+     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
+     * @param _rewardToken Address of token rewards are distributed in.
+     * @param _reliquary Address of Reliquary this rewarder will read state from.
+     */
+    constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
+        SingleAssetRewarder(_rewardToken, _reliquary)
+    {
+        rewardMultiplier = _rewardMultiplier;
+        BASIS_POINTS = 10 ** IERC20Metadata(address(_reliquary.rewardToken())).decimals();
+    }
+
+    /**
+     * @notice Called by Reliquary harvest or withdrawAndHarvest function.
+     * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+     * @param to Address to send rewards to.
+     */
+    function onReward(uint relicId, uint rewardAmount, address to) external virtual override onlyReliquary {
+        _onReward(relicId, rewardAmount, to);
+    }
+
+    /// @dev Separate internal function that may be called by inheriting contracts.
+    function _onReward(uint relicId, uint rewardAmount, address to) internal {
+        if (rewardMultiplier != 0) {
+            rewardToken.safeTransfer(to, pendingToken(relicId, rewardAmount));
+        }
+        emit LogOnReward(relicId, rewardAmount, to);
+    }
+
+    /// @notice Called by Reliquary _deposit function.
+    function onDeposit(
+        uint, //relicId
+        uint //depositAmount
+    ) external virtual override {}
+
+    /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
+    function onWithdraw(
+        uint, //relicId
+        uint //withdrawalAmount
+    ) external virtual override {}
+
+    /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
+    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+    function pendingToken(
+        uint, //relicId
+        uint rewardAmount
+    ) public view override returns (uint pending) {
+        pending = rewardAmount * rewardMultiplier / BASIS_POINTS;
+    }
+}

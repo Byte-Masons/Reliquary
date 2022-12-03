@@ -243,7 +243,6 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testDepositBonusRewarder() public {
         DepositBonusRewarder rewarder = new DepositBonusRewarder(
-            0,
             1000 ether,
             1 ether,
             1 days,

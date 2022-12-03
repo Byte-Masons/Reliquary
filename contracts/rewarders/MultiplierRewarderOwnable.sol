@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.17;
 
-import "./SingleAssetRewarder.sol";
+import "./MultiplierRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
-/// @title Ownable extension of SingleAssetRewarder that allows the owner to change the rewardMultiplier
-contract SingleAssetRewarderOwnable is SingleAssetRewarder, Ownable {
+/// @title Ownable extension of MultiplierRewarder that allows the owner to change the rewardMultiplier
+contract MultiplierRewarderOwnable is MultiplierRewarder, Ownable {
     event LogRewardMultiplier(uint rewardMultiplier);
 
     /**
@@ -16,7 +16,7 @@ contract SingleAssetRewarderOwnable is SingleAssetRewarder, Ownable {
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
     constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
-        SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary)
+        MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
     {}
 
     /// @notice Set a new rewardMultiplier. Only callable by `owner`.

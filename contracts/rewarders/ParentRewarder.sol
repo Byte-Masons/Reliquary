@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
-contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
+contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private childrenRewarders;
@@ -28,7 +28,7 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
     constructor(uint _rewardMultiplier, IERC20 _rewardToken, IReliquary _reliquary)
-        SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary)
+        MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -48,26 +48,23 @@ contract ParentRewarder is SingleAssetRewarder, AccessControlEnumerable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
      * @param owner Address to transfer ownership of the ChildRewarder contract to.
-     * @return Address of the new ChildRewarder.
+     * @return child Address of the new ChildRewarder.
      */
     function createChild(IERC20 _rewardToken, uint _rewardMultiplier, address owner)
         external
         onlyRole(CHILD_SETTER)
-        returns (address)
+        returns (address child)
     {
-        ChildRewarder child = new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary);
-        Ownable(address(child)).transferOwnership(owner);
-        childrenRewarders.add(address(child));
-        emit ChildCreated(address(child), address(_rewardToken));
-        return address(child);
+        child = address(new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary));
+        Ownable(child).transferOwnership(owner);
+        childrenRewarders.add(child);
+        emit ChildCreated(child, address(_rewardToken));
     }
 
     /// @notice Removes a ChildRewarder from the childrenRewarders set.
     /// @param childRewarder Address of the ChildRewarder contract to remove.
     function removeChild(address childRewarder) external onlyRole(CHILD_SETTER) {
-        if (!childrenRewarders.remove(childRewarder)) {
-            revert("That is not my child rewarder!");
-        }
+        require(childrenRewarders.remove(childRewarder), "That is not my child rewarder!");
         emit ChildRemoved(childRewarder);
     }
 

@@ -18,21 +18,15 @@ contract DepositBonusRewarder is SingleAssetRewarder {
 
     /**
      * @dev Contructor called on deployment of this contract.
-     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
      * @param _depositBonus Bonus owed when cadence has elapsed since lastDepositTime.
      * @param _minimum The minimum deposit amount to be eligible for depositBonus.
      * @param _cadence The minimum elapsed time since lastDepositTime.
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(
-        uint _rewardMultiplier,
-        uint _depositBonus,
-        uint _minimum,
-        uint _cadence,
-        IERC20 _rewardToken,
-        IReliquary _reliquary
-    ) SingleAssetRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
+    constructor(uint _depositBonus, uint _minimum, uint _cadence, IERC20 _rewardToken, IReliquary _reliquary)
+        SingleAssetRewarder(_rewardToken, _reliquary)
+    {
         require(_minimum != 0, "no minimum set!");
         require(_cadence >= 1 days, "please set a reasonable cadence");
         depositBonus = _depositBonus;
@@ -89,26 +83,13 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingToken(uint relicId, uint rewardAmount) public view override returns (uint pending) {
-        pending = super.pendingToken(relicId, rewardAmount);
+    function pendingToken(
+        uint relicId,
+        uint //rewardAmount
+    ) public view override returns (uint pending) {
         uint _lastDepositTime = lastDepositTime[relicId];
         if (_lastDepositTime != 0 && block.timestamp - _lastDepositTime >= cadence) {
             pending += depositBonus;
         }
-    }
-
-    /// @inheritdoc SingleAssetRewarder
-    function pendingTokens(uint relicId, uint rewardAmount)
-        external
-        view
-        override
-        returns (IERC20[] memory rewardTokens, uint[] memory rewardAmounts)
-    {
-        rewardTokens = new IERC20[](1);
-        rewardTokens[0] = rewardToken;
-
-        uint reward = pendingToken(relicId, rewardAmount);
-        rewardAmounts = new uint[](1);
-        rewardAmounts[0] = reward;
     }
 }
