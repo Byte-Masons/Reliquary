@@ -5,31 +5,31 @@ import "forge-std/Test.sol";
 import "contracts/Reliquary.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
-import "contracts/test/TestToken.sol";
 import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
     using Strings for address;
     using Strings for uint;
 
     Reliquary reliquary;
-    TestToken oath;
-    TestToken testToken;
+    ERC20DecimalsMock oath;
+    ERC20DecimalsMock testToken;
     address nftDescriptor;
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        oath = new TestToken("Oath Token", "OATH", 18);
+        oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         IEmissionCurve curve = IEmissionCurve(address(new Constant()));
         reliquary = new Reliquary(address(oath), address(curve));
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
-        testToken = new TestToken("Test Token", "TT", 6);
+        testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
@@ -261,12 +261,12 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testParentRewarder() public {
-        TestToken parentToken = new TestToken("Parent Token", "PT", 18);
+        ERC20DecimalsMock parentToken = new ERC20DecimalsMock("Parent Token", "PT", 18);
         ParentRewarder parent = new ParentRewarder(5e17, address(parentToken), address(reliquary));
         parentToken.mint(address(parent), 1_000_000 ether);
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
 
-        TestToken childToken = new TestToken("Child Token", "CT", 6);
+        ERC20DecimalsMock childToken = new ERC20DecimalsMock("Child Token", "CT", 6);
         address child = parent.createChild(address(childToken), 2e6, address(this));
         childToken.mint(child, 1_000_000 ether);
 

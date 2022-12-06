@@ -6,7 +6,7 @@ import "contracts/helpers/DepositHelper.sol";
 import "contracts/Reliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/emission_curves/Constant.sol";
-import "contracts/test/TestToken.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC4626Mock.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
@@ -14,20 +14,20 @@ contract DepositHelperTest is ERC721Holder, Test {
     DepositHelper helper;
     Reliquary reliquary;
     IERC4626 vault;
-    TestToken oath;
-    TestToken weth;
+    ERC20DecimalsMock oath;
+    ERC20DecimalsMock weth;
 
     uint[] wethCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] wethLevels = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        oath = new TestToken("Oath Token", "OATH", 18);
+        oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         reliquary = new Reliquary(
             address(oath),
             address(new Constant())
         );
 
-        weth = new TestToken("Wrapped Ether", "wETH", 18);
+        weth = new ERC20DecimalsMock("Wrapped Ether", "wETH", 18);
         vault = new ERC4626Mock(weth, "ETH Optimizer", "relETH");
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));

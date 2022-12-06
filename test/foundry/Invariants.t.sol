@@ -8,7 +8,7 @@ import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/ReliquaryUser.sol";
 import "contracts/test/Skipper.sol";
-import "contracts/test/TestToken.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
 contract Invariants is Test {
     Reliquary reliquary;
@@ -19,10 +19,10 @@ contract Invariants is Test {
     uint[] levels = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        TestToken oath = new TestToken("Oath Token", "OATH", 18);
+        ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         reliquary = new Reliquary(address(oath), address(new Constant()));
         oath.mint(address(reliquary), 100_000_000 ether);
-        TestToken testToken = new TestToken("Test Token", "TT", 6);
+        ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(1000, address(testToken), address(0), curve, levels, "Test Token", nftDescriptor);

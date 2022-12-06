@@ -6,8 +6,8 @@ import "contracts/gamification/Gym.sol";
 import "contracts/ReliquaryGamified.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
-import "contracts/test/TestToken.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
 contract GymTest is ERC721Holder, Test {
     Gym gym;
@@ -21,12 +21,12 @@ contract GymTest is ERC721Holder, Test {
     function setUp() public {
         vm.createSelectFork("fantom");
 
-        TestToken oath = new TestToken("Oath Token", "OATH", 18);
+        ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         address curve = address(new Constant());
 
         reliquary = new ReliquaryGamified(address(oath), curve);
 
-        TestToken testToken = new TestToken("Test Token", "TT", 6);
+        ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint).max);
 
