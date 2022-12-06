@@ -6,44 +6,46 @@ import "contracts/helpers/DepositHelper.sol";
 import "contracts/Reliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/emission_curves/Constant.sol";
+import "contracts/test/TestToken.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC4626Mock.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-contract DepositHelperTest is Test {
+contract DepositHelperTest is ERC721Holder, Test {
     DepositHelper helper;
     Reliquary reliquary;
     IERC4626 vault;
-    IERC20 weth;
-    address constant WETH_WHALE = 0x2400BB4D7221bA530Daee061D5Afe219E9223Eae;
+    TestToken oath;
+    TestToken weth;
 
     uint[] wethCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] wethLevels = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        vm.createSelectFork("fantom", 43052549);
-
+        oath = new TestToken("Oath Token", "OATH", 18);
         reliquary = new Reliquary(
-            0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6,
+            address(oath),
             address(new Constant())
         );
-        vault = IERC4626(0x58C60B6dF933Ff5615890dDdDCdD280bad53f1C1);
+
+        weth = new TestToken("Wrapped Ether", "wETH", 18);
+        vault = new ERC4626Mock(weth, "ETH Optimizer", "relETH");
+
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
         reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", address(nftDescriptor));
 
         helper = new DepositHelper(address(reliquary));
-        weth = IERC20(vault.asset());
 
-        vm.startPrank(WETH_WHALE);
+        weth.mint(address(this), 1_000_000 ether);
         weth.approve(address(helper), type(uint).max);
         Reliquary(helper.reliquary()).setApprovalForAll(address(helper), true);
-        vm.stopPrank();
     }
 
     function testCreateNew(uint amount) public {
-        amount = bound(amount, 10, weth.balanceOf(WETH_WHALE));
-        vm.prank(WETH_WHALE);
+        amount = bound(amount, 10, weth.balanceOf(address(this)));
         uint relicId = helper.createRelicAndDeposit(0, amount);
 
-        assertEq(reliquary.balanceOf(WETH_WHALE), 1, "no Relic given");
+        assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
         assertEq(
             reliquary.getPositionForId(relicId).amount,
             vault.convertToShares(amount),
@@ -54,12 +56,10 @@ contract DepositHelperTest is Test {
     function testDepositExisting(uint amountA, uint amountB) public {
         amountA = bound(amountA, 10, type(uint).max / 2);
         amountB = bound(amountB, 10, type(uint).max / 2);
-        vm.assume(amountA + amountB <= weth.balanceOf(WETH_WHALE));
+        vm.assume(amountA + amountB <= weth.balanceOf(address(this)));
 
-        vm.startPrank(WETH_WHALE);
         uint relicId = helper.createRelicAndDeposit(0, amountA);
         helper.deposit(amountB, relicId);
-        vm.stopPrank();
 
         uint relicAmount = reliquary.getPositionForId(relicId).amount;
         uint expectedAmount = vault.convertToShares(amountA + amountB);
@@ -67,14 +67,12 @@ contract DepositHelperTest is Test {
     }
 
     function testWithdraw(uint amount, bool harvest) public {
-        uint initialBalance = weth.balanceOf(WETH_WHALE);
+        uint initialBalance = weth.balanceOf(address(this));
         amount = bound(amount, 10, initialBalance);
 
-        vm.startPrank(WETH_WHALE);
         uint relicId = helper.createRelicAndDeposit(0, amount);
         helper.withdraw(amount, relicId, harvest);
-        vm.stopPrank();
 
-        assertApproxEqAbs(weth.balanceOf(WETH_WHALE), initialBalance, 10);
+        assertApproxEqAbs(weth.balanceOf(address(this)), initialBalance, 10);
     }
 }
