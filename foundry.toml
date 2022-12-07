@@ -16,6 +16,7 @@ rpc_endpoints = { fantom = "https://rpcapi.fantom.network" }
 #sender = ''
 #initial_balance = '0xffffffffffffffffffffffff'
 ffi = false
+fs_permissions = [{ access = "read", path = "./"}]
 #invariant_fail_on_revert = true
 
 # Do not use in production

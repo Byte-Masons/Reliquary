@@ -2,6 +2,7 @@
 node_modules
 .env
 secrets.json
+scripts/deploy_conf.json
 
 #Hardhat files
 cache

@@ -1,0 +1,44 @@
+########################################################################################################################
+#                                                                                                                      #
+# Below is example content for the config_deploy.json file. It is very important to configure each option properly, as #
+# some properties are immutable once on chain.                                                                         #
+#                                                                                                                      #
+# `multisig`: Address to transfer admin roles to at end of script. Leaving set to 0x0 will skip this step, leaving the #
+#     deployer's address as the admin.                                                                                 #
+# `rewardToken`: Address of the token this Reliquary deployment is emitting.                                           #
+# `emissionRate`: Emission rate of `rewardToken` from the Reliquary each second.                                       #
+#                                                                                                                      #
+# `numberOfPools`: Number of pools to add during deployment. Must be equal to number of pool objects defined below.    #
+# `pool#`: Must be numbered in order starting from 1. Must have each property defined in the correct order shown.      #
+#     `allocPoint`: Amount of allocation points for this pool. The pool will receive emissions proportional to the     #
+#         total number of allocation points for all pools.                                                             #
+#     `erc4626Vault`: Address for the token this pool takes for deposits. Must be an ERC4626 vault token.              #
+#     `levelMultipliers`: Multiplier applied to position's in each maturity level when calculating rewards.            #
+#     `name`: Name of the pool.                                                                                        #
+#     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
+#                                                                                                                      #
+########################################################################################################################
+
+{
+    "multisig": "0x0",
+    "rewardToken": "0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6",
+    "emissionRate": "1e10",
+
+    "numberOfPools": 2,
+    "pool1":
+    {
+        "allocPoint": 100,
+        "erc4626Vault": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
+        "levelMultipliers": [100, 120, 150, 200, 300, 400, 500, 750],
+        "name": "USDC Optimizer",
+        "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000]
+    },
+    "pool2":
+    {
+        "allocPoint": 50,
+        "erc4626Vault": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",
+        "levelMultipliers": [100, 120, 150, 200, 300, 400],
+        "name": "ETH Optimizer",
+        "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000]
+    }
+}

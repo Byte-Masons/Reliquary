@@ -3,45 +3,70 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import "contracts/Reliquary.sol";
-import "contracts/emission_curves/Constant.sol";
+import "contracts/emission_curves/OwnableCurve.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/helpers/DepositHelper.sol";
+import "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract Deploy is Script {
-    uint[] wethCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
-    uint[] wethLevels = [100, 120, 150, 200, 300, 400, 500, 750];
+    using stdJson for string;
+    using Strings for uint;
 
-    bytes32 public constant OPERATOR = keccak256("OPERATOR");
-    bytes32 public constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    struct Pool {
+        uint allocPoint;
+        address erc4626Vault;
+        uint[] levelMultipliers;
+        string name;
+        uint[] requiredMaturities;
+    }
 
-    address public constant MULTISIG = 0x111731A388743a75CF60CCA7b140C58e41D83635;
+    uint[] requiredMaturities;
+    uint[] levelMultipliers;
 
-    Reliquary public reliquary;
-    address public nftDescriptor;
-    DepositHelper public helper;
+    bytes32 constant OPERATOR = keccak256("OPERATOR");
+    bytes32 constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
 
     function run() external {
-        //vm.createSelectFork("fantom", 43052549);
+        string memory config = vm.readFile("scripts/deploy_conf.json");
+        address multisig = config.readAddress(".multisig");
+        address rewardToken = config.readAddress(".rewardToken");
+        uint emissionRate = config.readUint(".emissionRate");
+
         vm.startBroadcast();
 
-        IERC20 oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
-        address curve = address(new Constant());
-        reliquary = new Reliquary(address(oath), curve);
+        OwnableCurve curve = new OwnableCurve(emissionRate);
 
-        nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
+        Reliquary reliquary = new Reliquary(rewardToken, address(curve));
 
-        address wethCrypt = 0xD8E353151e5AEaFd08e8b631Ff9484Bc0fc18371;
+        address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
 
         reliquary.grantRole(OPERATOR, tx.origin);
-        reliquary.addPool(100, wethCrypt, address(0), wethCurve, wethLevels, "ETH Pool", nftDescriptor);
 
-        reliquary.grantRole(reliquary.DEFAULT_ADMIN_ROLE(), MULTISIG);
-        reliquary.grantRole(OPERATOR, MULTISIG);
-        reliquary.grantRole(EMISSION_CURVE, MULTISIG);
-        reliquary.renounceRole(OPERATOR, tx.origin);
-        reliquary.renounceRole(reliquary.DEFAULT_ADMIN_ROLE(), tx.origin);
+        uint numPools = config.readUint(".numberOfPools");
+        for (uint i = 1; i <= numPools; ++i) {
+            Pool memory pool = abi.decode(config.parseRaw(string.concat(".pool", i.toString())), (Pool));
+            reliquary.addPool(
+                pool.allocPoint,
+                pool.erc4626Vault,
+                address(0),
+                pool.requiredMaturities,
+                pool.levelMultipliers,
+                pool.name,
+                nftDescriptor
+            );
+        }
 
-        helper = new DepositHelper(address(reliquary));
+        if (multisig != address(0)) {
+            bytes32 defaultAdminRole = reliquary.DEFAULT_ADMIN_ROLE();
+            reliquary.grantRole(defaultAdminRole, multisig);
+            reliquary.grantRole(OPERATOR, multisig);
+            reliquary.grantRole(EMISSION_CURVE, multisig);
+            reliquary.renounceRole(OPERATOR, tx.origin);
+            reliquary.renounceRole(defaultAdminRole, tx.origin);
+            curve.transferOwnership(multisig);
+        }
+
+        new DepositHelper(address(reliquary));
 
         vm.stopBroadcast();
     }
