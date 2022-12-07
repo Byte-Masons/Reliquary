@@ -11,10 +11,12 @@
 # `pools`: May be of any length (or empty). Each member must have each property defined in the correct order shown.    #
 #     `allocPoint`: Amount of allocation points for this pool. The pool will receive emissions proportional to the     #
 #         total number of allocation points for all pools.                                                             #
-#     `erc4626Vault`: Address for the token this pool takes for deposits. Must be an ERC4626 vault token.              #
 #     `levelMultipliers`: Multiplier applied to size of positions in each maturity level when calculating rewards.     #
 #     `name`: Name of the pool.                                                                                        #
+#     `poolToken`: Address for the token this pool takes for deposits.                                                 #
 #     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
+#     `tokenType`: Type of NFTDescriptor to use for this token. Valid values are "normal", "4626", and "pair". Use     #
+#         "4626" if `poolToken` is an ERC4626 contract, and "pair" if it is a UniswapV2Pair.                           #
 #                                                                                                                      #
 ########################################################################################################################
 
@@ -26,17 +28,19 @@
     "pools": [
         {
             "allocPoint": 100,
-            "erc4626Vault": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
             "levelMultipliers": [100, 120, 150, 200, 300, 400, 500, 750],
             "name": "USDC Optimizer",
-            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000]
+            "poolToken": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
+            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000],
+            "tokenType": "4626"
         },
         {
             "allocPoint": 50,
-            "erc4626Vault": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",
             "levelMultipliers": [100, 120, 150, 200, 300, 400],
             "name": "ETH Optimizer",
-            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000]
+            "poolToken": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",
+            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000],
+            "tokenType": "4626"
         }
     ]
 }
