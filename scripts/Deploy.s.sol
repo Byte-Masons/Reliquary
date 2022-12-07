@@ -42,9 +42,9 @@ contract Deploy is Script {
 
         reliquary.grantRole(OPERATOR, tx.origin);
 
-        uint numPools = config.readUint(".numberOfPools");
-        for (uint i = 1; i <= numPools; ++i) {
-            Pool memory pool = abi.decode(config.parseRaw(string.concat(".pool", i.toString())), (Pool));
+        Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
+        for (uint i = 0; i < pools.length; ++i) {
+            Pool memory pool = pools[i];
             reliquary.addPool(
                 pool.allocPoint,
                 pool.erc4626Vault,
