@@ -1,7 +1,7 @@
 ########################################################################################################################
 #                                                                                                                      #
 # Below is example content for the config_deploy.json file. It is very important to configure each option properly, as #
-# some properties are immutable once on chain.                                                                         #
+# some properties are immutable once on chain. DO NOT INCLUDE THIS COMMENT BLOCK IN THE JSON FILE.                     #
 #                                                                                                                      #
 # `multisig`: Address to transfer admin roles to at end of script. Leaving set to 0x0 will skip this step, leaving the #
 #     deployer's address as the admin.                                                                                 #
@@ -13,7 +13,7 @@
 #     `allocPoint`: Amount of allocation points for this pool. The pool will receive emissions proportional to the     #
 #         total number of allocation points for all pools.                                                             #
 #     `erc4626Vault`: Address for the token this pool takes for deposits. Must be an ERC4626 vault token.              #
-#     `levelMultipliers`: Multiplier applied to position's in each maturity level when calculating rewards.            #
+#     `levelMultipliers`: Multiplier applied to size of positions in each maturity level when calculating rewards.     #
 #     `name`: Name of the pool.                                                                                        #
 #     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
 #                                                                                                                      #
