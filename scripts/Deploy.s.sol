@@ -4,15 +4,12 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "contracts/Reliquary.sol";
 import "contracts/emission_curves/OwnableCurve.sol";
-import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/helpers/DepositHelper.sol";
-import "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract Deploy is Script {
     using stdJson for string;
-    using Strings for uint;
 
     struct Pool {
         uint allocPoint;
