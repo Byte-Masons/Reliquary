@@ -21,7 +21,7 @@
 {
     "multisig": "0x0",
     "rewardToken": "0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6",
-    "emissionRate": "1e10",
+    "emissionRate": "10000000000",
 
     "pools": [
         {
