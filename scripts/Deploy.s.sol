@@ -20,9 +20,6 @@ contract Deploy is Script {
         string tokenType;
     }
 
-    uint[] requiredMaturities;
-    uint[] levelMultipliers;
-
     bytes32 constant OPERATOR = keccak256("OPERATOR");
     bytes32 constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
 
