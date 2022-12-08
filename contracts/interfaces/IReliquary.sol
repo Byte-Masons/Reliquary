@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @notice Info for each Reliquary position.

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.15;
 
 import "./SingleAssetRewarder.sol";
-import "../interfaces/IReliquary.sol";
+import {IReliquary} from "../interfaces/IReliquary.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title Extension of SingleAssetRewarder contract that distributes a bonus for deposits of a minimum size made on a
