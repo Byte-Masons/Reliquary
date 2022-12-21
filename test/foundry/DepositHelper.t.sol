@@ -31,7 +31,7 @@ contract DepositHelperTest is ERC721Holder, Test {
         vault = new ERC4626Mock(weth, "ETH Optimizer", "relETH");
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
-        reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
+        reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", address(nftDescriptor));
 
         helper = new DepositHelper(address(reliquary));
@@ -66,6 +66,13 @@ contract DepositHelperTest is ERC721Holder, Test {
         assertApproxEqAbs(expectedAmount, relicAmount, 1);
     }
 
+    function testRevertOnDepositUnauthorized() public {
+        uint relicId = helper.createRelicAndDeposit(0, 1);
+        vm.expectRevert(bytes("not owner or approved"));
+        vm.prank(address(1));
+        helper.deposit(1, relicId);
+    }
+
     function testWithdraw(uint amount, bool harvest) public {
         uint initialBalance = weth.balanceOf(address(this));
         amount = bound(amount, 10, initialBalance);
@@ -74,5 +81,12 @@ contract DepositHelperTest is ERC721Holder, Test {
         helper.withdraw(amount, relicId, harvest);
 
         assertApproxEqAbs(weth.balanceOf(address(this)), initialBalance, 10);
+    }
+
+    function testRevertOnWithdrawUnauthorized(bool harvest) public {
+        uint relicId = helper.createRelicAndDeposit(0, 1);
+        vm.expectRevert(bytes("not owner or approved"));
+        vm.prank(address(1));
+        helper.withdraw(1, relicId, harvest);
     }
 }

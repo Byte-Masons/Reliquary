@@ -24,8 +24,8 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function setUp() public {
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        IEmissionCurve curve = IEmissionCurve(address(new Constant()));
-        reliquary = new Reliquary(address(oath), address(curve));
+        address curve = address(new Constant());
+        reliquary = new Reliquary(address(oath), curve);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
@@ -45,7 +45,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
-        emit ReliquaryEvents.LogPoolModified(0, 100, address(0), address(nftDescriptor));
+        emit ReliquaryEvents.LogPoolModified(0, 100, address(0), nftDescriptor);
         reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
@@ -54,14 +54,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.modifyPool(1, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
-    function testRevertOnUnauthorized() public {
+    function testRevertOnModifyPoolUnauthorized() public {
         vm.expectRevert(
             bytes(
                 string.concat(
                     "AccessControl: account ",
                     address(1).toHexString(),
                     " is missing role ",
-                    uint(keccak256(bytes("OPERATOR"))).toHexString()
+                    uint(keccak256("OPERATOR")).toHexString()
                 )
             )
         );
@@ -112,9 +112,16 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnDepositInvalidPool(uint pool) public {
-        vm.assume(pool != 0);
+        pool = bound(pool, 1, type(uint).max);
         vm.expectRevert(Reliquary.NonExistentPool.selector);
         reliquary.createRelicAndDeposit(address(this), pool, 1);
+    }
+
+    function testRevertOnDepositUnauthorized() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
+        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.prank(address(1));
+        reliquary.deposit(1, relicId);
     }
 
     function testWithdraw(uint amount) public {
@@ -123,6 +130,13 @@ contract ReliquaryTest is ERC721Holder, Test {
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.Withdraw(0, amount, address(this), relicId);
         reliquary.withdraw(amount, relicId);
+    }
+
+    function testRevertOnWithdrawUnauthorized() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
+        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.prank(address(1));
+        reliquary.withdraw(1, relicId);
     }
 
     function testHarvest() public {
@@ -147,11 +161,25 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110399);
     }
 
+    function testRevertOnHarvestUnauthorized() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
+        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.prank(address(1));
+        reliquary.harvest(relicId, address(this));
+    }
+
     function testEmergencyWithdraw(uint amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.EmergencyWithdraw(0, amount, address(this), relicId);
+        reliquary.emergencyWithdraw(relicId);
+    }
+
+    function testRevertOnEmergencyWithdrawNotOwner() public {
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
+        vm.expectRevert(Reliquary.NotOwner.selector);
+        vm.prank(address(1));
         reliquary.emergencyWithdraw(relicId);
     }
 
