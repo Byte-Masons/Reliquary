@@ -84,15 +84,11 @@ contract Reliquary is
     error UnsortedMaturityLevels();
     error ZeroTotalAllocPoint();
     error NonExistentPool();
-    error DepositZeroAmount();
-    error WithdrawZeroAmount();
+    error ZeroAmount();
     error NotOwner();
-    error SplittingZeroAmount();
     error AmountExceedsDeposited();
-    error ShiftingZeroAmount();
-    error ShiftingToSameRelic();
+    error DuplicateRelicIds();
     error RelicsNotOfSamePool();
-    error MergingToSameRelic();
     error MergingEmptyRelics();
     error MaxEmissionRateExceeded();
     error NotApprovedOrOwner();
@@ -256,7 +252,7 @@ contract Reliquary is
      * @param relicId NFT ID of the position being withdrawn.
      */
     function withdraw(uint amount, uint relicId) external override nonReentrant {
-        if (amount == 0) revert WithdrawZeroAmount();
+        if (amount == 0) revert ZeroAmount();
         _requireApprovedOrOwner(relicId);
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
@@ -286,7 +282,7 @@ contract Reliquary is
      * @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
     function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external override nonReentrant {
-        if (amount == 0) revert WithdrawZeroAmount();
+        if (amount == 0) revert ZeroAmount();
         _requireApprovedOrOwner(relicId);
 
         (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
@@ -425,7 +421,7 @@ contract Reliquary is
      * @return newId The NFT ID of the new Relic.
      */
     function split(uint fromId, uint amount, address to) public virtual override nonReentrant returns (uint newId) {
-        if (amount == 0) revert SplittingZeroAmount();
+        if (amount == 0) revert ZeroAmount();
         _requireApprovedOrOwner(fromId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
@@ -462,8 +458,8 @@ contract Reliquary is
      * @param amount The amount being transferred.
      */
     function shift(uint fromId, uint toId, uint amount) public virtual override nonReentrant {
-        if (amount == 0) revert ShiftingZeroAmount();
-        if (fromId == toId) revert ShiftingToSameRelic();
+        if (amount == 0) revert ZeroAmount();
+        if (fromId == toId) revert DuplicateRelicIds();
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
 
@@ -512,7 +508,7 @@ contract Reliquary is
      * @param toId The NFT ID of the Relic being transferred to.
      */
     function merge(uint fromId, uint toId) public virtual override nonReentrant {
-        if (fromId == toId) revert MergingToSameRelic();
+        if (fromId == toId) revert DuplicateRelicIds();
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
 
@@ -657,7 +653,7 @@ contract Reliquary is
 
     /// @dev Internal deposit function that assumes relicId is valid.
     function _deposit(uint amount, uint relicId) internal {
-        if (amount == 0) revert DepositZeroAmount();
+        if (amount == 0) revert ZeroAmount();
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.DEPOSIT, address(0));
 
