@@ -195,6 +195,15 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.getPositionForId(newRelicId).amount, splitAmount);
     }
 
+    function testRevertOnSplitUnderflow(uint depositAmount, uint splitAmount) public {
+        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
+        splitAmount = bound(splitAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount);
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
+        vm.expectRevert(stdError.arithmeticError);
+        reliquary.split(relicId, splitAmount, address(this));
+    }
+
     function testShift(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
         depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
         depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
@@ -206,6 +215,16 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         assertEq(reliquary.getPositionForId(relicId).amount, depositAmount1 - shiftAmount);
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount2 + shiftAmount);
+    }
+
+    function testRevertOnShiftUnderflow(uint depositAmount, uint shiftAmount) public {
+        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
+        shiftAmount = bound(shiftAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount);
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
+        vm.expectRevert(stdError.arithmeticError);
+        reliquary.shift(relicId, newRelicId, shiftAmount);
     }
 
     function testMerge(uint depositAmount1, uint depositAmount2) public {

@@ -86,7 +86,6 @@ contract Reliquary is
     error NonExistentPool();
     error ZeroAmount();
     error NotOwner();
-    error AmountExceedsDeposited();
     error DuplicateRelicIds();
     error RelicsNotOfSamePool();
     error MergingEmptyRelics();
@@ -426,7 +425,6 @@ contract Reliquary is
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        if (amount > fromAmount) revert AmountExceedsDeposited();
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
 
@@ -465,7 +463,6 @@ contract Reliquary is
 
         PositionInfo storage fromPosition = positionForId[fromId];
         uint fromAmount = fromPosition.amount;
-        if (amount > fromAmount) revert AmountExceedsDeposited();
 
         uint poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
