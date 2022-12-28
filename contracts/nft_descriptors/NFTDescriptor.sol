@@ -189,20 +189,20 @@ contract NFTDescriptor is INFTDescriptor {
      * @param levelInfo Level info for this pool.
      */
     function generateBars(uint level, LevelInfo memory levelInfo) internal pure returns (string memory bars) {
-        uint highestAllocPoint = levelInfo.allocPoint[0];
-        for (uint i = 1; i < levelInfo.allocPoint.length; i++) {
-            if (levelInfo.allocPoint[i] > highestAllocPoint) {
-                highestAllocPoint = levelInfo.allocPoint[i];
+        uint highestMultiplier = levelInfo.multipliers[0];
+        for (uint i = 1; i < levelInfo.multipliers.length; i++) {
+            if (levelInfo.multipliers[i] > highestMultiplier) {
+                highestMultiplier = levelInfo.multipliers[i];
             }
         }
 
-        uint barWidth = GRAPH_WIDTH * 10 / levelInfo.allocPoint.length;
+        uint barWidth = GRAPH_WIDTH * 10 / levelInfo.multipliers.length;
         uint barWidthInt = barWidth / 10;
         string memory barWidthString =
             string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
         bars = '<svg x="43" y="226" width="210" height="30">';
-        for (uint i; i < levelInfo.allocPoint.length; i++) {
-            uint barHeight = levelInfo.allocPoint[i] * GRAPH_HEIGHT / highestAllocPoint;
+        for (uint i; i < levelInfo.multipliers.length; i++) {
+            uint barHeight = levelInfo.multipliers[i] * GRAPH_HEIGHT / highestMultiplier;
             bars = string.concat(
                 bars,
                 '<rect x="',

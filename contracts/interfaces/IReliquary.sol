@@ -36,14 +36,17 @@ struct PoolInfo {
 }
 
 /**
- * @notice Level that determines how maturity is rewarded.
- * `requiredMaturity` The minimum maturity (in seconds) required to reach this Level.
- * `allocPoint` Level's individual allocation - ratio of the total allocation.
- * `balance` Total number of tokens deposited in positions at this Level.
+ * @notice Info for each level in a pool that determines how maturity is rewarded.
+ * `requiredMaturities` The minimum maturity (in seconds) required to reach each Level.
+ * `multipliers` Multiplier for each level applied to amount of incentivized token when calculating rewards in the pool.
+ *     This is applied to both the numerator and denominator in the calculation such that the size of a user's position
+ *     is effectively considered to be the actual number of tokens times the multiplier for their level.
+ *     Also note that these multipliers do not affect the overall emission rate.
+ * `balance` Total (actual) number of tokens deposited in positions at each level.
  */
 struct LevelInfo {
-    uint[] requiredMaturity;
-    uint[] allocPoint;
+    uint[] requiredMaturities;
+    uint[] multipliers;
     uint[] balance;
 }
 
