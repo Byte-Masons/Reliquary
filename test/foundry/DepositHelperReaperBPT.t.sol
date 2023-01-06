@@ -101,7 +101,12 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
             reZap.findStepsOut(address(wftm), bpt, shares * vault.balance() / vault.totalSupply());
         helper.withdraw(stepsOut, shares, relicId, harvest);
 
-        assertApproxEqRel(address(this).balance, initialBalance - amount * 10 / 10_000, 1e16);
+        // initialBalance is in ftm, but we deposited wftm so will have a surplus of ftm
+        uint difference = address(this).balance - initialBalance;
+        // subtract security fee
+        uint expectedDifference = amount - amount * 10 / 10_000;
+        // allow for 0.5% slippage
+        assertApproxEqRel(difference, expectedDifference, 5e15);
     }
 
     function testRevertOnWithdrawUnauthorized(bool harvest) public {
