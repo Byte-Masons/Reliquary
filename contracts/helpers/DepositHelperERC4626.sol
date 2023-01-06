@@ -6,7 +6,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IReliquary} from "../interfaces/IReliquary.sol";
 
-contract DepositHelper {
+contract DepositHelperERC4626 {
     using SafeERC20 for IERC20;
 
     address public immutable reliquary;

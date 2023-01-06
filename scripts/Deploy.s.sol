@@ -6,7 +6,7 @@ import "contracts/Reliquary.sol";
 import "contracts/emission_curves/OwnableCurve.sol";
 import "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
-import "contracts/helpers/DepositHelper.sol";
+import "contracts/helpers/DepositHelperERC4626.sol";
 
 contract Deploy is Script {
     using stdJson for string;
@@ -86,7 +86,7 @@ contract Deploy is Script {
             curve.transferOwnership(multisig);
         }
 
-        new DepositHelper(address(reliquary));
+        new DepositHelperERC4626(address(reliquary));
 
         vm.stopBroadcast();
     }
