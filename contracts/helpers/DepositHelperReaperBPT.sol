@@ -28,8 +28,6 @@ interface IReZap {
         uint minAmountOut;
     }
 
-    function findStepsIn(address zapInToken, address BPT, uint tokenInAmount) external returns (Step[] memory);
-    function findStepsOut(address zapOutToken, address BPT, uint bptAmount) external returns (Step[] memory);
     function zapIn(Step[] calldata steps, address crypt, uint tokenInAmount) external;
     function zapOut(Step[] calldata steps, address crypt, uint cryptAmount) external;
     function WETH() external view returns (address);

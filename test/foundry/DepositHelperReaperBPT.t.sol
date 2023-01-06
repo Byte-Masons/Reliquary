@@ -8,13 +8,18 @@ import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
 
+interface IReZapTest is IReZap {
+    function findStepsIn(address zapInToken, address BPT, uint tokenInAmount) external returns (Step[] memory);
+    function findStepsOut(address zapOutToken, address BPT, uint bptAmount) external returns (Step[] memory);
+}
+
 interface IWftm is IERC20 {
     function deposit() external payable returns (uint);
 }
 
 contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     DepositHelperReaperBPT helper;
-    IReZap reZap;
+    IReZapTest reZap;
     Reliquary reliquary;
     IReaperVault vault;
     address bpt;
@@ -44,7 +49,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
             1000, address(vault), address(0), quartetCurve, quartetLevels, "A Late Quartet", nftDescriptor
         );
 
-        reZap = IReZap(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);
+        reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);
         helper = new DepositHelperReaperBPT(address(reliquary), address(reZap));
 
         wftm = IWftm(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
