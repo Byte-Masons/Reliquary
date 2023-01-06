@@ -53,25 +53,25 @@ contract DepositHelperReaperBPT {
 
     receive() external payable {}
 
-    function deposit(address zapInToken, uint amount, uint relicId) external returns (uint shares) {
+    function deposit(IReZap.Step[] calldata steps, uint amount, uint relicId) external returns (uint shares) {
         IReliquary _reliquary = IReliquary(reliquary);
         require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
-        IReaperVault vault = _prepareDeposit(IERC20(zapInToken), _reliquary.getPositionForId(relicId).poolId, amount);
+        IReaperVault vault = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount);
         shares = vault.balanceOf(address(this));
         _reliquary.deposit(shares, relicId);
     }
 
-    function createRelicAndDeposit(address zapInToken, uint pid, uint amount)
+    function createRelicAndDeposit(IReZap.Step[] calldata steps, uint pid, uint amount)
         external
         returns (uint relicId, uint shares)
     {
-        IReaperVault vault = _prepareDeposit(IERC20(zapInToken), pid, amount);
+        IReaperVault vault = _prepareDeposit(steps, pid, amount);
         shares = vault.balanceOf(address(this));
         relicId = IReliquary(reliquary).createRelicAndDeposit(msg.sender, pid, shares);
     }
 
-    function withdraw(address zapOutToken, uint shares, uint relicId, bool harvest) external {
+    function withdraw(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest) external {
         IReliquary _reliquary = IReliquary(reliquary);
         require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
@@ -88,29 +88,29 @@ contract DepositHelperReaperBPT {
         if (vault.allowance(address(this), address(_reZap)) == 0) {
             vault.approve(address(_reZap), type(uint).max);
         }
-        IERC20 bpt = vault.token();
-        IReZap.Step[] memory steps =
-            _reZap.findStepsOut(zapOutToken, address(bpt), vault.balance() * shares / vault.totalSupply());
         _reZap.zapOut(steps, address(vault), shares);
 
-        if (zapOutToken == weth) {
+        IERC20 zapOutToken = IERC20(steps[steps.length - 1].endToken);
+        if (address(zapOutToken) == weth) {
             payable(msg.sender).sendValue(address(this).balance);
         } else {
-            IERC20 _zapOutToken = IERC20(zapOutToken);
-            _zapOutToken.safeTransfer(msg.sender, _zapOutToken.balanceOf(address(this)));
+            zapOutToken.safeTransfer(msg.sender, zapOutToken.balanceOf(address(this)));
         }
     }
 
-    function _prepareDeposit(IERC20 zapInToken, uint pid, uint amount) internal returns (IReaperVault vault) {
+    function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount)
+        internal
+        returns (IReaperVault vault)
+    {
         vault = IReaperVault(IReliquary(reliquary).poolToken(pid));
+        IERC20 zapInToken = IERC20(steps[0].startToken);
         zapInToken.safeTransferFrom(msg.sender, address(this), amount);
 
         IReZap _reZap = IReZap(reZap);
         if (zapInToken.allowance(address(this), address(_reZap)) == 0) {
             zapInToken.approve(address(_reZap), type(uint).max);
         }
-        IReZap.Step[] memory steps = _reZap.findStepsIn(address(zapInToken), address(vault.token()), amount);
-        _reZap.zapIn(steps, address(vault), amount);
+        IReZap(reZap).zapIn(steps, address(vault), amount);
 
         if (vault.allowance(address(this), address(reliquary)) == 0) {
             vault.approve(reliquary, type(uint).max);
