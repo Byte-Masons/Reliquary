@@ -8,6 +8,10 @@ import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
 
+interface IReaperVaultTest is IReaperVault {
+    function balance() external view returns (uint);
+}
+
 interface IReZapTest is IReZap {
     function findStepsIn(address zapInToken, address BPT, uint tokenInAmount) external returns (Step[] memory);
     function findStepsOut(address zapOutToken, address BPT, uint bptAmount) external returns (Step[] memory);
@@ -21,7 +25,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     DepositHelperReaperBPT helper;
     IReZapTest reZap;
     Reliquary reliquary;
-    IReaperVault vault;
+    IReaperVaultTest vault;
     address bpt;
     IERC20 oath;
     IWftm wftm;
@@ -40,7 +44,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
             address(new Constant())
         );
 
-        vault = IReaperVault(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);
+        vault = IReaperVaultTest(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);
         bpt = address(vault.token());
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));

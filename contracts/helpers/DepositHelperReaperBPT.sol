@@ -6,9 +6,6 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IReliquary} from "../interfaces/IReliquary.sol";
 
 interface IReaperVault is IERC20 {
-    function deposit(uint amount) external;
-    function withdraw(uint shares) external;
-    function balance() external view returns (uint);
     function token() external view returns (IERC20);
 }
 
@@ -55,8 +52,7 @@ contract DepositHelperReaperBPT {
         IReliquary _reliquary = IReliquary(reliquary);
         require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
-        IReaperVault vault = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount);
-        shares = vault.balanceOf(address(this));
+        shares = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount);
         _reliquary.deposit(shares, relicId);
     }
 
@@ -64,8 +60,7 @@ contract DepositHelperReaperBPT {
         external
         returns (uint relicId, uint shares)
     {
-        IReaperVault vault = _prepareDeposit(steps, pid, amount);
-        shares = vault.balanceOf(address(this));
+        shares = _prepareDeposit(steps, pid, amount);
         relicId = IReliquary(reliquary).createRelicAndDeposit(msg.sender, pid, shares);
     }
 
@@ -96,11 +91,8 @@ contract DepositHelperReaperBPT {
         }
     }
 
-    function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount)
-        internal
-        returns (IReaperVault vault)
-    {
-        vault = IReaperVault(IReliquary(reliquary).poolToken(pid));
+    function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount) internal returns (uint shares) {
+        IReaperVault vault = IReaperVault(IReliquary(reliquary).poolToken(pid));
         IERC20 zapInToken = IERC20(steps[0].startToken);
         zapInToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -110,6 +102,7 @@ contract DepositHelperReaperBPT {
         }
         IReZap(reZap).zapIn(steps, address(vault), amount);
 
+        shares = vault.balanceOf(address(this));
         if (vault.allowance(address(this), address(reliquary)) == 0) {
             vault.approve(reliquary, type(uint).max);
         }
