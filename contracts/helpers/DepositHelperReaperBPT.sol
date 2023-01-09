@@ -81,9 +81,12 @@ contract DepositHelperReaperBPT {
         if (isETH) {
             payable(msg.sender).sendValue(address(this).balance);
         } else {
-            uint amountOut = IERC20(zapOutToken).balanceOf(address(this));
+            uint amountOut;
             if (isWETH) {
-                IWeth(zapOutToken).deposit{value: address(this).balance}();
+                amountOut = address(this).balance;
+                IWeth(zapOutToken).deposit{value: amountOut}();
+            } else {
+                amountOut = IERC20(zapOutToken).balanceOf(address(this));
             }
             IERC20(zapOutToken).safeTransfer(msg.sender, amountOut);
         }
