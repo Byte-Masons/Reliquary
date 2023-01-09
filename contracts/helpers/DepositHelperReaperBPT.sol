@@ -32,7 +32,7 @@ interface IReZap {
 }
 
 interface IWeth is IERC20 {
-    function withdraw(uint amount) external;
+    function deposit() external payable;
 }
 
 contract DepositHelperReaperBPT {
@@ -83,7 +83,7 @@ contract DepositHelperReaperBPT {
         } else {
             uint amountOut = IERC20(zapOutToken).balanceOf(address(this));
             if (isWETH) {
-                IWeth(zapOutToken).withdraw(amountOut);
+                IWeth(zapOutToken).deposit{value: address(this).balance}();
             }
             IERC20(zapOutToken).safeTransfer(msg.sender, amountOut);
         }
