@@ -101,6 +101,7 @@ contract DepositHelperReaperBPT {
         if (isETH) {
             _reZap.zapInETH{value: msg.value}(steps, address(vault));
         } else {
+            require(msg.value == 0, "sending unused ether");
             IERC20 zapInToken = IERC20(steps[0].startToken);
             zapInToken.safeTransferFrom(msg.sender, address(this), amount);
 
