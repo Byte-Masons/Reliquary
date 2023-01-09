@@ -103,7 +103,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         (uint relicId, uint shares) = helper.createRelicAndDeposit(stepsIn, 0, amount);
         IReZap.Step[] memory stepsOut =
             reZap.findStepsOut(address(wftm), bpt, shares * vault.balance() / vault.totalSupply());
-        helper.withdraw(stepsOut, shares, relicId, harvest);
+        helper.withdrawETH(stepsOut, shares, relicId, harvest);
 
         // initialBalance is in ftm, but we deposited wftm so will have a surplus of ftm
         uint difference = address(this).balance - initialBalance;

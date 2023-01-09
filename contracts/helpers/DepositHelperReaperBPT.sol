@@ -30,6 +30,10 @@ interface IReZap {
     function WETH() external view returns (address);
 }
 
+interface IWeth is IERC20 {
+    function withdraw(uint amount) external;
+}
+
 contract DepositHelperReaperBPT {
     using Address for address payable;
     using SafeERC20 for IERC20;
@@ -63,30 +67,20 @@ contract DepositHelperReaperBPT {
     }
 
     function withdraw(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest) external {
-        IReliquary _reliquary = IReliquary(reliquary);
-        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
-
-        uint pid = _reliquary.getPositionForId(relicId).poolId;
-        IReaperVault vault = IReaperVault(_reliquary.poolToken(pid));
-
-        if (harvest) {
-            _reliquary.withdrawAndHarvest(shares, relicId, msg.sender);
-        } else {
-            _reliquary.withdraw(shares, relicId);
+        _prepareWithdrawal(steps, shares, relicId, harvest);
+        address zapOutToken = steps[steps.length - 1].endToken;
+        uint amountOut = IERC20(zapOutToken).balanceOf(address(this));
+        if (zapOutToken == weth) {
+            IWeth(zapOutToken).withdraw(amountOut);
         }
+        IERC20(zapOutToken).safeTransfer(msg.sender, amountOut);
+    }
 
-        IReZap _reZap = IReZap(reZap);
-        if (vault.allowance(address(this), address(_reZap)) == 0) {
-            vault.approve(address(_reZap), type(uint).max);
-        }
-        _reZap.zapOut(steps, address(vault), shares);
-
-        IERC20 zapOutToken = IERC20(steps[steps.length - 1].endToken);
-        if (address(zapOutToken) == weth) {
-            payable(msg.sender).sendValue(address(this).balance);
-        } else {
-            zapOutToken.safeTransfer(msg.sender, zapOutToken.balanceOf(address(this)));
-        }
+    function withdrawETH(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest) external {
+        address zapOutToken = steps[steps.length - 1].endToken;
+        require(zapOutToken == weth, "invalid steps");
+        _prepareWithdrawal(steps, shares, relicId, harvest);
+        payable(msg.sender).sendValue(address(this).balance);
     }
 
     function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount) internal returns (uint shares) {
@@ -104,5 +98,25 @@ contract DepositHelperReaperBPT {
         if (vault.allowance(address(this), address(reliquary)) == 0) {
             vault.approve(reliquary, type(uint).max);
         }
+    }
+
+    function _prepareWithdrawal(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest) internal {
+        IReliquary _reliquary = IReliquary(reliquary);
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+
+        uint pid = _reliquary.getPositionForId(relicId).poolId;
+        IReaperVault vault = IReaperVault(_reliquary.poolToken(pid));
+
+        if (harvest) {
+            _reliquary.withdrawAndHarvest(shares, relicId, msg.sender);
+        } else {
+            _reliquary.withdraw(shares, relicId);
+        }
+
+        IReZap _reZap = IReZap(reZap);
+        if (vault.allowance(address(this), address(_reZap)) == 0) {
+            vault.approve(address(_reZap), type(uint).max);
+        }
+        _reZap.zapOut(steps, address(vault), shares);
     }
 }
