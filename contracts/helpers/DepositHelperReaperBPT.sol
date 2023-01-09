@@ -35,13 +35,11 @@ contract DepositHelperReaperBPT {
     using SafeERC20 for IERC20;
 
     address public immutable reliquary;
-    address public immutable rewardToken;
     address public immutable reZap;
     address public immutable weth;
 
     constructor(address _reliquary, address _reZap) {
         reliquary = _reliquary;
-        rewardToken = IReliquary(_reliquary).rewardToken();
         reZap = _reZap;
         weth = IReZap(_reZap).WETH();
     }

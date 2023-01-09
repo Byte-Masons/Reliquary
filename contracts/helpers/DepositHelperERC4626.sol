@@ -10,11 +10,9 @@ contract DepositHelperERC4626 {
     using SafeERC20 for IERC20;
 
     address public immutable reliquary;
-    address public immutable rewardToken;
 
     constructor(address _reliquary) {
         reliquary = _reliquary;
-        rewardToken = IReliquary(_reliquary).rewardToken();
     }
 
     function deposit(uint amount, uint relicId) external {
