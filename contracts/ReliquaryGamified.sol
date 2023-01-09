@@ -41,7 +41,7 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     /// @inheritdoc Reliquary
     function createRelicAndDeposit(address to, uint pid, uint amount)
         public
-        override (IReliquary, Reliquary)
+        override(IReliquary, Reliquary)
         returns (uint id)
     {
         id = super.createRelicAndDeposit(to, pid, amount);
@@ -49,34 +49,34 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     }
 
     /// @inheritdoc Reliquary
-    function split(uint fromId, uint amount, address to) public override (IReliquary, Reliquary) returns (uint newId) {
+    function split(uint fromId, uint amount, address to) public override(IReliquary, Reliquary) returns (uint newId) {
         newId = super.split(fromId, amount, to);
         genesis[newId] = block.timestamp;
     }
 
     /// Ensure users can't benefit from shifting tokens from a Relic with a spent maturity bonus to a different one.
     /// @inheritdoc Reliquary
-    function shift(uint fromId, uint toId, uint amount) public override (IReliquary, Reliquary) {
+    function shift(uint fromId, uint toId, uint amount) public override(IReliquary, Reliquary) {
         super.shift(fromId, toId, amount);
         lastMaturityBonus[toId] = Math.max(lastMaturityBonus[fromId], lastMaturityBonus[toId]);
     }
 
     /// Ensure users can't benefit from merging tokens from a Relic with a spent maturity bonus to a different one.
     /// @inheritdoc Reliquary
-    function merge(uint fromId, uint toId) public override (IReliquary, Reliquary) {
+    function merge(uint fromId, uint toId) public override(IReliquary, Reliquary) {
         super.merge(fromId, toId);
         lastMaturityBonus[toId] = Math.max(lastMaturityBonus[fromId], lastMaturityBonus[toId]);
     }
 
     /// @inheritdoc Reliquary
-    function burn(uint tokenId) public override (IReliquary, Reliquary) {
+    function burn(uint tokenId) public override(IReliquary, Reliquary) {
         delete genesis[tokenId];
         delete lastMaturityBonus[tokenId];
         super.burn(tokenId);
     }
 
     /// @inheritdoc Reliquary
-    function supportsInterface(bytes4 interfaceId) public view override (IERC165, Reliquary) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(IERC165, Reliquary) returns (bool) {
         return interfaceId == type(IReliquaryGamified).interfaceId || super.supportsInterface(interfaceId);
     }
 }

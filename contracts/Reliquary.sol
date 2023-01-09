@@ -543,7 +543,7 @@ contract Reliquary is
     }
 
     /// @notice Burns the Relic with ID `tokenId`. Cannot be called if there is any principal or rewards in the Relic.
-    function burn(uint tokenId) public virtual override (IReliquary, ERC721Burnable) {
+    function burn(uint tokenId) public virtual override(IReliquary, ERC721Burnable) {
         if (positionForId[tokenId].amount != 0) revert BurningPrincipal();
         if (pendingReward(tokenId) != 0) revert BurningRewards();
         super.burn(tokenId);
@@ -607,7 +607,7 @@ contract Reliquary is
      * @dev Can be gas expensive if used in a transaction and the NFTDescriptor is complex.
      * @param tokenId The NFT ID of the Relic to get the tokenURI for.
      */
-    function tokenURI(uint tokenId) public view override (ERC721) returns (string memory) {
+    function tokenURI(uint tokenId) public view override(ERC721) returns (string memory) {
         if (!_exists(tokenId)) revert NonExistentRelic();
         return INFTDescriptor(nftDescriptor[positionForId[tokenId].poolId]).constructTokenURI(tokenId);
     }
@@ -617,7 +617,7 @@ contract Reliquary is
         public
         view
         virtual
-        override (IERC165, AccessControlEnumerable, ERC721, ERC721Enumerable)
+        override(IERC165, AccessControlEnumerable, ERC721, ERC721Enumerable)
         returns (bool)
     {
         return interfaceId == type(IReliquary).interfaceId || super.supportsInterface(interfaceId);
@@ -761,10 +761,7 @@ contract Reliquary is
     }
 
     /// @dev Ensure the behavior of ERC721Enumerable _beforeTokenTransfer is preserved.
-    function _beforeTokenTransfer(address from, address to, uint tokenId)
-        internal
-        override (ERC721, ERC721Enumerable)
-    {
+    function _beforeTokenTransfer(address from, address to, uint tokenId) internal override(ERC721, ERC721Enumerable) {
         ERC721Enumerable._beforeTokenTransfer(from, to, tokenId);
     }
 
