@@ -62,24 +62,26 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         Reliquary(helper.reliquary()).setApprovalForAll(address(helper), true);
     }
 
-    function testCreateNew(uint amount) public {
+    function testCreateNew(uint amount, bool depositFTM) public {
         amount = bound(amount, 1 ether, wftm.balanceOf(address(this)));
         IReZap.Step[] memory steps = reZap.findStepsIn(address(wftm), bpt, amount);
-        (uint relicId, uint shares) = helper.createRelicAndDeposit(steps, 0, amount, false);
+        (uint relicId, uint shares) =
+            helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(steps, 0, amount, depositFTM);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
         assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
         assertEq(reliquary.getPositionForId(relicId).amount, shares, "deposited amount not expected amount");
     }
 
-    function testDepositExisting(uint amountA, uint amountB) public {
+    function testDepositExisting(uint amountA, uint amountB, bool aIsFTM, bool bIsFTM) public {
         amountA = bound(amountA, 1 ether, 500_000 ether);
         amountB = bound(amountB, 1 ether, 1_000_000 ether - amountA);
 
         IReZap.Step[] memory stepsA = reZap.findStepsIn(address(wftm), bpt, amountA);
-        (uint relicId, uint sharesA) = helper.createRelicAndDeposit(stepsA, 0, amountA, false);
+        (uint relicId, uint sharesA) =
+            helper.createRelicAndDeposit{value: aIsFTM ? amountA : 0}(stepsA, 0, amountA, aIsFTM);
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, amountB);
-        uint sharesB = helper.deposit(stepsB, amountB, relicId, false);
+        uint sharesB = helper.deposit{value: bIsFTM ? amountB : 0}(stepsB, amountB, relicId, bIsFTM);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
         uint relicAmount = reliquary.getPositionForId(relicId).amount;
@@ -95,22 +97,36 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         helper.deposit(stepsB, 1 ether, relicId, false);
     }
 
-    function testWithdraw(uint amount, bool harvest) public {
-        uint initialBalance = address(this).balance;
+    function testWithdraw(uint amount, bool harvest, bool depositFTM, bool withdrawFTM) public {
+        uint ftmInitialBalance = address(this).balance;
+        uint wftmInitialBalance = wftm.balanceOf(address(this));
         amount = bound(amount, 1 ether, 1_000_000 ether);
 
         IReZap.Step[] memory stepsIn = reZap.findStepsIn(address(wftm), bpt, amount);
-        (uint relicId, uint shares) = helper.createRelicAndDeposit(stepsIn, 0, amount, false);
+        (uint relicId, uint shares) =
+            helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(stepsIn, 0, amount, depositFTM);
         IReZap.Step[] memory stepsOut =
             reZap.findStepsOut(address(wftm), bpt, shares * vault.balance() / vault.totalSupply());
-        helper.withdraw(stepsOut, shares, relicId, harvest, true);
+        helper.withdraw(stepsOut, shares, relicId, harvest, withdrawFTM);
 
-        // initialBalance is in ftm, but we deposited wftm so will have a surplus of ftm
-        uint difference = address(this).balance - initialBalance;
-        // subtract security fee
-        uint expectedDifference = amount - amount * 10 / 10_000;
-        // allow for 0.5% slippage
-        assertApproxEqRel(difference, expectedDifference, 5e15);
+        uint difference;
+        if (depositFTM && withdrawFTM) {
+            difference = ftmInitialBalance - address(this).balance;
+        } else if (depositFTM && !withdrawFTM) {
+            difference = wftm.balanceOf(address(this)) - wftmInitialBalance;
+        } else if (!depositFTM && withdrawFTM) {
+            difference = address(this).balance - ftmInitialBalance;
+        } else {
+            difference = wftmInitialBalance - wftm.balanceOf(address(this));
+        }
+
+        // allow for 0.5% slippage after 0.1% security fee
+        uint afterFee = amount - amount * 10 / 10_000;
+        if (depositFTM == withdrawFTM) {
+            assertTrue(difference <= afterFee * 5 / 1000);
+        } else {
+            assertApproxEqRel(difference, afterFee, 5e15);
+        }
     }
 
     function testRevertOnWithdrawUnauthorized(bool harvest, bool isETH) public {
