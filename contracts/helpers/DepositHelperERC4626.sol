@@ -66,6 +66,7 @@ contract DepositHelperERC4626 {
         vault = IERC4626(IReliquary(reliquary).poolToken(pid));
         IERC20 token = IERC20(vault.asset());
         if (isETH) {
+            require(amount == msg.value, "ether amount mismatch");
             IWeth _weth = IWeth(weth);
             require(address(token) == address(_weth), "not an ether vault");
             _weth.deposit{value: msg.value}();
