@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -36,6 +35,12 @@ interface IWeth is IERC20 {
     function deposit() external payable;
 }
 
+/**
+ *  @title Helper contract that allows depositing to and withdrawing from Reliquary pools of a Reaper vault (or possibly
+ *  similar) for a Balancer Pool Token in a single transaction using one of the BPT's underlying assets.
+ *  @notice Due to the complexities and risks associated with inputting the `Step` struct arrays in each function,
+ *  THIS CONTRACT SHOULD NOT BE WRITTEN TO USING A BLOCK EXPLORER.
+ */
 contract DepositHelperReaperBPT is Ownable {
     using Address for address payable;
     using SafeERC20 for IERC20;
@@ -89,6 +94,7 @@ contract DepositHelperReaperBPT is Ownable {
         }
     }
 
+    /// @notice Owner may send tokens out of this contract since none should be held here. Do not send tokens manually.
     function rescueFunds(address token, address to, uint amount) external onlyOwner {
         if (token == address(0)) {
             payable(to).sendValue(amount);
