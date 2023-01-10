@@ -3,6 +3,8 @@
 # Below is example content for the config_deploy.json file. It is very important to configure each option properly, as #
 # some properties are immutable once on chain. DO NOT INCLUDE THIS COMMENT BLOCK IN THE JSON FILE.                     #
 #                                                                                                                      #
+# `weth`: Address of the wrapped native token contract for the chain you are deploying to.                             #
+#                                                                                                                      #
 # `multisig`: Address to transfer admin roles to at end of script. Leaving set to 0x0 will skip this step, leaving the #
 #     deployer's address as the admin.                                                                                 #
 # `rewardToken`: Address of the token this Reliquary deployment is emitting.                                           #
@@ -21,6 +23,8 @@
 ########################################################################################################################
 
 {
+    "weth": "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
+
     "multisig": "0x0",
     "rewardToken": "0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6",
     "emissionRate": "10000000000",

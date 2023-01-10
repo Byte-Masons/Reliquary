@@ -25,6 +25,7 @@ contract Deploy is Script {
 
     function run() external {
         string memory config = vm.readFile("scripts/deploy_conf.json");
+        address weth = config.readAddress(".weth");
         address multisig = config.readAddress(".multisig");
         address rewardToken = config.readAddress(".rewardToken");
         uint emissionRate = config.readUint(".emissionRate");
@@ -40,6 +41,7 @@ contract Deploy is Script {
         address nftDescriptorNormal;
         address nftDescriptor4626;
         address nftDescriptorPair;
+        address depositHelper4626;
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
         for (uint i = 0; i < pools.length; ++i) {
             Pool memory pool = pools[i];
@@ -56,6 +58,9 @@ contract Deploy is Script {
                     nftDescriptor4626 = address(new NFTDescriptorSingle4626(address(reliquary)));
                 }
                 nftDescriptor = nftDescriptor4626;
+                if (depositHelper4626 == address(0)) {
+                    depositHelper4626 = address(new DepositHelperERC4626(address(reliquary), weth));
+                }
             } else if (typeHash == keccak256("pair")) {
                 if (nftDescriptorPair == address(0)) {
                     nftDescriptorPair = address(new NFTDescriptorPair(address(reliquary)));
@@ -85,8 +90,6 @@ contract Deploy is Script {
             reliquary.renounceRole(defaultAdminRole, tx.origin);
             curve.transferOwnership(multisig);
         }
-
-        new DepositHelperERC4626(address(reliquary));
 
         vm.stopBroadcast();
     }
