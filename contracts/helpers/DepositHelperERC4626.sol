@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.15;
 
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IReliquary} from "../interfaces/IReliquary.sol";
 
 interface IWeth is IERC20 {
@@ -11,7 +12,7 @@ interface IWeth is IERC20 {
     function withdraw(uint amount) external;
 }
 
-contract DepositHelperERC4626 {
+contract DepositHelperERC4626 is Ownable {
     using Address for address payable;
     using SafeERC20 for IERC20;
 
@@ -59,6 +60,14 @@ contract DepositHelperERC4626 {
             payable(msg.sender).sendValue(amount);
         } else {
             vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
+        }
+    }
+
+    function rescueFunds(address token, address to, uint amount) external onlyOwner {
+        if (token == address(0)) {
+            payable(to).sendValue(amount);
+        } else {
+            IERC20(token).safeTransfer(to, amount);
         }
     }
 

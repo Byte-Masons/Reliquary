@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.15;
 
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IReliquary} from "../interfaces/IReliquary.sol";
 
@@ -35,7 +36,7 @@ interface IWeth is IERC20 {
     function deposit() external payable;
 }
 
-contract DepositHelperReaperBPT {
+contract DepositHelperReaperBPT is Ownable {
     using Address for address payable;
     using SafeERC20 for IERC20;
 
@@ -89,6 +90,14 @@ contract DepositHelperReaperBPT {
                 amountOut = IERC20(zapOutToken).balanceOf(address(this));
             }
             IERC20(zapOutToken).safeTransfer(msg.sender, amountOut);
+        }
+    }
+
+    function rescueFunds(address token, address to, uint amount) external onlyOwner {
+        if (token == address(0)) {
+            payable(to).sendValue(amount);
+        } else {
+            IERC20(token).safeTransfer(to, amount);
         }
     }
 
