@@ -52,34 +52,30 @@ contract DepositHelperReaperBPT is Ownable {
 
     receive() external payable {}
 
-    function deposit(IReZap.Step[] calldata steps, uint amount, uint relicId, bool isETH)
-        external
-        payable
-        returns (uint shares)
-    {
+    function deposit(IReZap.Step[] calldata steps, uint amount, uint relicId) external payable returns (uint shares) {
         IReliquary _reliquary = IReliquary(reliquary);
         require(IReliquary(reliquary).isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
-        shares = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount, isETH);
+        shares = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount);
         _reliquary.deposit(shares, relicId);
     }
 
-    function createRelicAndDeposit(IReZap.Step[] calldata steps, uint pid, uint amount, bool isETH)
+    function createRelicAndDeposit(IReZap.Step[] calldata steps, uint pid, uint amount)
         external
         payable
         returns (uint relicId, uint shares)
     {
-        shares = _prepareDeposit(steps, pid, amount, isETH);
+        shares = _prepareDeposit(steps, pid, amount);
         relicId = IReliquary(reliquary).createRelicAndDeposit(msg.sender, pid, shares);
     }
 
-    function withdraw(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest, bool isETH) external {
+    function withdraw(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest, bool giveEther) external {
         address zapOutToken = steps[steps.length - 1].endToken;
         bool isWETH = zapOutToken == weth;
-        require(!isETH || isWETH, "invalid steps");
+        require(!giveEther || isWETH, "invalid steps");
         _prepareWithdrawal(steps, shares, relicId, harvest);
 
-        if (isETH) {
+        if (giveEther) {
             payable(msg.sender).sendValue(address(this).balance);
         } else {
             uint amountOut;
@@ -101,16 +97,12 @@ contract DepositHelperReaperBPT is Ownable {
         }
     }
 
-    function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount, bool isETH)
-        internal
-        returns (uint shares)
-    {
+    function _prepareDeposit(IReZap.Step[] calldata steps, uint pid, uint amount) internal returns (uint shares) {
         IReaperVault vault = IReaperVault(IReliquary(reliquary).poolToken(pid));
         IReZap _reZap = IReZap(reZap);
-        if (isETH) {
+        if (msg.value != 0) {
             _reZap.zapInETH{value: msg.value}(steps, address(vault));
         } else {
-            require(msg.value == 0, "sending unused ether");
             IERC20 zapInToken = IERC20(steps[0].startToken);
             zapInToken.safeTransferFrom(msg.sender, address(this), amount);
 

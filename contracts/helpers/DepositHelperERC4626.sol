@@ -26,20 +26,20 @@ contract DepositHelperERC4626 is Ownable {
 
     receive() external payable {}
 
-    function deposit(uint amount, uint relicId, bool isETH) external payable {
+    function deposit(uint amount, uint relicId) external payable {
         IReliquary _reliquary = IReliquary(reliquary);
         require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
-        IERC4626 vault = _prepareDeposit(_reliquary.getPositionForId(relicId).poolId, amount, isETH);
+        IERC4626 vault = _prepareDeposit(_reliquary.getPositionForId(relicId).poolId, amount);
         _reliquary.deposit(vault.balanceOf(address(this)), relicId);
     }
 
-    function createRelicAndDeposit(uint pid, uint amount, bool isETH) external payable returns (uint relicId) {
-        IERC4626 vault = _prepareDeposit(pid, amount, isETH);
+    function createRelicAndDeposit(uint pid, uint amount) external payable returns (uint relicId) {
+        IERC4626 vault = _prepareDeposit(pid, amount);
         relicId = IReliquary(reliquary).createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
     }
 
-    function withdraw(uint amount, uint relicId, bool harvest, bool isETH) external {
+    function withdraw(uint amount, uint relicId, bool harvest, bool giveEther) external {
         IReliquary _reliquary = IReliquary(reliquary);
         require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
@@ -52,7 +52,7 @@ contract DepositHelperERC4626 is Ownable {
             _reliquary.withdraw(vault.convertToShares(amount), relicId);
         }
 
-        if (isETH) {
+        if (giveEther) {
             IWeth _weth = IWeth(weth);
             require(vault.asset() == address(weth), "not an ether vault");
             vault.withdraw(vault.maxWithdraw(address(this)), address(this), address(this));
@@ -71,16 +71,15 @@ contract DepositHelperERC4626 is Ownable {
         }
     }
 
-    function _prepareDeposit(uint pid, uint amount, bool isETH) internal returns (IERC4626 vault) {
+    function _prepareDeposit(uint pid, uint amount) internal returns (IERC4626 vault) {
         vault = IERC4626(IReliquary(reliquary).poolToken(pid));
         IERC20 token = IERC20(vault.asset());
-        if (isETH) {
+        if (msg.value != 0) {
             require(amount == msg.value, "ether amount mismatch");
             IWeth _weth = IWeth(weth);
             require(address(token) == address(_weth), "not an ether vault");
             _weth.deposit{value: msg.value}();
         } else {
-            require(msg.value == 0, "sending unused ether");
             token.safeTransferFrom(msg.sender, address(this), amount);
         }
 
