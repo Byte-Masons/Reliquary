@@ -24,28 +24,42 @@ contract NFTDescriptor is INFTDescriptor {
         reliquary = _reliquary;
     }
 
+    struct LocalVariables_constructTokenURI {
+        address underlying;
+        string amount;
+        string pendingReward;
+        uint maturity;
+        string rewardSymbol;
+        uint characterId;
+        string description;
+        string attributes;
+        string image;
+    }
+
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values.
     function constructTokenURI(uint relicId) external view override returns (string memory uri) {
         IReliquary _reliquary = IReliquary(reliquary);
         PositionInfo memory position = _reliquary.getPositionForId(relicId);
         PoolInfo memory pool = _reliquary.getPoolInfo(position.poolId);
         LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
-        address underlying = address(_reliquary.poolToken(position.poolId));
-        string memory amount = generateDecimalString(position.amount, IERC20Metadata(underlying).decimals());
-        string memory pendingReward = generateDecimalString(_reliquary.pendingReward(relicId), 18);
-        uint maturity = (block.timestamp - position.entry) / 1 days;
-        string memory rewardSymbol = IERC20Metadata(address(_reliquary.rewardToken())).symbol();
+        LocalVariables_constructTokenURI memory vars;
+        vars.underlying = address(_reliquary.poolToken(position.poolId));
+        vars.amount = generateDecimalString(position.amount, IERC20Metadata(vars.underlying).decimals());
+        vars.pendingReward = generateDecimalString(_reliquary.pendingReward(relicId), 18);
+        vars.maturity = (block.timestamp - position.entry) / 1 days;
+        vars.rewardSymbol = IERC20Metadata(address(_reliquary.rewardToken())).symbol();
 
-        uint characterId = uint(keccak256(abi.encodePacked(relicId, address(_reliquary)))) % NUM_CHARACTERS;
+        vars.characterId = uint(keccak256(abi.encodePacked(relicId, address(_reliquary)))) % NUM_CHARACTERS;
 
-        string memory description = generateDescription(pool.name);
-        string memory attributes = generateAttributes(position, amount, pendingReward, rewardSymbol, maturity);
-        string memory image = Base64.encode(
+        vars.description = generateDescription(pool.name);
+        vars.attributes =
+            generateAttributes(position, vars.amount, vars.pendingReward, vars.rewardSymbol, vars.maturity);
+        vars.image = Base64.encode(
             bytes(
                 string.concat(
-                    generateSVGImage(position.level, levelInfo.balance.length, characterId),
-                    generateImageText(relicId, pool.name, pendingReward, rewardSymbol, maturity),
-                    generateTextFromToken(underlying, position.amount, amount),
+                    generateSVGImage(position.level, levelInfo.balance.length, vars.characterId),
+                    generateImageText(relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity),
+                    generateTextFromToken(vars.underlying, position.amount, vars.amount),
                     "</text>",
                     generateBars(position.level, levelInfo),
                     "</svg></svg>"
@@ -61,12 +75,12 @@ contract NFTDescriptor is INFTDescriptor {
                         '{"name":"',
                         string.concat("Relic #", relicId.toString(), ": ", pool.name),
                         '", "description":"',
-                        description,
+                        vars.description,
                         '", "attributes": [',
-                        attributes,
+                        vars.attributes,
                         '], "image": "',
                         "data:image/svg+xml;base64,",
-                        image,
+                        vars.image,
                         '"}'
                     )
                 )

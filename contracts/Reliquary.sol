@@ -449,6 +449,21 @@ contract Reliquary is
         emit ReliquaryEvents.Split(fromId, newId, amount);
     }
 
+    struct LocalVariables_shift {
+        uint fromAmount;
+        uint poolId;
+        uint toAmount;
+        uint newFromAmount;
+        uint newToAmount;
+        uint fromLevel;
+        uint oldToLevel;
+        uint newToLevel;
+        uint accRewardPerShare;
+        uint fromMultiplier;
+        uint pendingFrom;
+        uint pendingTo;
+    }
+
     /**
      * @notice Transfer amount from one Relic into another, updating maturity in the receiving Relic.
      * @param fromId The NFT ID of the Relic to transfer from.
@@ -461,39 +476,41 @@ contract Reliquary is
         _requireApprovedOrOwner(fromId);
         _requireApprovedOrOwner(toId);
 
+        LocalVariables_shift memory vars;
         PositionInfo storage fromPosition = positionForId[fromId];
-        uint fromAmount = fromPosition.amount;
+        vars.fromAmount = fromPosition.amount;
 
-        uint poolId = fromPosition.poolId;
+        vars.poolId = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[toId];
-        if (poolId != toPosition.poolId) revert RelicsNotOfSamePool();
+        if (vars.poolId != toPosition.poolId) revert RelicsNotOfSamePool();
 
-        uint toAmount = toPosition.amount;
-        toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / (fromAmount + toAmount);
+        vars.toAmount = toPosition.amount;
+        toPosition.entry = (vars.fromAmount * fromPosition.entry + vars.toAmount * toPosition.entry)
+            / (vars.fromAmount + vars.toAmount);
 
-        uint newFromAmount = fromAmount - amount;
-        fromPosition.amount = newFromAmount;
+        vars.newFromAmount = vars.fromAmount - amount;
+        fromPosition.amount = vars.newFromAmount;
 
-        uint newToAmount = toAmount + amount;
-        toPosition.amount = newToAmount;
+        vars.newToAmount = vars.toAmount + amount;
+        toPosition.amount = vars.newToAmount;
 
-        (uint fromLevel, uint oldToLevel, uint newToLevel) =
-            _shiftLevelBalances(fromId, toId, poolId, amount, toAmount, newToAmount);
+        (vars.fromLevel, vars.oldToLevel, vars.newToLevel) =
+            _shiftLevelBalances(fromId, toId, vars.poolId, amount, vars.toAmount, vars.newToAmount);
 
-        uint accRewardPerShare = _updatePool(poolId);
-        uint fromMultiplier = accRewardPerShare * levels[poolId].multipliers[fromLevel];
-        uint pendingFrom = fromAmount * fromMultiplier / ACC_REWARD_PRECISION - fromPosition.rewardDebt;
-        if (pendingFrom != 0) {
-            fromPosition.rewardCredit += pendingFrom;
+        vars.accRewardPerShare = _updatePool(vars.poolId);
+        vars.fromMultiplier = vars.accRewardPerShare * levels[vars.poolId].multipliers[vars.fromLevel];
+        vars.pendingFrom = vars.fromAmount * vars.fromMultiplier / ACC_REWARD_PRECISION - fromPosition.rewardDebt;
+        if (vars.pendingFrom != 0) {
+            fromPosition.rewardCredit += vars.pendingFrom;
         }
-        uint pendingTo = toAmount * levels[poolId].multipliers[oldToLevel] * accRewardPerShare / ACC_REWARD_PRECISION
-            - toPosition.rewardDebt;
-        if (pendingTo != 0) {
-            toPosition.rewardCredit += pendingTo;
+        vars.pendingTo = vars.toAmount * levels[vars.poolId].multipliers[vars.oldToLevel] * vars.accRewardPerShare
+            / ACC_REWARD_PRECISION - toPosition.rewardDebt;
+        if (vars.pendingTo != 0) {
+            toPosition.rewardCredit += vars.pendingTo;
         }
-        fromPosition.rewardDebt = newFromAmount * fromMultiplier / ACC_REWARD_PRECISION;
-        toPosition.rewardDebt =
-            newToAmount * accRewardPerShare * levels[poolId].multipliers[newToLevel] / ACC_REWARD_PRECISION;
+        fromPosition.rewardDebt = vars.newFromAmount * vars.fromMultiplier / ACC_REWARD_PRECISION;
+        toPosition.rewardDebt = vars.newToAmount * vars.accRewardPerShare
+            * levels[vars.poolId].multipliers[vars.newToLevel] / ACC_REWARD_PRECISION;
 
         emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
@@ -659,6 +676,15 @@ contract Reliquary is
         emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
+    struct LocalVariables_updatePosition {
+        uint accRewardPerShare;
+        uint oldAmount;
+        uint newAmount;
+        uint oldLevel;
+        uint newLevel;
+        bool harvest;
+    }
+
     /**
      * @dev Internal function called whenever a position's state needs to be modified.
      * @param amount Amount of poolToken to deposit/withdraw.
@@ -672,43 +698,43 @@ contract Reliquary is
         internal
         returns (uint poolId, uint _pendingReward)
     {
+        LocalVariables_updatePosition memory vars;
         PositionInfo storage position = positionForId[relicId];
         poolId = position.poolId;
-        uint accRewardPerShare = _updatePool(poolId);
+        vars.accRewardPerShare = _updatePool(poolId);
 
-        uint oldAmount = position.amount;
-        uint newAmount;
+        vars.oldAmount = position.amount;
         if (kind == Kind.DEPOSIT) {
             _updateEntry(amount, relicId);
-            newAmount = oldAmount + amount;
-            position.amount = newAmount;
+            vars.newAmount = vars.oldAmount + amount;
+            position.amount = vars.newAmount;
         } else if (kind == Kind.WITHDRAW) {
-            newAmount = oldAmount - amount;
-            position.amount = newAmount;
+            vars.newAmount = vars.oldAmount - amount;
+            position.amount = vars.newAmount;
         } else {
-            newAmount = oldAmount;
+            vars.newAmount = vars.oldAmount;
         }
 
-        uint oldLevel = position.level;
-        uint newLevel = _updateLevel(relicId);
-        if (oldLevel != newLevel) {
-            levels[poolId].balance[oldLevel] -= oldAmount;
-            levels[poolId].balance[newLevel] += newAmount;
+        vars.oldLevel = position.level;
+        vars.newLevel = _updateLevel(relicId);
+        if (vars.oldLevel != vars.newLevel) {
+            levels[poolId].balance[vars.oldLevel] -= vars.oldAmount;
+            levels[poolId].balance[vars.newLevel] += vars.newAmount;
         } else if (kind == Kind.DEPOSIT) {
-            levels[poolId].balance[oldLevel] += amount;
+            levels[poolId].balance[vars.oldLevel] += amount;
         } else if (kind == Kind.WITHDRAW) {
-            levels[poolId].balance[oldLevel] -= amount;
+            levels[poolId].balance[vars.oldLevel] -= amount;
         }
 
-        _pendingReward = oldAmount * levels[poolId].multipliers[oldLevel] * accRewardPerShare / ACC_REWARD_PRECISION
-            - position.rewardDebt;
+        _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
+            / ACC_REWARD_PRECISION - position.rewardDebt;
         position.rewardDebt =
-            newAmount * levels[poolId].multipliers[newLevel] * accRewardPerShare / ACC_REWARD_PRECISION;
+            vars.newAmount * levels[poolId].multipliers[vars.newLevel] * vars.accRewardPerShare / ACC_REWARD_PRECISION;
 
-        bool _harvest = harvestTo != address(0);
-        if (!_harvest && _pendingReward != 0) {
+        vars.harvest = harvestTo != address(0);
+        if (!vars.harvest && _pendingReward != 0) {
             position.rewardCredit += _pendingReward;
-        } else if (_harvest) {
+        } else if (vars.harvest) {
             uint total = _pendingReward + position.rewardCredit;
             uint received = _receivedReward(total);
             position.rewardCredit = total - received;
