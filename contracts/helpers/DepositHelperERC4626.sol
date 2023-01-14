@@ -64,10 +64,9 @@ contract DepositHelperERC4626 is Ownable {
         }
 
         if (giveEther) {
-            IWeth _weth = IWeth(weth);
-            require(vault.asset() == address(weth), "not an ether vault");
+            require(vault.asset() == weth, "not an ether vault");
             vault.withdraw(vault.maxWithdraw(address(this)), address(this), address(this));
-            _weth.withdraw(amount);
+            IWeth(weth).withdraw(amount);
             payable(msg.sender).sendValue(amount);
         } else {
             vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
@@ -88,9 +87,8 @@ contract DepositHelperERC4626 is Ownable {
         IERC20 token = IERC20(vault.asset());
         if (msg.value != 0) {
             require(amount == msg.value, "ether amount mismatch");
-            IWeth _weth = IWeth(weth);
-            require(address(token) == address(_weth), "not an ether vault");
-            _weth.deposit{value: msg.value}();
+            require(address(token) == weth, "not an ether vault");
+            IWeth(weth).deposit{value: msg.value}();
         } else {
             token.safeTransferFrom(msg.sender, address(this), amount);
         }
@@ -100,7 +98,7 @@ contract DepositHelperERC4626 is Ownable {
         }
         vault.deposit(amount, address(this));
 
-        if (vault.allowance(address(this), address(reliquary)) == 0) {
+        if (vault.allowance(address(this), reliquary) == 0) {
             vault.approve(reliquary, type(uint).max);
         }
     }

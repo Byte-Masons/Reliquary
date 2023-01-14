@@ -59,7 +59,7 @@ contract DepositHelperReaperBPT is Ownable {
 
     function deposit(IReZap.Step[] calldata steps, uint amount, uint relicId) external payable returns (uint shares) {
         IReliquary _reliquary = IReliquary(reliquary);
-        require(IReliquary(reliquary).isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
         shares = _prepareDeposit(steps, _reliquary.getPositionForId(relicId).poolId, amount);
         _reliquary.deposit(shares, relicId);
@@ -112,21 +112,21 @@ contract DepositHelperReaperBPT is Ownable {
             IERC20 zapInToken = IERC20(steps[0].startToken);
             zapInToken.safeTransferFrom(msg.sender, address(this), amount);
 
-            if (zapInToken.allowance(address(this), address(_reZap)) == 0) {
-                zapInToken.approve(address(_reZap), type(uint).max);
+            if (zapInToken.allowance(address(this), reZap) == 0) {
+                zapInToken.approve(reZap, type(uint).max);
             }
             _reZap.zapIn(steps, address(vault), amount);
         }
 
         shares = vault.balanceOf(address(this));
-        if (vault.allowance(address(this), address(reliquary)) == 0) {
+        if (vault.allowance(address(this), reliquary) == 0) {
             vault.approve(reliquary, type(uint).max);
         }
     }
 
     function _prepareWithdrawal(IReZap.Step[] calldata steps, uint shares, uint relicId, bool harvest) internal {
         IReliquary _reliquary = IReliquary(reliquary);
-        require(IReliquary(reliquary).isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
         uint pid = _reliquary.getPositionForId(relicId).poolId;
         IReaperVault vault = IReaperVault(_reliquary.poolToken(pid));
@@ -137,10 +137,9 @@ contract DepositHelperReaperBPT is Ownable {
             _reliquary.withdraw(shares, relicId);
         }
 
-        IReZap _reZap = IReZap(reZap);
-        if (vault.allowance(address(this), address(_reZap)) == 0) {
-            vault.approve(address(_reZap), type(uint).max);
+        if (vault.allowance(address(this), reZap) == 0) {
+            vault.approve(reZap, type(uint).max);
         }
-        _reZap.zapOut(steps, address(vault), shares);
+        IReZap(reZap).zapOut(steps, address(vault), shares);
     }
 }
