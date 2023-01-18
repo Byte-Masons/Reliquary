@@ -37,8 +37,8 @@ contract Reliquary is
     using SafeERC20 for IERC20;
 
     /// @dev Access control roles.
-    bytes32 private constant OPERATOR = keccak256("OPERATOR");
-    bytes32 private constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    bytes32 public constant OPERATOR = keccak256("OPERATOR");
+    bytes32 public constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
 
     /// @dev Indicates whether tokens are being added to, or removed from, a pool.
     enum Kind {
@@ -236,16 +236,6 @@ contract Reliquary is
     }
 
     /**
-     * @notice Deposit pool tokens to Reliquary for reward token allocation.
-     * @param amount Token amount to deposit.
-     * @param relicId NFT ID of the position being deposited to.
-     */
-    function deposit(uint amount, uint relicId) external override nonReentrant {
-        _requireApprovedOrOwner(relicId);
-        _deposit(amount, relicId);
-    }
-
-    /**
      * @notice Withdraw pool tokens.
      * @param amount token amount to withdraw.
      * @param relicId NFT ID of the position being withdrawn.
@@ -389,6 +379,16 @@ contract Reliquary is
     /// @notice Returns whether `spender` is allowed to manage Relic `relicId`.
     function isApprovedOrOwner(address spender, uint relicId) external view override returns (bool) {
         return _isApprovedOrOwner(spender, relicId);
+    }
+
+    /**
+     * @notice Deposit pool tokens to Reliquary for reward token allocation.
+     * @param amount Token amount to deposit.
+     * @param relicId NFT ID of the position being deposited to.
+     */
+    function deposit(uint amount, uint relicId) public virtual override nonReentrant {
+        _requireApprovedOrOwner(relicId);
+        _deposit(amount, relicId);
     }
 
     /**
