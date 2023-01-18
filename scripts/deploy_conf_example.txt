@@ -13,6 +13,7 @@
 # `pools`: May be of any length (or empty). Each member must have each property defined in the correct order shown.    #
 #     `allocPoint`: Amount of allocation points for this pool. The pool will receive emissions proportional to the     #
 #         total number of allocation points for all pools.                                                             #
+#     `cap`: Deposit cap for each position in a pool.                                                                  #
 #     `levelMultipliers`: Multiplier applied to size of positions in each maturity level when calculating rewards.     #
 #     `name`: Name of the pool.                                                                                        #
 #     `poolToken`: Address for the token this pool takes for deposits.                                                 #
@@ -32,6 +33,7 @@
     "pools": [
         {
             "allocPoint": 100,
+            "cap": 100000000,
             "levelMultipliers": [100, 120, 150, 200, 300, 400, 500, 750],
             "name": "USDC Optimizer",
             "poolToken": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
@@ -40,6 +42,7 @@
         },
         {
             "allocPoint": 50,
+            "cap": 66666666666666666,
             "levelMultipliers": [100, 120, 150, 200, 300, 400],
             "name": "ETH Optimizer",
             "poolToken": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",

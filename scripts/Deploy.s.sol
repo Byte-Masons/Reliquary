@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "contracts/Reliquary.sol";
+import "contracts/ReliquaryCapped.sol";
 import "contracts/emission_curves/OwnableCurve.sol";
 import "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
@@ -13,6 +13,7 @@ contract Deploy is Script {
 
     struct Pool {
         uint allocPoint;
+        uint cap;
         uint[] levelMultipliers;
         string name;
         address poolToken;
@@ -34,7 +35,7 @@ contract Deploy is Script {
 
         OwnableCurve curve = new OwnableCurve(emissionRate);
 
-        Reliquary reliquary = new Reliquary(rewardToken, address(curve));
+        ReliquaryCapped reliquary = new ReliquaryCapped(rewardToken, address(curve));
 
         reliquary.grantRole(OPERATOR, tx.origin);
 
@@ -79,6 +80,7 @@ contract Deploy is Script {
                 pool.name,
                 nftDescriptor
             );
+            reliquary.setDepositCap(i, pool.cap);
         }
 
         if (multisig != address(0)) {
