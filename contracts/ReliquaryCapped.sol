@@ -3,8 +3,7 @@ pragma solidity ^0.8.17;
 
 import "./Reliquary.sol";
 
-/// @title Extension of Reliquary that allows the operator to set a deposit cap for testing purposes.
-/// Only mitigates human error and is not gas-efficient.
+/// @title Extension of Reliquary that allows the operator to set a total deposit cap per pool for testing purposes.
 contract ReliquaryCapped is Reliquary {
     /// @notice poolId => amount
     mapping(uint => uint) public depositCap;
@@ -22,27 +21,30 @@ contract ReliquaryCapped is Reliquary {
 
     /// @inheritdoc Reliquary
     function deposit(uint amount, uint relicId) public override {
-        if (amount > depositCap[positionForId[relicId].poolId]) revert AmountExceedsCap();
+        uint pid = positionForId[relicId].poolId;
+        if (amount + _poolBalanceBeforeMultipliers(pid) > depositCap[pid]) revert AmountExceedsCap();
         super.deposit(amount, relicId);
     }
 
     /// @inheritdoc Reliquary
     function createRelicAndDeposit(address to, uint pid, uint amount) public override returns (uint id) {
-        if (amount > depositCap[pid]) revert AmountExceedsCap();
+        if (amount + _poolBalanceBeforeMultipliers(pid) > depositCap[pid]) revert AmountExceedsCap();
         id = super.createRelicAndDeposit(to, pid, amount);
     }
 
-    /// @inheritdoc Reliquary
-    function shift(uint fromId, uint toId, uint amount) public override {
-        PositionInfo storage toPosition = positionForId[toId];
-        if (amount + toPosition.amount > depositCap[toPosition.poolId]) revert AmountExceedsCap();
-        super.shift(fromId, toId, amount);
-    }
-
-    /// @inheritdoc Reliquary
-    function merge(uint fromId, uint toId) public override {
-        PositionInfo storage toPosition = positionForId[toId];
-        if (positionForId[fromId].amount + toPosition.amount > depositCap[toPosition.poolId]) revert AmountExceedsCap();
-        super.merge(fromId, toId);
+    /**
+     * @notice returns The total deposits of the pool's token, NOT weighted by maturity level allocation.
+     * @param pid The index of the pool. See poolInfo.
+     * @return total The amount of pool tokens held by the contract.
+     */
+    function _poolBalanceBeforeMultipliers(uint pid) internal view returns (uint total) {
+        LevelInfo storage levelInfo = levels[pid];
+        uint length = levelInfo.balance.length;
+        for (uint i; i < length;) {
+            total += levelInfo.balance[i];
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

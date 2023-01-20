@@ -37,8 +37,8 @@ contract Reliquary is
     using SafeERC20 for IERC20;
 
     /// @dev Access control roles.
-    bytes32 public constant OPERATOR = keccak256("OPERATOR");
-    bytes32 public constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    bytes32 internal constant OPERATOR = keccak256("OPERATOR");
+    bytes32 internal constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
 
     /// @dev Indicates whether tokens are being added to, or removed from, a pool.
     enum Kind {
@@ -62,7 +62,7 @@ contract Reliquary is
     /// @notice Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
     /// @notice Level system for each Reliquary pool.
-    LevelInfo[] private levels;
+    LevelInfo[] internal levels;
     /// @notice Address of the LP token for each Reliquary pool.
     address[] public poolToken;
     /// @notice Address of IRewarder contract for each Reliquary pool.
