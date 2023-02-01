@@ -17,6 +17,6 @@ contract NFTDescriptorSingle4626 is NFTDescriptor {
 
         string memory assetAmount = generateDecimalString(vault.convertToAssets(amount), asset.decimals());
         text =
-            string.concat('<text x="50%" y="340" class="bit" style="font-size: 8">', asset.symbol(), ":", assetAmount);
+            string.concat('<text x="50%" y="300" class="bit" style="font-size: 8">', asset.symbol(), ":", assetAmount);
     }
 }

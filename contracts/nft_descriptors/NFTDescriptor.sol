@@ -11,12 +11,11 @@ contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
 
     /// @notice Constants for drawing graph.
-    uint private constant GRAPH_WIDTH = 210;
-    uint private constant GRAPH_HEIGHT = 30;
+    uint private constant GRAPH_WIDTH = 180;
+    uint private constant GRAPH_HEIGHT = 150;
 
     // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS = "https://gateway.pinata.cloud/ipfs/QmZgqnwcKxQhK23wiuVh1YfDg2YFcvhpJr3BNZfbCMQNvy/";
-    uint private constant NUM_CHARACTERS = 2;
+    string private constant IPFS = "https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/";
 
     address public immutable reliquary;
 
@@ -30,7 +29,6 @@ contract NFTDescriptor is INFTDescriptor {
         string pendingReward;
         uint maturity;
         string rewardSymbol;
-        uint characterId;
         string description;
         string attributes;
         string image;
@@ -49,15 +47,13 @@ contract NFTDescriptor is INFTDescriptor {
         vars.maturity = (block.timestamp - position.entry) / 1 days;
         vars.rewardSymbol = IERC20Metadata(address(_reliquary.rewardToken())).symbol();
 
-        vars.characterId = uint(keccak256(abi.encodePacked(relicId, address(_reliquary)))) % NUM_CHARACTERS;
-
         vars.description = generateDescription(pool.name);
         vars.attributes =
             generateAttributes(position, vars.amount, vars.pendingReward, vars.rewardSymbol, vars.maturity);
         vars.image = Base64.encode(
             bytes(
                 string.concat(
-                    generateSVGImage(position.level, levelInfo.balance.length, vars.characterId),
+                    generateSVGImage(position.level, levelInfo.balance.length),
                     generateImageText(relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity),
                     generateTextFromToken(vars.underlying, position.amount, vars.amount),
                     "</text>",
@@ -136,7 +132,7 @@ contract NFTDescriptor is INFTDescriptor {
      * @param level Current maturity level of the position.
      * @param numLevels Total number of levels in the pool.
      */
-    function generateSVGImage(uint level, uint numLevels, uint characterId) internal pure returns (string memory svg) {
+    function generateSVGImage(uint level, uint numLevels) internal pure returns (string memory svg) {
         level = (level + 1) * 5 / numLevels;
         svg = string.concat(
             '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -148,10 +144,9 @@ contract NFTDescriptor is INFTDescriptor {
             "</style>",
             '<image href="',
             IPFS,
-            characterId.toString(),
-            "/",
+            "cup",
             (level == 0) ? "1" : level.toString(),
-            ".gif",
+            ".png",
             '" height="450" width="290" class="art"/>'
         );
     }
@@ -175,11 +170,11 @@ contract NFTDescriptor is INFTDescriptor {
             relicId.toString(),
             '</text><text x="50%" y="280" class="bit" style="font-size: 12">',
             poolName,
-            '</text><text x="50%" y="360" class="bit" style="font-size: 8">PENDING:',
+            '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:',
             pendingReward,
             " ",
             rewardSymbol,
-            '</text><text x="50%" y="380" class="bit" style="font-size: 8">MATURITY:',
+            '</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:',
             maturity.toString(),
             " DAY",
             (maturity == 1) ? "" : "S",
@@ -194,7 +189,7 @@ contract NFTDescriptor is INFTDescriptor {
         uint, //amount
         string memory amountString
     ) internal view virtual returns (string memory text) {
-        text = string.concat('<text x="50%" y="340" class="bit" style="font-size: 8">AMOUNT:', amountString);
+        text = string.concat('<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString);
     }
 
     /**
@@ -214,7 +209,7 @@ contract NFTDescriptor is INFTDescriptor {
         uint barWidthInt = barWidth / 10;
         string memory barWidthString =
             string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
-        bars = '<svg x="43" y="226" width="210" height="30">';
+        bars = '<svg x="58" y="50" width="180" height="150">';
         for (uint i; i < levelInfo.multipliers.length; i++) {
             uint barHeight = levelInfo.multipliers[i] * GRAPH_HEIGHT / highestMultiplier;
             bars = string.concat(

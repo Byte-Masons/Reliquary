@@ -20,11 +20,11 @@ contract NFTDescriptorPair is NFTDescriptor {
         uint amount0 = amount * reserves0 / lp.totalSupply();
         uint amount1 = amount * reserves1 / lp.totalSupply();
         text = string.concat(
-            '<text x="50%" y="320" class="bit" style="font-size: 8">',
+            '<text x="50%" y="300" class="bit" style="font-size: 8">',
             token0.symbol(),
             ":",
             generateDecimalString(amount0, token0.decimals()),
-            '</text><text x="50%" y="340" class="bit" style="font-size: 8">',
+            '</text><text x="50%" y="315" class="bit" style="font-size: 8">',
             token1.symbol(),
             ":",
             generateDecimalString(amount1, token1.decimals())
