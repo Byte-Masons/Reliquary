@@ -20,7 +20,7 @@ contract Invariants is Test {
 
     function setUp() public {
         ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        reliquary = new Reliquary(address(oath), address(new Constant()));
+        reliquary = new Reliquary(address(oath), address(new Constant()), "Reliquary Deposit", "RELIC");
         oath.mint(address(reliquary), 100_000_000 ether);
         ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));

@@ -41,7 +41,9 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
         reliquary = new Reliquary(
             address(oath),
-            address(new Constant())
+            address(new Constant()),
+            "Reliquary Deposit",
+            "RELIC"
         );
 
         vault = IReaperVaultTest(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);

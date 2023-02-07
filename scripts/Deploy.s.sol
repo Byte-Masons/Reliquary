@@ -25,6 +25,8 @@ contract Deploy is Script {
 
     function run() external {
         string memory config = vm.readFile("scripts/deploy_conf.json");
+        string memory name = config.readString(".name");
+        string memory symbol = config.readString(".symbol");
         address weth = config.readAddress(".weth");
         address multisig = config.readAddress(".multisig");
         address rewardToken = config.readAddress(".rewardToken");
@@ -34,7 +36,7 @@ contract Deploy is Script {
 
         OwnableCurve curve = new OwnableCurve(emissionRate);
 
-        Reliquary reliquary = new Reliquary(rewardToken, address(curve));
+        Reliquary reliquary = new Reliquary(rewardToken, address(curve), name, symbol);
 
         reliquary.grantRole(OPERATOR, tx.origin);
 

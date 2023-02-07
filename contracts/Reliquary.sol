@@ -97,7 +97,9 @@ contract Reliquary is
      * @param _rewardToken The reward token contract address.
      * @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate.
      */
-    constructor(address _rewardToken, address _emissionCurve) ERC721("Reliquary Deposit", "RELIC") {
+    constructor(address _rewardToken, address _emissionCurve, string memory name, string memory symbol)
+        ERC721(name, symbol)
+    {
         rewardToken = _rewardToken;
         emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);

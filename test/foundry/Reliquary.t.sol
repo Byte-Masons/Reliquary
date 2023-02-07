@@ -25,7 +25,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     function setUp() public {
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         address curve = address(new Constant());
-        reliquary = new Reliquary(address(oath), curve);
+        reliquary = new Reliquary(address(oath), curve, "Reliquary Deposit", "RELIC");
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
