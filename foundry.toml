@@ -12,7 +12,7 @@ via_ir = false
 verbosity = 1
 ignored_error_codes = [1878]
 #eth-rpc-url = "https://rpcapi.fantom.network"
-rpc_endpoints = { fantom = "https://rpcapi.fantom.network" }
+rpc_endpoints = { fantom = "https://rpcapi-tracing.fantom.network" }
 #sender = ''
 #initial_balance = '0xffffffffffffffffffffffff'
 ffi = false
