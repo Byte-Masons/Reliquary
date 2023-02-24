@@ -776,7 +776,7 @@ contract Reliquary is
             uint weight = _findWeight(amount, amountBefore);
             uint entryBefore = position.entry;
             uint maturity = block.timestamp - entryBefore;
-            position.entry = entryBefore + maturity * weight / 1e18;
+            position.entry = entryBefore + maturity * weight / 1e12;
         }
     }
 
@@ -838,22 +838,17 @@ contract Reliquary is
     }
 
     /**
-     * @notice Utility function to find weights without any underflows or zero division problems.
+     * @notice Used in `_updateEntry` to find weights without any underflows or zero division problems.
      * @param addedValue New value being added.
      * @param oldValue Current amount of x.
      */
     function _findWeight(uint addedValue, uint oldValue) internal pure returns (uint weightNew) {
-        if (oldValue == 0) {
-            weightNew = 1e18;
+        if (oldValue < addedValue) {
+            weightNew = 1e12 - oldValue * 1e12 / (addedValue + oldValue);
+        } else if (addedValue < oldValue) {
+            weightNew = addedValue * 1e12 / (addedValue + oldValue);
         } else {
-            if (oldValue < addedValue) {
-                uint weightOld = oldValue * 1e18 / (addedValue + oldValue);
-                weightNew = 1e18 - weightOld;
-            } else if (addedValue < oldValue) {
-                weightNew = addedValue * 1e18 / (addedValue + oldValue);
-            } else {
-                weightNew = 1e18 / 2;
-            }
+            weightNew = 5e11;
         }
     }
 
