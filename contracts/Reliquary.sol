@@ -774,8 +774,9 @@ contract Reliquary is
             position.entry = block.timestamp;
         } else {
             uint weight = _findWeight(amount, amountBefore);
-            uint maturity = block.timestamp - position.entry;
-            position.entry += maturity * weight / 1e18;
+            uint entryBefore = position.entry;
+            uint maturity = block.timestamp - entryBefore;
+            position.entry = entryBefore + maturity * weight / 1e18;
         }
     }
 
