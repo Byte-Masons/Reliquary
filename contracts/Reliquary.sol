@@ -769,9 +769,14 @@ contract Reliquary is
      */
     function _updateEntry(uint amount, uint relicId) internal {
         PositionInfo storage position = positionForId[relicId];
-        uint weight = _findWeight(amount, position.amount);
-        uint maturity = block.timestamp - position.entry;
-        position.entry += maturity * weight / 1e18;
+        uint amountBefore = position.amount;
+        if (amountBefore == 0) {
+            position.entry = block.timestamp;
+        } else {
+            uint weight = _findWeight(amount, amountBefore);
+            uint maturity = block.timestamp - position.entry;
+            position.entry += maturity * weight / 1e18;
+        }
     }
 
     /**
