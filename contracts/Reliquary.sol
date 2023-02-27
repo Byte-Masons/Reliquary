@@ -217,7 +217,7 @@ contract Reliquary is
 
         emit ReliquaryEvents.LogPoolModified(
             pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor
-            );
+        );
     }
 
     /// @notice Update reward variables for all pools. Be careful of gas spending!
