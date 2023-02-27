@@ -718,7 +718,7 @@ contract Reliquary is
         }
 
         vars.oldLevel = position.level;
-        vars.newLevel = _updateLevel(relicId);
+        vars.newLevel = _updateLevel(relicId, vars.oldLevel);
         if (vars.oldLevel != vars.newLevel) {
             levels[poolId].balance[vars.oldLevel] -= vars.oldAmount;
             levels[poolId].balance[vars.newLevel] += vars.newAmount;
@@ -783,12 +783,13 @@ contract Reliquary is
     /**
      * @notice Updates the position's level based on entry time.
      * @param relicId The NFT ID of the position being updated.
+     * @param oldLevel Level of position before update.
      * @return newLevel Level of position after update.
      */
-    function _updateLevel(uint relicId) internal returns (uint newLevel) {
+    function _updateLevel(uint relicId, uint oldLevel) internal returns (uint newLevel) {
         newLevel = levelOnUpdate(relicId);
         PositionInfo storage position = positionForId[relicId];
-        if (position.level != newLevel) {
+        if (oldLevel != newLevel) {
             position.level = newLevel;
             emit ReliquaryEvents.LevelChanged(relicId, newLevel);
         }
@@ -859,7 +860,7 @@ contract Reliquary is
     {
         fromLevel = positionForId[fromId].level;
         oldToLevel = positionForId[toId].level;
-        newToLevel = _updateLevel(toId);
+        newToLevel = _updateLevel(toId, oldToLevel);
         if (fromLevel != newToLevel) {
             levels[poolId].balance[fromLevel] -= amount;
         }
