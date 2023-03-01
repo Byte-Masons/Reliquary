@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IReliquary} from "../interfaces/IReliquary.sol";
+import {IReliquary, PositionInfo} from "../interfaces/IReliquary.sol";
 
 interface IWeth is IERC20 {
     function deposit() external payable;
@@ -51,25 +51,22 @@ contract DepositHelperERC4626 is Ownable {
      * Only for supported pools.
      */
     function withdraw(uint amount, uint relicId, bool harvest, bool giveEther) external {
-        IReliquary _reliquary = IReliquary(reliquary);
-        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        (IReliquary _reliquary,, IERC4626 vault) = _prepareWithdrawal(relicId);
+        _withdraw(_reliquary, vault, vault.convertToShares(amount), relicId, harvest, giveEther);
+    }
 
-        uint pid = _reliquary.getPositionForId(relicId).poolId;
-        IERC4626 vault = IERC4626(_reliquary.poolToken(pid));
-
-        if (harvest) {
-            _reliquary.withdrawAndHarvest(vault.convertToShares(amount), relicId, msg.sender);
-        } else {
-            _reliquary.withdraw(vault.convertToShares(amount), relicId);
-        }
-
-        if (giveEther) {
-            require(vault.asset() == weth, "not an ether vault");
-            vault.withdraw(vault.maxWithdraw(address(this)), address(this), address(this));
-            IWeth(weth).withdraw(amount);
-            payable(msg.sender).sendValue(amount);
-        } else {
-            vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
+    /**
+     * @notice Withdraw all underlying tokens and rewards from the Relic.
+     * @param relicId The NFT ID of the Relic for the position you are withdrawing from.
+     * @param giveEther Whether to withdraw the underlying tokens as native ether instead of wrapped.
+     * @param burn Whether to burn the empty Relic.
+     * Only for supported pools.
+     */
+    function withdrawAllAndHarvest(uint relicId, bool giveEther, bool burn) external {
+        (IReliquary _reliquary, PositionInfo memory position, IERC4626 vault) = _prepareWithdrawal(relicId);
+        _withdraw(_reliquary, vault, position.amount, relicId, true, giveEther);
+        if (burn) {
+            _reliquary.burn(relicId);
         }
     }
 
@@ -100,6 +97,39 @@ contract DepositHelperERC4626 is Ownable {
 
         if (vault.allowance(address(this), reliquary) == 0) {
             vault.approve(reliquary, type(uint).max);
+        }
+    }
+
+    function _prepareWithdrawal(uint relicId)
+        internal
+        view
+        returns (IReliquary _reliquary, PositionInfo memory position, IERC4626 vault)
+    {
+        _reliquary = IReliquary(reliquary);
+        require(_reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+
+        position = _reliquary.getPositionForId(relicId);
+        vault = IERC4626(_reliquary.poolToken(position.poolId));
+    }
+
+    function _withdraw(IReliquary _reliquary, IERC4626 vault, uint amount, uint relicId, bool harvest, bool giveEther)
+        internal
+    {
+        if (harvest) {
+            _reliquary.withdrawAndHarvest(amount, relicId, msg.sender);
+        } else {
+            _reliquary.withdraw(amount, relicId);
+        }
+
+        if (giveEther) {
+            IWeth _weth = IWeth(weth);
+            require(vault.asset() == address(_weth), "not an ether vault");
+            uint amountETH = vault.maxWithdraw(address(this));
+            vault.withdraw(amountETH, address(this), address(this));
+            _weth.withdraw(amountETH);
+            payable(msg.sender).sendValue(amountETH);
+        } else {
+            vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
         }
     }
 }
