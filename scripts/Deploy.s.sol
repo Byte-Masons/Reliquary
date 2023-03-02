@@ -13,6 +13,7 @@ contract Deploy is Script {
 
     struct Pool {
         uint allocPoint;
+        bool allowPartialWithdrawals;
         uint[] levelMultipliers;
         string name;
         address poolToken;
@@ -79,7 +80,8 @@ contract Deploy is Script {
                 pool.requiredMaturities,
                 pool.levelMultipliers,
                 pool.name,
-                nftDescriptor
+                nftDescriptor,
+                pool.allowPartialWithdrawals
             );
         }
 

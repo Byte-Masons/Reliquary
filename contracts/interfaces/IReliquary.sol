@@ -27,12 +27,15 @@ struct PositionInfo {
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
  * `allocPoint` Pool's individual allocation - ratio of the total allocation.
  * `name` Name of pool to be displayed in NFT image.
+ * `allowPartialWithdrawals` Whether users can withdraw less than their entire position.
+ *     A value of false will also disable shift and split functionality.
  */
 struct PoolInfo {
     uint accRewardPerShare;
     uint lastRewardTime;
     uint allocPoint;
     string name;
+    bool allowPartialWithdrawals;
 }
 
 /**
@@ -71,7 +74,8 @@ interface IReliquary is IERC721Enumerable {
         uint[] calldata requiredMaturity,
         uint[] calldata allocPoints,
         string memory name,
-        address _nftDescriptor
+        address _nftDescriptor,
+        bool allowPartialWithdrawals
     ) external;
     function modifyPool(
         uint pid,

@@ -25,7 +25,7 @@ contract Invariants is Test {
         ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        reliquary.addPool(1000, address(testToken), address(0), curve, levels, "Test Token", nftDescriptor);
+        reliquary.addPool(1000, address(testToken), address(0), curve, levels, "Test Token", nftDescriptor, true);
 
         ReliquaryUser user = new ReliquaryUser(address(reliquary), address(testToken));
         Skipper skipper = new Skipper();

@@ -91,6 +91,7 @@ contract Reliquary is
     error MergingEmptyRelics();
     error MaxEmissionRateExceeded();
     error NotApprovedOrOwner();
+    error PartialWithdrawalsDisabled();
 
     /**
      * @dev Constructs and initializes the contract.
@@ -121,6 +122,8 @@ contract Reliquary is
      * @param levelMultipliers The multipliers applied to the amount of `_poolToken` for each level within this pool.
      * @param name Name of pool to be displayed in NFT image.
      * @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI.
+     * @param allowPartialWithdrawals Whether users can withdraw less than their entire position. A value of false
+     * will also disable shift and split functionality. This is useful for adding pools with decreasing levelMultipliers.
      */
     function addPool(
         uint allocPoint,
@@ -129,7 +132,8 @@ contract Reliquary is
         uint[] calldata requiredMaturities,
         uint[] calldata levelMultipliers,
         string memory name,
-        address _nftDescriptor
+        address _nftDescriptor,
+        bool allowPartialWithdrawals
     ) external override onlyRole(OPERATOR) {
         if (_poolToken == rewardToken) revert RewardTokenAsPoolToken();
         if (requiredMaturities.length == 0) revert EmptyArray();
@@ -146,8 +150,7 @@ contract Reliquary is
             }
         }
 
-        uint length = poolLength();
-        for (uint i; i < length;) {
+        for (uint i; i < poolLength();) {
             _updatePool(i);
             unchecked {
                 ++i;
@@ -162,7 +165,13 @@ contract Reliquary is
         nftDescriptor.push(_nftDescriptor);
 
         poolInfo.push(
-            PoolInfo({allocPoint: allocPoint, lastRewardTime: block.timestamp, accRewardPerShare: 0, name: name})
+            PoolInfo({
+                allocPoint: allocPoint,
+                lastRewardTime: block.timestamp,
+                accRewardPerShare: 0,
+                name: name,
+                allowPartialWithdrawals: allowPartialWithdrawals
+            })
         );
         levels.push(
             LevelInfo({
@@ -172,7 +181,9 @@ contract Reliquary is
             })
         );
 
-        emit ReliquaryEvents.LogPoolAddition((poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor);
+        emit ReliquaryEvents.LogPoolAddition(
+            (poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor, allowPartialWithdrawals
+        );
     }
 
     /**
@@ -426,6 +437,9 @@ contract Reliquary is
         _requireApprovedOrOwner(fromId);
 
         PositionInfo storage fromPosition = positionForId[fromId];
+        uint poolId = fromPosition.poolId;
+        if (!poolInfo[poolId].allowPartialWithdrawals) revert PartialWithdrawalsDisabled();
+
         uint fromAmount = fromPosition.amount;
         uint newFromAmount = fromAmount - amount;
         fromPosition.amount = newFromAmount;
@@ -436,7 +450,6 @@ contract Reliquary is
         newPosition.entry = fromPosition.entry;
         uint level = fromPosition.level;
         newPosition.level = level;
-        uint poolId = fromPosition.poolId;
         newPosition.poolId = poolId;
 
         uint multiplier = _updatePool(poolId) * levels[poolId].multipliers[level];
@@ -480,12 +493,13 @@ contract Reliquary is
 
         LocalVariables_shift memory vars;
         PositionInfo storage fromPosition = positionForId[fromId];
-        vars.fromAmount = fromPosition.amount;
-
         vars.poolId = fromPosition.poolId;
+        if (!poolInfo[vars.poolId].allowPartialWithdrawals) revert PartialWithdrawalsDisabled();
+
         PositionInfo storage toPosition = positionForId[toId];
         if (vars.poolId != toPosition.poolId) revert RelicsNotOfSamePool();
 
+        vars.fromAmount = fromPosition.amount;
         vars.toAmount = toPosition.amount;
         toPosition.entry = (vars.fromAmount * fromPosition.entry + vars.toAmount * toPosition.entry)
             / (vars.fromAmount + vars.toAmount);
@@ -711,6 +725,9 @@ contract Reliquary is
             vars.newAmount = vars.oldAmount + amount;
             position.amount = vars.newAmount;
         } else if (kind == Kind.WITHDRAW) {
+            if (amount != vars.oldAmount && !poolInfo[poolId].allowPartialWithdrawals) {
+                revert PartialWithdrawalsDisabled();
+            }
             vars.newAmount = vars.oldAmount - amount;
             position.amount = vars.newAmount;
         } else {

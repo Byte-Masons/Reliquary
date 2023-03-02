@@ -52,7 +52,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            1000, address(vault), address(0), quartetCurve, quartetLevels, "A Late Quartet", nftDescriptor
+            1000, address(vault), address(0), quartetCurve, quartetLevels, "A Late Quartet", nftDescriptor, true
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);

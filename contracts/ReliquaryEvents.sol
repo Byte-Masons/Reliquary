@@ -8,7 +8,12 @@ library ReliquaryEvents {
     event EmergencyWithdraw(uint indexed pid, uint amount, address indexed to, uint indexed relicId);
     event Harvest(uint indexed pid, uint amount, address indexed to, uint indexed relicId);
     event LogPoolAddition(
-        uint indexed pid, uint allocPoint, address indexed poolToken, address indexed rewarder, address nftDescriptor
+        uint indexed pid,
+        uint allocPoint,
+        address indexed poolToken,
+        address indexed rewarder,
+        address nftDescriptor,
+        bool allowPartialWithdrawals
     );
     event LogPoolModified(uint indexed pid, uint allocPoint, address indexed rewarder, address nftDescriptor);
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accRewardPerShare);

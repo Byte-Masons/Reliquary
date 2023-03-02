@@ -37,7 +37,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", nftDescriptor);
+        reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", nftDescriptor, true);
 
         helper = new DepositHelperERC4626(address(reliquary), address(weth));
 

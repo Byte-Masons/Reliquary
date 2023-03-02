@@ -33,7 +33,9 @@ contract GymTest is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(100, address(testToken), address(0), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor);
+        reliquary.addPool(
+            100, address(testToken), address(0), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+        );
 
         gym = new Gym(address(reliquary));
         reliquary.grantRole(MATURITY_MODIFIER, address(gym));
