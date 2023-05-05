@@ -282,9 +282,9 @@ contract Reliquary is
     function harvest(uint relicId, address harvestTo) external override nonReentrant {
         _requireApprovedOrOwner(relicId);
 
-        (uint poolId, uint _pendingReward) = _updatePosition(0, relicId, Kind.OTHER, harvestTo);
+        (uint poolId, uint receivedReward) = _updatePosition(0, relicId, Kind.OTHER, harvestTo);
 
-        emit ReliquaryEvents.Harvest(poolId, _pendingReward, harvestTo, relicId);
+        emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
     }
 
     /**
@@ -297,12 +297,12 @@ contract Reliquary is
         if (amount == 0) revert ZeroAmount();
         _requireApprovedOrOwner(relicId);
 
-        (uint poolId, uint _pendingReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
+        (uint poolId, uint receivedReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
-        emit ReliquaryEvents.Harvest(poolId, _pendingReward, harvestTo, relicId);
+        emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
     }
 
     /**
