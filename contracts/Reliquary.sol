@@ -708,11 +708,11 @@ contract Reliquary is
      * @param kind Indicates whether tokens are being added to, or removed from, a pool.
      * @param harvestTo Address to send rewards to (zero address if harvest should not be performed).
      * @return poolId Pool ID of the given position.
-     * @return _pendingReward Pending reward for given position owner.
+     * @return received Amount of reward token dispensed to `harvestTo` on harvest.
      */
     function _updatePosition(uint amount, uint relicId, Kind kind, address harvestTo)
         internal
-        returns (uint poolId, uint _pendingReward)
+        returns (uint poolId, uint received)
     {
         LocalVariables_updatePosition memory vars;
         PositionInfo storage position = positionForId[relicId];
@@ -745,7 +745,7 @@ contract Reliquary is
             levels[poolId].balance[vars.oldLevel] -= amount;
         }
 
-        _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
+        uint _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
             / ACC_REWARD_PRECISION - position.rewardDebt;
         position.rewardDebt =
             vars.newAmount * levels[poolId].multipliers[vars.newLevel] * vars.accRewardPerShare / ACC_REWARD_PRECISION;
@@ -755,7 +755,7 @@ contract Reliquary is
             position.rewardCredit += _pendingReward;
         } else if (vars.harvest) {
             uint total = _pendingReward + position.rewardCredit;
-            uint received = _receivedReward(total);
+            received = _receivedReward(total);
             position.rewardCredit = total - received;
             if (received != 0) {
                 IERC20(rewardToken).safeTransfer(harvestTo, received);
