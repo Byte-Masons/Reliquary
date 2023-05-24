@@ -231,7 +231,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
 
         // reverse the order of the from & to ids
-        vm.expectRevert(Reliquary.InvalidShift.selector);
+        vm.expectRevert(Reliquary.InvalidMaturityChange.selector);
         reliquary.shift(newRelicId, relicId, shiftAmount);
     }
 
@@ -256,6 +256,20 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
     }
 
+    function testRevertOnMergeFromLaterMaturity(uint depositAmount1, uint depositAmount2) public {
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
+        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+
+        // skip forward so that the maturity of the new relic is after the old relic
+        vm.warp(1 days);
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        
+        vm.expectRevert(Reliquary.InvalidMaturityChange.selector);
+        reliquary.merge(newRelicId, relicId);
+    }
+
     function testCompareDepositAndMerge(uint amount1, uint amount2, uint32 time) public {
         amount1 = bound(amount1, 1, testToken.balanceOf(address(this)) - 1);
         amount2 = bound(amount2, 1, testToken.balanceOf(address(this)) - amount1);
@@ -271,7 +285,9 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         skip(time);
         uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount2);
-        reliquary.merge(newRelicId, relicId);
+
+        // switch positions of these two so it is only ever extending the maturity of the sent relic
+        reliquary.merge(relicId, newRelicId);
         uint maturity2 = block.timestamp - reliquary.getPositionForId(relicId).entry;
 
         assertApproxEqAbs(maturity1, maturity2, 1);

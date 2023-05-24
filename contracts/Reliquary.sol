@@ -92,7 +92,7 @@ contract Reliquary is
     error MaxEmissionRateExceeded();
     error NotApprovedOrOwner();
     error PartialWithdrawalsDisabled();
-    error InvalidShift();
+    error InvalidMaturityChange();
 
     /**
      * @dev Constructs and initializes the contract.
@@ -504,7 +504,7 @@ contract Reliquary is
         vars.toAmount = toPosition.amount;
 
         // Prevent shifts that would extend the maturity of the receiving Relic.
-        if (toPosition.entry < fromPosition.entry) revert InvalidShift();
+        if (toPosition.entry < fromPosition.entry) revert InvalidMaturityChange();
 
         toPosition.entry = (vars.fromAmount * fromPosition.entry + vars.toAmount * toPosition.entry)
             / (vars.fromAmount + vars.toAmount);
@@ -559,7 +559,7 @@ contract Reliquary is
         if (newToAmount == 0) revert MergingEmptyRelics();
 
         // Prevent shifts that would extend the maturity of the receiving Relic.
-        if (toPosition.entry < fromPosition.entry) revert InvalidShift();
+        if (toPosition.entry < fromPosition.entry) revert InvalidMaturityChange();
 
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
 
