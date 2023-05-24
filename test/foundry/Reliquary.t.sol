@@ -219,6 +219,22 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount2 + shiftAmount);
     }
 
+    function testRevertOnShiftFromLaterMaturity(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
+        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
+        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+        shiftAmount = bound(shiftAmount, 1, depositAmount1);
+
+        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+
+        // skip forward so that the maturity of the new relic is after the old relic
+        vm.warp(1 days);
+        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+
+        // reverse the order of the from & to ids
+        vm.expectRevert(Reliquary.InvalidShift.selector);
+        reliquary.shift(newRelicId, relicId, shiftAmount);
+    }
+
     function testRevertOnShiftUnderflow(uint depositAmount, uint shiftAmount) public {
         depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
         shiftAmount = bound(shiftAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount);

@@ -92,6 +92,7 @@ contract Reliquary is
     error MaxEmissionRateExceeded();
     error NotApprovedOrOwner();
     error PartialWithdrawalsDisabled();
+    error InvalidShift();
 
     /**
      * @dev Constructs and initializes the contract.
