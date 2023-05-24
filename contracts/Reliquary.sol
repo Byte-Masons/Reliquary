@@ -501,6 +501,10 @@ contract Reliquary is
 
         vars.fromAmount = fromPosition.amount;
         vars.toAmount = toPosition.amount;
+
+        // Prevent shifts that would extend the maturity of the receiving Relic.
+        if (toPosition.entry < fromPosition.entry) revert InvalidShift();
+
         toPosition.entry = (vars.fromAmount * fromPosition.entry + vars.toAmount * toPosition.entry)
             / (vars.fromAmount + vars.toAmount);
 
@@ -552,6 +556,10 @@ contract Reliquary is
         uint toAmount = toPosition.amount;
         uint newToAmount = toAmount + fromAmount;
         if (newToAmount == 0) revert MergingEmptyRelics();
+
+        // Prevent shifts that would extend the maturity of the receiving Relic.
+        if (toPosition.entry < fromPosition.entry) revert InvalidShift();
+
         toPosition.entry = (fromAmount * fromPosition.entry + toAmount * toPosition.entry) / newToAmount;
 
         toPosition.amount = newToAmount;
