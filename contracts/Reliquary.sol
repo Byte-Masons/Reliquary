@@ -813,8 +813,11 @@ contract Reliquary is
     }
 
     /// @dev Ensure the behavior of ERC721Enumerable _beforeTokenTransfer is preserved.
-    function _beforeTokenTransfer(address from, address to, uint tokenId) internal override(ERC721, ERC721Enumerable) {
-        ERC721Enumerable._beforeTokenTransfer(from, to, tokenId);
+    function _beforeTokenTransfer(address from, address to, uint tokenId, uint batchSize)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
+        ERC721Enumerable._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
     /**
