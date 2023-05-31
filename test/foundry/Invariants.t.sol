@@ -46,9 +46,4 @@ contract Invariants is Test {
             assertEq(totals[i], balance);
         }
     }
-
-    function targetContracts() public view returns (address[] memory targetContracts_) {
-        require(_targetContracts.length != uint(0), "NO_TARGET_CONTRACTS");
-        return _targetContracts;
-    }
 }
