@@ -5,16 +5,19 @@ libs = ['lib']
 test = 'test/foundry'
 cache_path = 'forge-cache'
 script = 'scripts'
-#solc = "0.8.13"
+
+solc_version = "0.8.18"
 optimizer = true
 optimizer_runs = 100
 via_ir = false
 verbosity = 1
 ignored_error_codes = [1878]
+
 #eth-rpc-url = "https://rpcapi.fantom.network"
 rpc_endpoints = { fantom = "https://rpcapi-tracing.fantom.network" }
 #sender = ''
 #initial_balance = '0xffffffffffffffffffffffff'
+
 ffi = false
 fs_permissions = [{ access = "read", path = "./"}]
 #invariant_fail_on_revert = true
