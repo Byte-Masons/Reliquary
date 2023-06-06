@@ -14,8 +14,8 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     EnumerableSet.AddressSet private childrenRewarders;
 
     /// @dev Access control roles.
-    bytes32 private constant REWARD_SETTER = keccak256("REWARD_SETTER");
-    bytes32 private constant CHILD_SETTER = keccak256("CHILD_SETTER");
+    bytes32 public constant REWARD_SETTER = keccak256("REWARD_SETTER");
+    bytes32 public constant CHILD_SETTER = keccak256("CHILD_SETTER");
 
     event LogRewardMultiplier(uint rewardMultiplier);
     event ChildCreated(address indexed child, address indexed token);

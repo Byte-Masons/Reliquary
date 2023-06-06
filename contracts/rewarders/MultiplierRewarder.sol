@@ -11,7 +11,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.s
 contract MultiplierRewarder is SingleAssetRewarder {
     using SafeERC20 for IERC20;
 
-    uint private immutable BASIS_POINTS;
+    uint public constant BASIS_POINTS = 1e18;
     uint public rewardMultiplier;
 
     event LogOnReward(uint indexed relicId, uint amount, address indexed to);
@@ -26,7 +26,6 @@ contract MultiplierRewarder is SingleAssetRewarder {
         SingleAssetRewarder(_rewardToken, _reliquary)
     {
         rewardMultiplier = _rewardMultiplier;
-        BASIS_POINTS = 10 ** IERC20Metadata(IReliquary(_reliquary).rewardToken()).decimals();
     }
 
     /**
