@@ -72,12 +72,12 @@
         {
             "parentIndex": -1,
             "rewardMultiplier": 1000000000000000000,
-            "rewardToken": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75"
+            "rewarderToken": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75"
         },
         {
             "parentIndex": 0,
             "rewardMultiplier": 50000000000000,
-            "rewardToken": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
+            "rewarderToken": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
         }
     ]
 }
