@@ -759,10 +759,10 @@ contract Reliquary is
             position.rewardCredit = total - received;
             if (received != 0) {
                 IERC20(rewardToken).safeTransfer(harvestTo, received);
-                address _rewarder = rewarder[poolId];
-                if (_rewarder != address(0)) {
-                    IRewarder(_rewarder).onReward(relicId, received, harvestTo);
-                }
+            }
+            address _rewarder = rewarder[poolId];
+            if (_rewarder != address(0)) {
+                IRewarder(_rewarder).onReward(relicId, received, harvestTo);
             }
         }
 

@@ -39,7 +39,7 @@ contract MultiplierRewarder is SingleAssetRewarder {
 
     /// @dev Separate internal function that may be called by inheriting contracts.
     function _onReward(uint relicId, uint rewardAmount, address to) internal {
-        if (rewardMultiplier != 0) {
+        if (rewardMultiplier != 0 && rewardAmount != 0) {
             IERC20(rewardToken).safeTransfer(to, pendingToken(relicId, rewardAmount));
         }
         emit LogOnReward(relicId, rewardAmount, to);
