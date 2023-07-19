@@ -39,11 +39,11 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", nftDescriptor, true);
 
-        helper = new DepositHelperERC4626(address(reliquary), address(weth));
+        helper = new DepositHelperERC4626(reliquary, address(weth));
 
         weth.deposit{value: 1_000_000 ether}();
         weth.approve(address(helper), type(uint).max);
-        Reliquary(helper.reliquary()).setApprovalForAll(address(helper), true);
+        helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
     function testCreateNew(uint amount, bool depositETH) public {

@@ -56,12 +56,12 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);
-        helper = new DepositHelperReaperBPT(address(reliquary), address(reZap));
+        helper = new DepositHelperReaperBPT(reliquary, reZap);
 
         wftm = IWftm(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
         wftm.deposit{value: 1_000_000 ether}();
         wftm.approve(address(helper), type(uint).max);
-        Reliquary(helper.reliquary()).setApprovalForAll(address(helper), true);
+        helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
     function testCreateNew(uint amount, bool depositFTM) public {

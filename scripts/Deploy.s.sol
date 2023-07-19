@@ -121,7 +121,7 @@ contract Deploy is Script {
             }
             nftDescriptor = nftDescriptor4626;
             if (depositHelper4626 == address(0)) {
-                depositHelper4626 = address(new DepositHelperERC4626(address(reliquary), config.readAddress(".weth")));
+                depositHelper4626 = address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
             }
         } else if (typeHash == keccak256("pair")) {
             if (nftDescriptorPair == address(0)) {
