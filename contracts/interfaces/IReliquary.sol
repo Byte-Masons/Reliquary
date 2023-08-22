@@ -72,7 +72,7 @@ interface IReliquary is IERC721Enumerable {
         address _poolToken,
         address _rewarder,
         uint[] calldata requiredMaturity,
-        uint[] calldata allocPoints,
+        uint[] calldata levelMultipliers,
         string memory name,
         address _nftDescriptor,
         bool allowPartialWithdrawals
