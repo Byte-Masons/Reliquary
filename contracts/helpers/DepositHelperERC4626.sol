@@ -31,14 +31,14 @@ contract DepositHelperERC4626 is Ownable {
     function deposit(uint amount, uint relicId) external payable {
         require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
 
-        IERC4626 vault = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
-        reliquary.deposit(vault.balanceOf(address(this)), relicId);
+        uint shares = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
+        reliquary.deposit(shares, relicId);
     }
 
     /// @notice Send `amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `pid`.
     function createRelicAndDeposit(uint pid, uint amount) external payable returns (uint relicId) {
-        IERC4626 vault = _prepareDeposit(pid, amount);
-        relicId = reliquary.createRelicAndDeposit(msg.sender, pid, vault.balanceOf(address(this)));
+        uint shares = _prepareDeposit(pid, amount);
+        relicId = reliquary.createRelicAndDeposit(msg.sender, pid, shares);
     }
 
     /**
@@ -78,8 +78,8 @@ contract DepositHelperERC4626 is Ownable {
         }
     }
 
-    function _prepareDeposit(uint pid, uint amount) internal returns (IERC4626 vault) {
-        vault = IERC4626(IReliquary(reliquary).poolToken(pid));
+    function _prepareDeposit(uint pid, uint amount) internal returns (uint shares) {
+        IERC4626 vault = IERC4626(reliquary.poolToken(pid));
         IERC20 token = IERC20(vault.asset());
         if (msg.value != 0) {
             require(amount == msg.value, "ether amount mismatch");
@@ -92,7 +92,7 @@ contract DepositHelperERC4626 is Ownable {
         if (token.allowance(address(this), address(vault)) == 0) {
             token.approve(address(vault), type(uint).max);
         }
-        vault.deposit(amount, address(this));
+        shares = vault.deposit(amount, address(this));
 
         if (vault.allowance(address(this), address(reliquary)) == 0) {
             vault.approve(address(reliquary), type(uint).max);
