@@ -58,7 +58,7 @@ contract DepositHelperReaperBPT is Ownable {
     receive() external payable {}
 
     function deposit(IReZap.Step[] calldata steps, uint amount, uint relicId) external payable returns (uint shares) {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        _requireApprovedOrOwner(relicId);
 
         shares = _prepareDeposit(steps, reliquary.getPositionForId(relicId).poolId, amount);
         reliquary.deposit(shares, relicId);
@@ -134,7 +134,7 @@ contract DepositHelperReaperBPT is Ownable {
             require(zapOutToken == address(weth), "invalid steps");
         }
 
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        _requireApprovedOrOwner(relicId);
 
         position = reliquary.getPositionForId(relicId);
         vault = IReaperVault(reliquary.poolToken(position.poolId));
@@ -181,5 +181,9 @@ contract DepositHelperReaperBPT is Ownable {
         if (vault.allowance(address(this), address(reZap)) == 0) {
             vault.approve(address(reZap), type(uint).max);
         }
+    }
+
+    function _requireApprovedOrOwner(uint relicId) internal view {
+        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not approved or owner");
     }
 }

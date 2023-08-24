@@ -29,7 +29,7 @@ contract DepositHelperERC4626 is Ownable {
 
     /// @notice Deposit `amount` of ERC20 tokens (or native ether for a supported pool) into existing Relic `relicId`.
     function deposit(uint amount, uint relicId) external payable {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        _requireApprovedOrOwner(relicId);
 
         uint shares = _prepareDeposit(reliquary.getPositionForId(relicId).poolId, amount);
         reliquary.deposit(shares, relicId);
@@ -100,7 +100,7 @@ contract DepositHelperERC4626 is Ownable {
     }
 
     function _prepareWithdrawal(uint relicId) internal view returns (PositionInfo memory position, IERC4626 vault) {
-        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not owner or approved");
+        _requireApprovedOrOwner(relicId);
 
         position = reliquary.getPositionForId(relicId);
         vault = IERC4626(reliquary.poolToken(position.poolId));
@@ -122,5 +122,9 @@ contract DepositHelperERC4626 is Ownable {
         } else {
             vault.withdraw(vault.maxWithdraw(address(this)), msg.sender, address(this));
         }
+    }
+
+    function _requireApprovedOrOwner(uint relicId) internal view {
+        require(reliquary.isApprovedOrOwner(msg.sender, relicId), "not approved or owner");
     }
 }
