@@ -134,7 +134,7 @@ contract Reliquary is
         string memory name,
         address _nftDescriptor,
         bool allowPartialWithdrawals
-    ) external override onlyRole(OPERATOR) {
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_poolToken == rewardToken) revert RewardTokenAsPoolToken();
         if (requiredMaturities.length == 0) revert EmptyArray();
         if (requiredMaturities.length != levelMultipliers.length) revert ArrayLengthMismatch();
