@@ -72,7 +72,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
     function testRevertOnDepositUnauthorized() public {
         uint relicId = helper.createRelicAndDeposit(0, 1);
-        vm.expectRevert(bytes("not owner or approved"));
+        vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.deposit(1, relicId);
     }
@@ -102,7 +102,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
     function testRevertOnWithdrawUnauthorized(bool harvest) public {
         uint relicId = helper.createRelicAndDeposit(0, 1);
-        vm.expectRevert(bytes("not owner or approved"));
+        vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.withdraw(1, relicId, harvest, false);
     }

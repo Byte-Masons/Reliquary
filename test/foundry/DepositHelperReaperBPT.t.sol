@@ -92,7 +92,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         IReZap.Step[] memory stepsA = reZap.findStepsIn(address(wftm), bpt, 1 ether);
         (uint relicId,) = helper.createRelicAndDeposit(stepsA, 0, 1 ether);
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, 1 ether);
-        vm.expectRevert(bytes("not owner or approved"));
+        vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.deposit(stepsB, 1 ether, relicId);
     }
@@ -133,7 +133,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         (uint relicId, uint shares) = helper.createRelicAndDeposit(stepsIn, 0, 1 ether);
         IReZap.Step[] memory stepsOut =
             reZap.findStepsOut(address(wftm), bpt, shares * vault.balance() / vault.totalSupply());
-        vm.expectRevert(bytes("not owner or approved"));
+        vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.withdraw(stepsOut, shares, relicId, harvest, isETH);
     }
