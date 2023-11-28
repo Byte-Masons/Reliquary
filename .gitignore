@@ -23,3 +23,9 @@ types
 forge-cache
 out
 broadcast
+
+# Echidna
+corpus/
+**/crytic-compile
+**/crytic-export
+**/corpus

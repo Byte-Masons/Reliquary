@@ -1,0 +1,15 @@
+seqLen: 300
+testLimit: 600000
+
+workers: 10
+coverage: true
+corpusDir: 'corpus'
+testMode: assertion
+deployer: '0x10000'
+sender: ['0x10000', '0x20000', '0x30000']
+coverageFormats: ['txt']
+shrinkLimit: 6000
+
+# Ignore helpers
+filterBlacklist: true
+filterFunctions: ['getLevelTotalAmount', 'generateRandomMaturities', 'generateRandomMultiplier']
