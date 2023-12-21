@@ -22,9 +22,11 @@ contract MultiplierRewarder is SingleAssetRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint _rewardMultiplier, address _rewardToken, address _reliquary)
-        SingleAssetRewarder(_rewardToken, _reliquary)
-    {
+    constructor(
+        uint _rewardMultiplier,
+        address _rewardToken,
+        address _reliquary
+    ) SingleAssetRewarder(_rewardToken, _reliquary) {
         rewardMultiplier = _rewardMultiplier;
     }
 
@@ -33,14 +35,24 @@ contract MultiplierRewarder is SingleAssetRewarder {
      * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
      * @param to Address to send rewards to.
      */
-    function onReward(uint relicId, uint rewardAmount, address to) external virtual override onlyReliquary {
+    function onReward(
+        uint relicId,
+        uint rewardAmount,
+        address to,
+        uint, // oldAmount,
+        uint, // oldLevel,
+        uint // newLevel
+    ) external virtual override onlyReliquary {
         _onReward(relicId, rewardAmount, to);
     }
 
     /// @dev Separate internal function that may be called by inheriting contracts.
     function _onReward(uint relicId, uint rewardAmount, address to) internal {
         if (rewardMultiplier != 0 && rewardAmount != 0) {
-            IERC20(rewardToken).safeTransfer(to, pendingToken(relicId, rewardAmount));
+            IERC20(rewardToken).safeTransfer(
+                to,
+                pendingToken(relicId, rewardAmount)
+            );
         }
         emit LogOnReward(relicId, rewardAmount, to);
     }
@@ -51,6 +63,51 @@ contract MultiplierRewarder is SingleAssetRewarder {
         uint, //relicId
         uint rewardAmount
     ) public view override returns (uint pending) {
-        pending = rewardAmount * rewardMultiplier / BASIS_POINTS;
+        pending = (rewardAmount * rewardMultiplier) / BASIS_POINTS;
     }
+
+    function onDeposit(
+        uint relicId,
+        uint depositAmount,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external virtual override {}
+
+    function onWithdraw(
+        uint relicId,
+        uint withdrawalAmount,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external virtual override {}
+
+    function onSplit(
+        uint fromId,
+        uint newId,
+        uint amount,
+        uint fromAmount,
+        uint level
+    ) external virtual override {}
+
+    function onShift(
+        uint fromId,
+        uint toId,
+        uint amount,
+        uint oldFromAmount,
+        uint oldToAmount,
+        uint fromLevel,
+        uint oldToLevel,
+        uint newToLevel
+    ) external virtual override {}
+
+    function onMerge(
+        uint fromId,
+        uint toId,
+        uint fromAmount,
+        uint toAmount,
+        uint fromLevel,
+        uint oldToLevel,
+        uint newToLevel
+    ) external virtual override {}
 }

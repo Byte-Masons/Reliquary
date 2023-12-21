@@ -5,7 +5,7 @@ pragma solidity ^0.8.15;
 import "../interfaces/IRewarder.sol";
 
 abstract contract SingleAssetRewarder is IRewarder {
-    address public immutable rewardToken;
+    address public rewardToken;
     address public immutable reliquary;
 
     /// @dev Limits function calls to address of Reliquary contract `reliquary`
@@ -29,13 +29,32 @@ abstract contract SingleAssetRewarder is IRewarder {
      * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
      * @param to Address to send rewards to.
      */
-    function onReward(uint relicId, uint rewardAmount, address to) external virtual override {}
-
+    function onReward(
+        uint relicId,
+        uint rewardAmount,
+        address to,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external virtual override {}
+    
     /// @notice Called by Reliquary _deposit function.
-    function onDeposit(uint relicId, uint depositAmount) external virtual override {}
+    function onDeposit(
+        uint relicId,
+        uint depositAmount,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external virtual override {}
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
-    function onWithdraw(uint relicId, uint withdrawalAmount) external virtual override {}
+    function onWithdraw(
+        uint relicId,
+        uint withdrawalAmount,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external virtual override {}
 
     /**
      * @notice Returns the amount of pending tokens for a position from this rewarder.
