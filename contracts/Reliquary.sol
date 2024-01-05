@@ -460,6 +460,11 @@ contract Reliquary is
         fromPosition.rewardDebt = newFromAmount * multiplier / ACC_REWARD_PRECISION;
         newPosition.rewardDebt = amount * multiplier / ACC_REWARD_PRECISION;
 
+        address _rewarder = rewarder[poolId];
+        if (_rewarder != address(0)) {
+            IRewarder(_rewarder).onSplit(fromId, newId, amount, fromAmount, level);
+        }
+
         emit ReliquaryEvents.CreateRelic(poolId, to, newId);
         emit ReliquaryEvents.Split(fromId, newId, amount);
     }
@@ -528,6 +533,20 @@ contract Reliquary is
         toPosition.rewardDebt = vars.newToAmount * vars.accRewardPerShare
             * levels[vars.poolId].multipliers[vars.newToLevel] / ACC_REWARD_PRECISION;
 
+        address _rewarder = rewarder[vars.poolId];
+        if (_rewarder != address(0)) {
+            IRewarder(_rewarder).onShift(
+                fromId,
+                toId,
+                amount,
+                vars.fromAmount,
+                vars.toAmount,
+                vars.fromLevel,
+                vars.oldToLevel,
+                vars.newToLevel
+            );
+        }
+
         emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
 
@@ -571,6 +590,19 @@ contract Reliquary is
 
         _burn(fromId);
         delete positionForId[fromId];
+
+        address _rewarder = rewarder[poolId];
+        if (_rewarder != address(0)) {
+            IRewarder(_rewarder).onMerge(
+                fromId,
+                toId,
+                fromAmount,
+                toAmount,
+                fromLevel,
+                oldToLevel,
+                newToLevel
+            );
+        }
 
         emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
     }
@@ -762,19 +794,38 @@ contract Reliquary is
             }
             address _rewarder = rewarder[poolId];
             if (_rewarder != address(0)) {
-                IRewarder(_rewarder).onReward(relicId, received, harvestTo);
+                IRewarder(_rewarder).onReward(
+                    relicId,
+                    received,
+                    harvestTo,
+                    vars.oldAmount,
+                    vars.oldLevel,
+                    vars.newLevel
+                );
             }
         }
 
         if (kind == Kind.DEPOSIT) {
             address _rewarder = rewarder[poolId];
             if (_rewarder != address(0)) {
-                IRewarder(_rewarder).onDeposit(relicId, amount);
+                IRewarder(_rewarder).onDeposit(
+                    relicId,
+                    amount,
+                    vars.oldAmount,
+                    vars.oldLevel,
+                    vars.newLevel
+                );
             }
         } else if (kind == Kind.WITHDRAW) {
             address _rewarder = rewarder[poolId];
             if (_rewarder != address(0)) {
-                IRewarder(_rewarder).onWithdraw(relicId, amount);
+                IRewarder(_rewarder).onWithdraw(
+                    relicId, 
+                    amount,
+                    vars.oldAmount,
+                    vars.oldLevel,
+                    vars.newLevel
+                );
             }
         }
     }

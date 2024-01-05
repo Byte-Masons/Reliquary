@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import "./ChildRewarder.sol";
+import "./ChildMultiplierRewarder.sol";
+import "./MultiplierRewarder.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 
@@ -44,25 +45,25 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     }
 
     /**
-     * @notice Deploys a ChildRewarder contract and adds it to the childrenRewarders set.
+     * @notice Deploys a ChildMultiplierRewarder contract and adds it to the childrenRewarders set.
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
-     * @param owner Address to transfer ownership of the ChildRewarder contract to.
-     * @return child Address of the new ChildRewarder.
+     * @param owner Address to transfer ownership of the ChildMultiplierRewarder contract to.
+     * @return child Address of the new ChildMultiplierRewarder.
      */
     function createChild(address _rewardToken, uint _rewardMultiplier, address owner)
         external
         onlyRole(CHILD_SETTER)
         returns (address child)
     {
-        child = address(new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary));
+        child = address(new ChildMultiplierRewarder(_rewardMultiplier, _rewardToken, reliquary));
         Ownable(child).transferOwnership(owner);
         childrenRewarders.add(child);
         emit ChildCreated(child, address(_rewardToken));
     }
 
-    /// @notice Removes a ChildRewarder from the childrenRewarders set.
-    /// @param childRewarder Address of the ChildRewarder contract to remove.
+    /// @notice Removes a ChildMultiplierRewarder from the childrenRewarders set.
+    /// @param childRewarder Address of the ChildMultiplierRewarder contract to remove.
     function removeChild(address childRewarder) external onlyRole(CHILD_SETTER) {
         require(childrenRewarders.remove(childRewarder), "That is not my child rewarder!");
         emit ChildRemoved(childRewarder);
@@ -70,12 +71,26 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
 
     /// Call onReward function of each child.
     /// @inheritdoc SingleAssetRewarder
-    function onReward(uint relicId, uint rewardAmount, address to) external override onlyReliquary {
+    function onReward(
+        uint relicId,
+        uint rewardAmount,
+        address to,
+        uint oldAmount,
+        uint oldLevel,
+        uint newLevel
+    ) external override onlyReliquary {
         super._onReward(relicId, rewardAmount, to);
 
         uint length = childrenRewarders.length();
         for (uint i; i < length;) {
-            IRewarder(childrenRewarders.at(i)).onReward(relicId, rewardAmount, to);
+            IRewarder(childrenRewarders.at(i)).onReward(
+                relicId,
+                rewardAmount,
+                to,
+                oldAmount,
+                oldLevel,
+                newLevel
+            );
             unchecked {
                 ++i;
             }
@@ -108,7 +123,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
         rewardAmounts[0] = pendingToken(relicId, rewardAmount);
 
         for (uint i = 1; i < length;) {
-            ChildRewarder rewarder = ChildRewarder(childrenRewarders.at(i - 1));
+            ChildMultiplierRewarder rewarder = ChildMultiplierRewarder(childrenRewarders.at(i - 1));
             rewardTokens[i] = rewarder.rewardToken();
             rewardAmounts[i] = rewarder.pendingToken(relicId, rewardAmount);
             unchecked {

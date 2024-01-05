@@ -37,7 +37,13 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function onDeposit(uint relicId, uint depositAmount) external override onlyReliquary {
+    function onDeposit(
+        uint relicId,
+        uint depositAmount,
+        uint, // oldAmount,
+        uint, // oldLevel,
+        uint // newLevel
+    ) external override onlyReliquary {
         if (depositAmount >= minimum) {
             uint _lastDepositTime = lastDepositTime[relicId];
             uint timestamp = block.timestamp;
@@ -49,7 +55,10 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     /// @inheritdoc SingleAssetRewarder
     function onWithdraw(
         uint relicId,
-        uint //withdrawalAmount
+        uint, // withdrawalAmount,
+        uint, // oldAmount,
+        uint, // oldLevel,
+        uint // newLevel
     ) external override onlyReliquary {
         uint _lastDepositTime = lastDepositTime[relicId];
         delete lastDepositTime[relicId];
@@ -94,4 +103,34 @@ contract DepositBonusRewarder is SingleAssetRewarder {
             claimed = false;
         }
     }
+
+    // Required overrides
+    function onSplit(
+        uint fromId,
+        uint newId,
+        uint amount,
+        uint fromAmount,
+        uint level
+    ) external override {}
+
+    function onShift(
+        uint fromId,
+        uint toId,
+        uint amount,
+        uint oldFromAmount,
+        uint oldToAmount,
+        uint fromLevel,
+        uint oldToLevel,
+        uint newToLevel
+    ) external override {}
+
+    function onMerge(
+        uint fromId,
+        uint toId,
+        uint fromAmount,
+        uint toAmount,
+        uint fromLevel,
+        uint oldToLevel,
+        uint newToLevel
+    ) external override {}
 }
