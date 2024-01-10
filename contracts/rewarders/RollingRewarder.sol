@@ -16,7 +16,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
     using SafeERC20 for IERC20;
 
     uint256 public immutable ACC_REWARD_PRECISION = 1e18;
-    uint256 public immutable REWARD_PER_SECOND_PRECISION = 1e2;
+    uint256 public immutable REWARD_PER_SECOND_PRECISION = 10_000;
 
     uint256 public immutable poolId;
     address public rewardsPool;
@@ -48,15 +48,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
     ) SingleAssetRewarder(_rewardToken, _reliquary) {
         poolId = _poolId;
 
-        uint256[] memory _multipliers = IReliquary(_reliquary)
-            .getLevelInfo(_poolId)
-            .multipliers;
-        for (uint i; i < _multipliers.length; ) {
-            multipliers.push(_multipliers[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        multipliers = IReliquary(_reliquary).getLevelInfo(_poolId).multipliers;
 
         _updateDistributionPeriod(7 days);
     }
@@ -67,7 +59,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
      */
     function onReward(
         uint relicId,
-        uint rewardAmount,
+        uint, // rewardAmount
         address to,
         uint amount,
         uint oldLevel,
@@ -76,9 +68,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint256 oldAmountMultiplied = amount * multipliers[oldLevel];
         uint256 newAmountMultiplied = amount * multipliers[newLevel];
 
-        _issueTokens(
-            _poolBalance() - newAmountMultiplied + oldAmountMultiplied
-        );
+        _issueTokens(_poolBalance());
 
         uint256 pending = ((oldAmountMultiplied * accRewardPerShare) /
             ACC_REWARD_PRECISION) - rewardDebt[relicId];
@@ -102,9 +92,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint256 newAmountMultiplied = (oldAmount + depositAmount) *
             multipliers[newLevel];
 
-        _issueTokens(
-            _poolBalance() - newAmountMultiplied + oldAmountMultiplied
-        );
+        _issueTokens(_poolBalance());
 
         rewardCredit[relicId] +=
             ((oldAmountMultiplied * accRewardPerShare) / ACC_REWARD_PRECISION) -
@@ -124,9 +112,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint256 newAmountMultiplied = (oldAmount - withdrawalAmount) *
             multipliers[newLevel];
 
-        _issueTokens(
-            _poolBalance() - newAmountMultiplied + oldAmountMultiplied
-        );
+        _issueTokens(_poolBalance());
 
         rewardCredit[relicId] +=
             (oldAmountMultiplied * accRewardPerShare) /
@@ -167,20 +153,8 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint newToLevel
     ) external virtual onlyParent {
         uint256 _multiplierFrom = multipliers[fromLevel];
-        uint256 oldFromAmountMultiplied = oldFromAmount * _multiplierFrom;
-        uint256 newFromAmountMultiplied = (oldFromAmount - amount) *
-            _multiplierFrom;
-        uint256 oldToAmountMultiplied = oldToAmount * multipliers[oldToLevel];
-        uint256 newToAmountMultiplied = (oldToAmount + amount) *
-            multipliers[newToLevel];
 
-        _issueTokens(
-            _poolBalance() -
-                newFromAmountMultiplied +
-                oldFromAmountMultiplied -
-                newToAmountMultiplied +
-                oldToAmountMultiplied
-        );
+        _issueTokens(_poolBalance());
 
         rewardCredit[fromId] +=
             ((oldFromAmount * _multiplierFrom * accRewardPerShare) /
@@ -212,12 +186,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint newToAmountMultiplied = (toAmount + fromAmount) *
             multipliers[newToLevel];
 
-        _issueTokens(
-            _poolBalance() -
-                newToAmountMultiplied +
-                oldToAmountMultiplied +
-                fromAmountMultiplied
-        );
+        _issueTokens(_poolBalance());
 
         uint pendingTo = (accRewardPerShare *
             (fromAmountMultiplied + oldToAmountMultiplied)) /
@@ -278,7 +247,7 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         if (_lastIssuanceTimestamp < _lastDistributionTime) {
             uint256 timeLeft = _lastDistributionTime - _lastIssuanceTimestamp; //time left until final distribution
             uint256 notIssued = getRewardAmount(timeLeft); //how many tokens are left to issue
-            amount = amount + (notIssued); // add to the funding amount that hasnt been issued
+            amount += notIssued; // add to the funding amount that hasnt been issued
         }
 
         uint256 _distributionPeriod = distributionPeriod; //how many days will we distribute these assets over

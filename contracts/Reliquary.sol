@@ -349,56 +349,6 @@ contract Reliquary is
         levelInfo = levels[pid];
     }
 
-    /**
-     * @notice View function to retrieve the relicIds, poolIds, and pendingReward for each Relic owned by an address.
-     * @param owner Address of the owner to retrieve info for.
-     * @return pendingRewards Array of PendingReward objects.
-     */
-    function pendingRewardsOfOwner(address owner)
-        external
-        view
-        override
-        returns (PendingReward[] memory pendingRewards)
-    {
-        uint balance = balanceOf(owner);
-        pendingRewards = new PendingReward[](balance);
-        for (uint i; i < balance;) {
-            uint relicId = tokenOfOwnerByIndex(owner, i);
-            pendingRewards[i] = PendingReward({
-                relicId: relicId,
-                poolId: positionForId[relicId].poolId,
-                pendingReward: pendingReward(relicId)
-            });
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @notice View function to retrieve owned positions for an address.
-     * @param owner Address of the owner to retrieve info for.
-     * @return relicIds Each relicId owned by the given address.
-     * @return positionInfos The PositionInfo object for each relicId.
-     */
-    function relicPositionsOfOwner(address owner)
-        external
-        view
-        override
-        returns (uint[] memory relicIds, PositionInfo[] memory positionInfos)
-    {
-        uint balance = balanceOf(owner);
-        relicIds = new uint[](balance);
-        positionInfos = new PositionInfo[](balance);
-        for (uint i; i < balance;) {
-            relicIds[i] = tokenOfOwnerByIndex(owner, i);
-            positionInfos[i] = positionForId[relicIds[i]];
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     /// @notice Returns whether `spender` is allowed to manage Relic `relicId`.
     function isApprovedOrOwner(address spender, uint relicId) external view override returns (bool) {
         return _isApprovedOrOwner(spender, relicId);
@@ -515,8 +465,9 @@ contract Reliquary is
         vars.newToAmount = vars.toAmount + amount;
         toPosition.amount = vars.newToAmount;
 
-        (vars.fromLevel, vars.oldToLevel, vars.newToLevel) =
-            _shiftLevelBalances(fromId, toId, vars.poolId, amount, vars.toAmount, vars.newToAmount);
+        vars.fromLevel = positionForId[fromId].level;
+        vars.oldToLevel = positionForId[toId].level;
+        vars.newToLevel = _updateLevel(toId, vars.oldToLevel);
 
         vars.accRewardPerShare = _updatePool(vars.poolId);
         vars.fromMultiplier = vars.accRewardPerShare * levels[vars.poolId].multipliers[vars.fromLevel];
@@ -536,16 +487,19 @@ contract Reliquary is
         address _rewarder = rewarder[vars.poolId];
         if (_rewarder != address(0)) {
             IRewarder(_rewarder).onShift(
-                fromId,
-                toId,
-                amount,
-                vars.fromAmount,
-                vars.toAmount,
-                vars.fromLevel,
-                vars.oldToLevel,
-                vars.newToLevel
+                fromId, toId, amount, vars.fromAmount, vars.toAmount, vars.fromLevel, vars.oldToLevel, vars.newToLevel
             );
         }
+
+        _shiftLevelBalances(
+            vars.fromLevel,
+            vars.oldToLevel,
+            vars.newToLevel,
+            vars.poolId,
+            vars.fromAmount,
+            vars.toAmount,
+            vars.newToAmount
+        );
 
         emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
@@ -575,8 +529,9 @@ contract Reliquary is
 
         toPosition.amount = newToAmount;
 
-        (uint fromLevel, uint oldToLevel, uint newToLevel) =
-            _shiftLevelBalances(fromId, toId, poolId, fromAmount, toAmount, newToAmount);
+        uint fromLevel = positionForId[fromId].level;
+        uint oldToLevel = positionForId[toId].level;
+        uint newToLevel = _updateLevel(toId, oldToLevel);
 
         uint accRewardPerShare = _updatePool(poolId);
         uint pendingTo = accRewardPerShare
@@ -603,6 +558,8 @@ contract Reliquary is
                 newToLevel
             );
         }
+
+        _shiftLevelBalances(fromLevel, oldToLevel, newToLevel, poolId, fromAmount, toAmount, newToAmount);
 
         emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
     }
@@ -768,14 +725,6 @@ contract Reliquary is
 
         vars.oldLevel = position.level;
         vars.newLevel = _updateLevel(relicId, vars.oldLevel);
-        if (vars.oldLevel != vars.newLevel) {
-            levels[poolId].balance[vars.oldLevel] -= vars.oldAmount;
-            levels[poolId].balance[vars.newLevel] += vars.newAmount;
-        } else if (kind == Kind.DEPOSIT) {
-            levels[poolId].balance[vars.oldLevel] += amount;
-        } else if (kind == Kind.WITHDRAW) {
-            levels[poolId].balance[vars.oldLevel] -= amount;
-        }
 
         uint _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
             / ACC_REWARD_PRECISION - position.rewardDebt;
@@ -827,6 +776,15 @@ contract Reliquary is
                     vars.newLevel
                 );
             }
+        }
+
+        if (vars.oldLevel != vars.newLevel) {
+            levels[poolId].balance[vars.oldLevel] -= vars.oldAmount;
+            levels[poolId].balance[vars.newLevel] += vars.newAmount;
+        } else if (kind == Kind.DEPOSIT) {
+            levels[poolId].balance[vars.oldLevel] += amount;
+        } else if (kind == Kind.WITHDRAW) {
+            levels[poolId].balance[vars.oldLevel] -= amount;
         }
     }
 
@@ -925,13 +883,15 @@ contract Reliquary is
     }
 
     /// @dev Handle updating balances for each affected tranche when shifting and merging.
-    function _shiftLevelBalances(uint fromId, uint toId, uint poolId, uint amount, uint toAmount, uint newToAmount)
-        private
-        returns (uint fromLevel, uint oldToLevel, uint newToLevel)
-    {
-        fromLevel = positionForId[fromId].level;
-        oldToLevel = positionForId[toId].level;
-        newToLevel = _updateLevel(toId, oldToLevel);
+    function _shiftLevelBalances(
+        uint fromLevel,
+        uint oldToLevel,
+        uint newToLevel,
+        uint poolId,
+        uint amount,
+        uint toAmount,
+        uint newToAmount
+    ) private {
         if (fromLevel != newToLevel) {
             levels[poolId].balance[fromLevel] -= amount;
         }

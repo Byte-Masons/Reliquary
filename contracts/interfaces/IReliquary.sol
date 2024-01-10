@@ -96,11 +96,6 @@ interface IReliquary is IERC721Enumerable {
     function getPositionForId(uint) external view returns (PositionInfo memory);
     function getPoolInfo(uint) external view returns (PoolInfo memory);
     function getLevelInfo(uint) external view returns (LevelInfo memory);
-    function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
-    function relicPositionsOfOwner(address owner)
-        external
-        view
-        returns (uint[] memory relicIds, PositionInfo[] memory positionInfos);
     function isApprovedOrOwner(address, uint) external view returns (bool);
     function createRelicAndDeposit(address to, uint pid, uint amount) external returns (uint id);
     function split(uint relicId, uint amount, address to) external returns (uint newId);
