@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 import "contracts/emission_curves/Constant.sol";
 import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
@@ -28,7 +29,11 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     IReaperVaultTest vault;
     address bpt;
     IERC20 oath;
+    ERC20DecimalsMock thenaToken;
+
     IWftm wftm;
+    address internal voter;
+    address internal thenaReceiver;
 
     uint[] quartetCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] quartetLevels = [100, 120, 150, 200, 300, 400, 500, 750];
@@ -37,11 +42,18 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
 
     function setUp() public {
         vm.createSelectFork("fantom", 53341452);
-
+        thenaToken = new ERC20DecimalsMock("Thena Token", "THE", 18); 
+        voter =  payable(address(uint160(uint256(keccak256(abi.encodePacked("voter"))))));
+        vm.label(voter, "Voter");
+        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
+        vm.label(thenaReceiver, "thenaReceiver");
         oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
         reliquary = new Reliquary(
             address(oath),
             address(new Constant()),
+            address(thenaToken),
+            voter,
+            thenaReceiver,
             "Reliquary Deposit",
             "RELIC"
         );

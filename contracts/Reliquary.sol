@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "./ReliquaryEvents.sol";
+import "./interfaces/IVoter.sol";
 import "./interfaces/IReliquary.sol";
 import "./interfaces/IEmissionCurve.sol";
 import "./interfaces/IRewarder.sol";
@@ -55,6 +56,12 @@ contract Reliquary is
 
     /// @notice Address of the reward token contract.
     address public immutable rewardToken;
+    /// @notice Address of the Thena reward token.
+    address public immutable thenaToken;
+    /// @notice Address of the Thena receiver.
+    address public thenaReceiver;
+    /// @notice Address of the Thena voter.
+    IVoter public immutable voter;
     /// @notice Address of each NFTDescriptor contract.
     address[] public nftDescriptor;
     /// @notice Address of EmissionCurve contract.
@@ -98,10 +105,21 @@ contract Reliquary is
      * @param _rewardToken The reward token contract address.
      * @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate.
      */
-    constructor(address _rewardToken, address _emissionCurve, string memory name, string memory symbol)
+    constructor(
+        address _rewardToken,
+        address _emissionCurve,
+        address _thenaToken,
+        address _voter,
+        address _thenaReceiver,
+        string memory name,
+        string memory symbol
+    )
         ERC721(name, symbol)
     {
         rewardToken = _rewardToken;
+        thenaToken = _thenaToken;
+        thenaReceiver = _thenaReceiver;
+        voter = IVoter(_voter);
         emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -170,7 +188,8 @@ contract Reliquary is
                 lastRewardTime: block.timestamp,
                 accRewardPerShare: 0,
                 name: name,
-                allowPartialWithdrawals: allowPartialWithdrawals
+                allowPartialWithdrawals: allowPartialWithdrawals,
+                gaugeInfo: GaugeInfo(false, IGauge(address(0)))
             })
         );
         levels.push(
@@ -180,6 +199,8 @@ contract Reliquary is
                 balance: new uint[](levelMultipliers.length)
             })
         );
+
+        enableGauge(poolInfo.length - 1);
 
         emit ReliquaryEvents.LogPoolAddition(
             (poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor, allowPartialWithdrawals
@@ -246,6 +267,7 @@ contract Reliquary is
     /// @param pid The index of the pool. See poolInfo.
     function updatePool(uint pid) external override nonReentrant {
         _updatePool(pid);
+        updatePoolWithGaugeDeposit(pid);
     }
 
     /**
@@ -271,6 +293,9 @@ contract Reliquary is
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
+        updatePoolWithGaugeDeposit(poolId);
+        withdrawFromGauge(poolId, amount);
+  
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
 
@@ -321,6 +346,8 @@ contract Reliquary is
 
         _burn(relicId);
         delete positionForId[relicId];
+
+        withdrawFromGauge(poolId, amount);
 
         IERC20(poolToken[poolId]).safeTransfer(to, amount);
 
@@ -678,6 +705,8 @@ contract Reliquary is
 
         IERC20(poolToken[poolId]).safeTransferFrom(msg.sender, address(this), amount);
 
+        updatePoolWithGaugeDeposit(poolId);
+
         emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
@@ -911,5 +940,53 @@ contract Reliquary is
     function _mint(address to) private returns (uint id) {
         id = ++idNonce;
         _safeMint(to, id);
+    }
+
+    // @dev Deposit LP tokens to earn THE.
+    function updatePoolWithGaugeDeposit(uint256 _pid) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        address gauge = address(pool.gaugeInfo.gauge);
+        uint256 balance = IERC20(poolToken[_pid]).balanceOf(address(this));
+        // Do nothing if this pool doesn't have a gauge
+        if (pool.gaugeInfo.isGauge) {
+            // Do nothing if the LP token in the MC is empty
+            if (balance > 0) {
+                // Approve to the gauge
+                if (IERC20(poolToken[_pid]).allowance(address(this), gauge) < balance) {
+                    IERC20(poolToken[_pid]).approve(gauge, type(uint256).max);
+                }
+                // Deposit the LP in the gauge
+                pool.gaugeInfo.gauge.deposit(balance);
+            }
+        }
+    }
+
+    function withdrawFromGauge(uint256 _pid, uint256 _amount) internal {
+        PoolInfo storage pool = poolInfo[_pid];
+        // Do nothing if this pool doesn't have a gauge
+        if (pool.gaugeInfo.isGauge) {
+            // Withdraw from the gauge
+            pool.gaugeInfo.gauge.withdraw(_amount);
+        }
+    }
+
+    function enableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        address gauge = voter.gauges(address(poolToken[_pid]));
+        if (gauge != address(0)) {
+            poolInfo[_pid].gaugeInfo = GaugeInfo(true, IGauge(gauge));
+        }
+    }
+
+    function setReceiver(address _thenaReceiver) public onlyRole(OPERATOR) {
+        thenaReceiver = _thenaReceiver;
+    }
+
+    function claimThenaRewards(uint256 _pid) public {
+        PoolInfo storage pool = poolInfo[_pid];
+        if (pool.gaugeInfo.isGauge) {
+            // claim the thena rewards
+            pool.gaugeInfo.gauge.getReward(address(this));
+            IERC20(thenaToken).safeTransfer(thenaReceiver, IERC20(thenaToken).balanceOf(address(this)));   
+        }
     }
 }

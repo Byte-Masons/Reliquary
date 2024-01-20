@@ -22,9 +22,12 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
     ERC20DecimalsMock depositToken; //BPT
     ERC20DecimalsMock rewardToken1; //WETH
     ERC20DecimalsMock rewardToken2; //USDC
+    ERC20DecimalsMock thenaToken;
     ParentRewarderRolling parent;
     RewardsPool rewardsPoolETH;
     RewardsPool rewardsPoolUSDC;
+    address internal voter;
+    address internal thenaReceiver;
 
     uint[] requiredMaturity = [0, 7 days, 14 days, 21 days, 28 days, 90 days, 180 days, 365 days];
     uint[] levelMultipliers = [100, 120, 150, 200, 300, 400, 500, 750];
@@ -34,10 +37,18 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         depositToken = new ERC20DecimalsMock("Grain-BPT", "BPT", 18);
         rewardToken1 = new ERC20DecimalsMock("WETH", "WETH", 18);
         rewardToken2 = new ERC20DecimalsMock("USDC", "USDC", 6);
+        thenaToken = new ERC20DecimalsMock("Thena Token", "THE", 18); 
+        voter =  payable(address(uint160(uint256(keccak256(abi.encodePacked("voter"))))));
+        vm.label(voter, "Voter");
+        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
+        vm.label(thenaReceiver, "thenaReceiver");
 
         reliquary = new Reliquary(
             address(grain),
             address(new Constant()),
+            address(thenaToken),
+            voter,
+            thenaReceiver,
             "Reliquary Deposit",
             "RELIC"
         );

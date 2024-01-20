@@ -12,6 +12,9 @@ import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 contract GymTest is ERC721Holder, Test {
     Gym gym;
     ReliquaryGamified reliquary;
+    ERC20DecimalsMock thenaToken;
+    address internal voter;
+    address internal thenaReceiver;
 
     bytes32 constant MATURITY_MODIFIER = keccak256("MATURITY_MODIFIER");
 
@@ -23,8 +26,21 @@ contract GymTest is ERC721Holder, Test {
 
         ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         address curve = address(new Constant());
+        thenaToken = new ERC20DecimalsMock("Thena Token", "THE", 18); 
+        voter =  payable(address(uint160(uint256(keccak256(abi.encodePacked("voter"))))));
+        vm.label(voter, "Voter");
+        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
+        vm.label(thenaReceiver, "thenaReceiver");
 
-        reliquary = new ReliquaryGamified(address(oath), curve, "Gamified Reliquary", "GREL");
+        reliquary = new ReliquaryGamified(
+            address(oath),
+            curve,
+            address(thenaToken),
+            voter,
+            thenaReceiver,
+            "Gamified Reliquary",
+            "GREL"
+        );
 
         ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         testToken.mint(address(this), 100_000_000 ether);
