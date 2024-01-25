@@ -3,54 +3,46 @@
 pragma solidity ^0.8.17;
 
 import "./RollingRewarder.sol";
-import "./MultiplierRewarder.sol";
+import "../interfaces/IRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
-contract ParentRewarderRolling is MultiplierRewarder, AccessControlEnumerable {
+contract ParentRewarderRolling is IRewarder, AccessControlEnumerable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private childrenRewarders;
 
     uint public immutable poolId;
+    address public immutable reliquary;
 
     /// @dev Access control roles.
     bytes32 public constant REWARD_SETTER = keccak256("REWARD_SETTER");
     bytes32 public constant CHILD_SETTER = keccak256("CHILD_SETTER");
 
-    event LogRewardMultiplier(uint rewardMultiplier);
     event ChildCreated(address indexed child, address indexed token);
     event ChildRemoved(address indexed child);
 
-    /**
-     * @dev Contructor called on deployment of this contract.
-     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
-     * @param _rewardToken Address of token rewards are distributed in.
-     * @param _reliquary Address of Reliquary this rewarder will read state from.
-     */
-    constructor(
-        uint _rewardMultiplier,
-        address _rewardToken,
-        address _reliquary,
-        uint _poolId
-    ) MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
-        poolId = _poolId;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    /// @dev Limits function calls to address of Reliquary contract `reliquary`
+    modifier onlyReliquary() {
+        require(msg.sender == reliquary, "Only Reliquary can call this function.");
+        _;
     }
 
     /**
-     * @notice Set the rewardMultiplier to a new value and emit a logging event.
-     * Separate role from who can add/remove children.
-     * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
+     * @dev Contructor called on deployment of this contract.
+     * @param _reliquary Address of Reliquary this rewarder will read state from.
+     * @param _poolId ID of the pool this rewarder will read state from.
      */
-    function setRewardMultiplier(
-        uint _rewardMultiplier
-    ) external onlyRole(REWARD_SETTER) {
-        rewardMultiplier = _rewardMultiplier;
-        emit LogRewardMultiplier(_rewardMultiplier);
+    constructor(
+        address _reliquary,
+        uint _poolId
+    ) {
+        poolId = _poolId;
+        reliquary = _reliquary;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -82,7 +74,6 @@ contract ParentRewarderRolling is MultiplierRewarder, AccessControlEnumerable {
     }
 
     /// Call onReward function of each child.
-    /// @inheritdoc SingleAssetRewarder
     function onReward(
         uint relicId,
         uint rewardAmount,
@@ -91,8 +82,6 @@ contract ParentRewarderRolling is MultiplierRewarder, AccessControlEnumerable {
         uint oldLevel,
         uint newLevel
     ) external override onlyReliquary {
-        super._onReward(relicId, rewardAmount, to);
-
         uint length = childrenRewarders.length();
         for (uint i; i < length; ) {
             IRewarder(childrenRewarders.at(i)).onReward(
@@ -240,7 +229,6 @@ contract ParentRewarderRolling is MultiplierRewarder, AccessControlEnumerable {
         return childrenRewarders.values();
     }
 
-    /// @inheritdoc SingleAssetRewarder
     function pendingTokens(
         uint relicId,
         uint rewardAmount
@@ -250,16 +238,13 @@ contract ParentRewarderRolling is MultiplierRewarder, AccessControlEnumerable {
         override
         returns (address[] memory rewardTokens, uint[] memory rewardAmounts)
     {
-        uint length = childrenRewarders.length() + 1;
+        uint length = childrenRewarders.length();
         rewardTokens = new address[](length);
-        rewardTokens[0] = rewardToken;
-
         rewardAmounts = new uint[](length);
-        rewardAmounts[0] = pendingToken(relicId, rewardAmount);
 
-        for (uint i = 1; i < length; ) {
+        for (uint i = 0; i < length; ) {
             RollingRewarder rewarder = RollingRewarder(
-                childrenRewarders.at(i - 1)
+                childrenRewarders.at(i)
             );
             rewardTokens[i] = rewarder.rewardToken();
             rewardAmounts[i] = rewarder.pendingToken(relicId, rewardAmount);

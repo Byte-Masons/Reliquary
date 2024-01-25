@@ -49,8 +49,6 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         uint256 pid =  reliquary.poolLength() - 1;
 
         parent = new ParentRewarderRolling(
-            0,
-            address(grain),
             address(reliquary),
             pid
             );       
