@@ -41,7 +41,6 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     IGauge gauge;
     IPairFactory pairFactory;
     IPair poolToken;
-    IRouter01 router;
     address internal thenaReceiver;
     address constant veNFT = 0xfBBF371C9B0B994EebFcC977CEf603F7f31c070D;
 
@@ -63,7 +62,6 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
 
         poolToken = IPair(0xA97E46DC17e2b678e5f049A2670fAe000b57F05E);
         gauge = IGauge(0xe1aD94646E9866d48cca59080535eF782d03B4af);
-        router = IRouter01(0xd4ae6eCA985340Dd434D38F470aCCce4DC78D109);
         vm.label(address(gauge), "Gauge");
 
         rewardToken1 = new ERC20DecimalsMock("Harbor oToken", "oHBR", 18);
