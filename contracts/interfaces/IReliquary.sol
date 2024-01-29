@@ -125,4 +125,5 @@ interface IReliquary is IERC721Enumerable {
     function poolToken(uint) external view returns (address);
     function rewarder(uint) external view returns (address);
     function totalAllocPoint() external view returns (uint);
+    function updatePoolWithGaugeDeposit(uint256 pid) external;
 }

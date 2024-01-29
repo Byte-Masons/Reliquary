@@ -14,7 +14,7 @@ verbosity = 1
 ignored_error_codes = [1878]
 
 #eth-rpc-url = "https://rpcapi.fantom.network"
-rpc_endpoints = { fantom = "https://rpcapi-tracing.fantom.network", optimism = "https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}" }
+rpc_endpoints = { fantom = "https://rpcapi-tracing.fantom.network", optimism = "API_KEY", binance = "API_KEY" }
 #sender = ''
 #initial_balance = '0xffffffffffffffffffffffff'
 
