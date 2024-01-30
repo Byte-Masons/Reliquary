@@ -36,7 +36,7 @@ library DoubleStakingLogic {
         PoolInfo[] storage poolInfo,
         uint256 _pid,
         uint256 _amount
-    ) internal {
+    ) public {
         PoolInfo storage pool = poolInfo[_pid];
         // Do nothing if this pool doesn't have a gauge
         if (pool.gaugeInfo.isGauge) {
@@ -55,10 +55,6 @@ library DoubleStakingLogic {
         if (gauge != address(0)) {
             poolInfo[_pid].gaugeInfo = GaugeInfo(true, IGauge(gauge));
         }
-    }
-
-    function setReceiver(address thenaReceiver, address _thenaReceiver) public {
-        thenaReceiver = _thenaReceiver;
     }
 
     function claimThenaRewards(PoolInfo[] storage poolInfo, address thenaToken, address thenaReceiver, uint256 _pid) public {
