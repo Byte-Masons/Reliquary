@@ -104,10 +104,6 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         rollingRewarderOHBR = RollingRewarder(parent.createChild(address(rewardToken1), address(this)));
         rollingRewarderUSDT = RollingRewarder(parent.createChild(address(rewardToken2), address(this)));
         
-        // rewardToken1.mint(address(this), 100_000 ether); // mint oHBR
-        rewardToken1.mint(address(reliquary), 100_000 ether); // mint oHBR
-        rewardToken1.approve(address(reliquary), type(uint).max);
-
         rewardsPoolUSDT = new RewardsPool(address(rewardToken2), address(rollingRewarderUSDT));
         rewardsPoolOHBR = new RewardsPool(address(rewardToken1), address(rollingRewarderOHBR));
     
@@ -187,169 +183,169 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         assertApproxEqAbs(earnedUsdt, usdtReward, 1e5);
     }
 
-    // function testDistribution() public {
-    //     parent.removeChild(address(rollingRewarderUSDC));
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+    function testDistribution() public {
+        parent.removeChild(address(rollingRewarderUSDT));
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     address user1 = makeAddr("user1");
-    //     depositToken.mint(user1, 100 ether);
+        address user1 = makeAddr("user1");
+        deal(address(poolToken), user1, 100 ether);
 
-    //     vm.startPrank(user1);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     vm.stopPrank();
+        vm.startPrank(user1);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        vm.stopPrank();
 
-    //     skip(3.5 days);
+        skip(3.5 days);
 
-    //     address user2 = makeAddr("user2");
-    //     depositToken.mint(user2, 100 ether);
+        address user2 = makeAddr("user2");
+        deal(address(poolToken), user2, 100 ether);
 
-    //     vm.startPrank(user2);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(user2, 0, 100 ether);
-    //     vm.stopPrank();
+        vm.startPrank(user2);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(user2, 0, 100 ether);
+        vm.stopPrank();
 
-    //     skip(3.5 days);
+        skip(3.5 days);
 
-    //     vm.prank(user1);
-    //     reliquary.harvest(1, user1);
+        vm.prank(user1);
+        reliquary.harvest(1, user1);
 
-    //     vm.prank(user2);
-    //     reliquary.harvest(2, user2);
+        vm.prank(user2);
+        reliquary.harvest(2, user2);
 
-    //     uint256 rewardUser1 = IERC20(rewardToken1).balanceOf(user1);
-    //     uint256 rewardUser2 = IERC20(rewardToken1).balanceOf(user2);
+        uint256 rewardUser1 = IERC20(rewardToken1).balanceOf(user1);
+        uint256 rewardUser2 = IERC20(rewardToken1).balanceOf(user2);
 
-    //     assertApproxEqAbs(rewardUser1, 7.5 ether, 1e5, "user1 reward not expected");
-    //     assertApproxEqAbs(rewardUser2, 2.5 ether, 1e5, "user2 reward not expected");
+        assertApproxEqAbs(rewardUser1, 7.5 ether, 1e5, "user1 reward not expected");
+        assertApproxEqAbs(rewardUser2, 2.5 ether, 1e5, "user2 reward not expected");
 
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     vm.startPrank(user2);
-    //     reliquary.withdraw(100 ether, 2);
-    //     reliquary.createRelicAndDeposit(user2, 0, 100 ether);
-    //     vm.stopPrank();
+        vm.startPrank(user2);
+        reliquary.withdraw(100 ether, 2);
+        reliquary.createRelicAndDeposit(user2, 0, 100 ether);
+        vm.stopPrank();
 
-    //     skip(7 days);
+        skip(7 days);
 
-    //     vm.prank(user1);
-    //     reliquary.harvest(1, user1);
+        vm.prank(user1);
+        reliquary.harvest(1, user1);
 
-    //     rewardUser1 = IERC20(rewardToken1).balanceOf(user1) - rewardUser1;
-    //     // factor in maturity = 20% boost for user1
-    //     // 220 is the calculated pool size with multipliers
-    //     assertApproxEqAbs(rewardUser1, 10 ether * uint(120) / 220, 1e5, "user1 reward not expected");
-    // }
+        rewardUser1 = IERC20(rewardToken1).balanceOf(user1) - rewardUser1;
+        // factor in maturity = 20% boost for user1
+        // 220 is the calculated pool size with multipliers
+        assertApproxEqAbs(rewardUser1, 10 ether * uint(120) / 220, 1e5, "user1 reward not expected");
+    }
 
-    // function testSplit() public {
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+    function testSplit() public {
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     depositToken.mint(address(this), 100 ether);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
+        deal(address(poolToken), address(this), 100 ether);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
 
-    //     skip(7 days);
+        skip(7 days);
 
-    //     address user1 = makeAddr("user1");
-    //     depositToken.mint(user1, 120 ether); // simulate the 20% maturity boost that the other positions got
-    //     vm.startPrank(user1);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     vm.stopPrank();
+        address user1 = makeAddr("user1");
+        deal(address(poolToken), user1, 120 ether); // simulate the 20% maturity boost that the other positions got
+        vm.startPrank(user1);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        vm.stopPrank();
         
-    //     reliquary.split(1, 50 ether, address(this));
+        reliquary.split(1, 50 ether, address(this));
 
-    //     rewardToken1.mint(address(rewardsPoolETH), 20 ether);
-    //     rewardsPoolETH.fundRewarder();
-    //     skip(7 days);
+        rewardToken1.mint(address(rewardsPoolOHBR), 20 ether);
+        rewardsPoolOHBR.fundRewarder();
+        skip(7 days);
 
-    //     reliquary.harvest(1, address(this));
+        reliquary.harvest(1, address(this));
 
-    //     uint256 rewardRelic1 = IERC20(rewardToken1).balanceOf(address(this));
-    //     assertApproxEqAbs(rewardRelic1, 10 ether + 5 ether, 1e5, "reward not expected");
+        uint256 rewardRelic1 = IERC20(rewardToken1).balanceOf(address(this));
+        assertApproxEqAbs(rewardRelic1, 10 ether + 5 ether, 1e5, "reward not expected");
 
-    //     reliquary.harvest(3, address(this));
-    //     uint256 rewardRelic2 = IERC20(rewardToken1).balanceOf(address(this)) - rewardRelic1;
-    //     assertApproxEqAbs(rewardRelic2, 5 ether, 1e5, "reward not expected");
-    // }
+        reliquary.harvest(3, address(this));
+        uint256 rewardRelic2 = IERC20(rewardToken1).balanceOf(address(this)) - rewardRelic1;
+        assertApproxEqAbs(rewardRelic2, 5 ether, 1e5, "reward not expected");
+    }
 
-    // function testMerge() public {
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+    function testMerge() public {
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     depositToken.mint(address(this), 100 ether);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
+        deal(address(poolToken), address(this), 100 ether);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
 
-    //     address user1 = makeAddr("user1");
-    //     depositToken.mint(user1, 200 ether);
-    //     vm.startPrank(user1);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     vm.stopPrank();
+        address user1 = makeAddr("user1");
+        deal(address(poolToken), user1, 200 ether);
+        vm.startPrank(user1);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        vm.stopPrank();
         
-    //     skip(7 days);
-    //     reliquary.harvest(1, address(this));
+        skip(7 days);
+        reliquary.harvest(1, address(this));
 
-    //     vm.startPrank(user1);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     reliquary.merge(2, 3);
+        vm.startPrank(user1);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        reliquary.merge(2, 3);
 
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     skip(7 days);
-    //     reliquary.harvest(3, user1);
-    //     vm.stopPrank();
+        skip(7 days);
+        reliquary.harvest(3, user1);
+        vm.stopPrank();
 
-    //     uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
-    //     assertApproxEqAbs(
-    //         rewardMergedRelic,
-    //         5 ether + (10 ether * uint(200) / 320),
-    //         1e5,
-    //         "reward not expected"
-    //     );
-    // }
+        uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
+        assertApproxEqAbs(
+            rewardMergedRelic,
+            5 ether + (10 ether * uint(200) / 320),
+            1e5,
+            "reward not expected"
+        );
+    }
 
-    // function testShift() public {
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+    function testShift() public {
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     depositToken.mint(address(this), 100 ether);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
+        deal(address(poolToken), address(this), 100 ether);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
 
-    //     address user1 = makeAddr("user1");
-    //     depositToken.mint(user1, 200 ether);
-    //     vm.startPrank(user1);
-    //     depositToken.approve(address(reliquary), type(uint).max);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     vm.stopPrank();
+        address user1 = makeAddr("user1");
+        deal(address(poolToken), user1, 200 ether);
+        vm.startPrank(user1);
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        vm.stopPrank();
         
-    //     skip(7 days);
-    //     reliquary.harvest(1, address(this));
+        skip(7 days);
+        reliquary.harvest(1, address(this));
 
-    //     vm.startPrank(user1);
-    //     reliquary.createRelicAndDeposit(user1, 0, 100 ether);
-    //     reliquary.shift(2, 3, 100 ether);
+        vm.startPrank(user1);
+        reliquary.createRelicAndDeposit(user1, 0, 100 ether);
+        reliquary.shift(2, 3, 100 ether);
 
-    //     rewardToken1.mint(address(rewardsPoolETH), 10 ether);
-    //     rewardsPoolETH.fundRewarder();
+        rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+        rewardsPoolOHBR.fundRewarder();
 
-    //     skip(7 days);
-    //     reliquary.harvest(3, user1);
-    //     reliquary.harvest(2, user1);
-    //     vm.stopPrank();
+        skip(7 days);
+        reliquary.harvest(3, user1);
+        reliquary.harvest(2, user1);
+        vm.stopPrank();
 
-    //     uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
-    //     assertApproxEqAbs(
-    //         rewardMergedRelic,
-    //         5 ether + (10 ether * uint(200) / 320),
-    //         1e5,
-    //         "reward not expected"
-    //     );
-    // }
+        uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
+        assertApproxEqAbs(
+            rewardMergedRelic,
+            5 ether + (10 ether * uint(200) / 320),
+            1e5,
+            "reward not expected"
+        );
+    }
 }

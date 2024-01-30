@@ -297,10 +297,10 @@ contract Reliquary is
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
-        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
-
         updatePoolWithGaugeDeposit(poolId);
         withdrawFromGauge(poolId, amount);
+
+        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
   
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
@@ -883,10 +883,6 @@ contract Reliquary is
     function setReceiver(address _thenaReceiver) public onlyRole(OPERATOR) {
         thenaReceiver = _thenaReceiver;
     }
-
-    // disable gauge
-    // call withdrawFromGauge before disabling
-    // update gaugeinfo
 
     function claimThenaRewards(uint256 _pid) public {
         DoubleStakingLogic.claimThenaRewards(poolInfo, thenaToken, thenaReceiver, _pid);
