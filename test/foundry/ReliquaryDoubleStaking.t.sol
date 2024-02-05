@@ -91,15 +91,12 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         uint256 pid = reliquary.poolLength() - 1;
 
         parent = new ParentRewarderRolling(
-            0,
-            address(rewardToken1),
             address(reliquary),
             pid
         );       
 
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
         parent.grantRole(keccak256("REWARD_SETTER"), address(this));
-        reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.modifyPool(0, 1000, address(parent), "harbor-staking", address(0), true);
         rollingRewarderOHBR = RollingRewarder(parent.createChild(address(rewardToken1), address(this)));
         rollingRewarderUSDT = RollingRewarder(parent.createChild(address(rewardToken2), address(this)));
