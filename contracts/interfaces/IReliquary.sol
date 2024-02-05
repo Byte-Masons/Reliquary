@@ -46,7 +46,7 @@ struct PoolInfo {
  * `isGauge` Indicates if the pool is a gauge.
  * `gauge` Corresponding gauge contract.
  */
- struct GaugeInfo {
+struct GaugeInfo {
     bool isGauge;
     IGauge gauge;
 }

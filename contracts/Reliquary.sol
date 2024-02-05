@@ -273,7 +273,6 @@ contract Reliquary is
     /// @param pid The index of the pool. See poolInfo.
     function updatePool(uint pid) external override nonReentrant {
         _updatePool(pid);
-        updatePoolWithGaugeDeposit(pid);
     }
 
     /**
@@ -297,7 +296,6 @@ contract Reliquary is
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
-        updatePoolWithGaugeDeposit(poolId);
         withdrawFromGauge(poolId, amount);
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
@@ -329,6 +327,8 @@ contract Reliquary is
         _requireApprovedOrOwner(relicId);
 
         (uint poolId, uint receivedReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
+
+        withdrawFromGauge(poolId, amount);
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
@@ -688,6 +688,8 @@ contract Reliquary is
             }
 
             pool.lastRewardTime = timestamp;
+
+            updatePoolWithGaugeDeposit(pid);
 
             emit ReliquaryEvents.LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
         }
