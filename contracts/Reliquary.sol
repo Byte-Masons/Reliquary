@@ -882,6 +882,10 @@ contract Reliquary is
         DoubleStakingLogic.enableGauge(voter, poolInfo, poolToken, _pid);
     }
 
+    function disableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.disableGauge(voter, poolInfo, poolToken, _pid);
+    }
+
     function setReceiver(address _thenaReceiver) public onlyRole(OPERATOR) {
         thenaReceiver = _thenaReceiver;
     }

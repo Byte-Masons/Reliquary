@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IVoter.sol";
+import "../interfaces/IGauge.sol";
 import "../interfaces/IReliquary.sol";
 
 library DoubleStakingLogic {
@@ -58,11 +59,25 @@ library DoubleStakingLogic {
         }
     }
 
+    function disableGauge(
+        IVoter voter,
+        PoolInfo[] storage poolInfo,
+        address[] storage poolToken,
+        uint256 _pid
+    ) public {
+        address gauge = voter.gauges(address(poolToken[_pid]));
+        if (gauge != address(0)) {
+            poolInfo[_pid].gaugeInfo = GaugeInfo(false, IGauge(address(0)));
+            uint256 balance = IGauge(gauge).balanceOf(address(this));
+            withdrawFromGauge(poolInfo, _pid, balance);
+        }
+    }
+
     function claimThenaRewards(PoolInfo[] storage poolInfo, address thenaToken, address thenaReceiver, uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         if (pool.gaugeInfo.isGauge) {
             // claim the thena rewards
-            pool.gaugeInfo.gauge.getReward(address(this));
+            pool.gaugeInfo.gauge.getReward();
             IERC20(thenaToken).safeTransfer(thenaReceiver, IERC20(thenaToken).balanceOf(address(this)));   
         }
     }
