@@ -73,6 +73,9 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint256 pending = ((oldAmountMultiplied * accRewardPerShare) /
             ACC_REWARD_PRECISION) - rewardDebt[relicId];
         pending += rewardCredit[relicId];
+
+        rewardCredit[relicId] = 0;
+
         rewardDebt[relicId] = ((newAmountMultiplied * accRewardPerShare) /
             ACC_REWARD_PRECISION);
         if (pending > 0) {

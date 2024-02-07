@@ -82,7 +82,6 @@ contract ParentRewarderRolling is IRewarder, AccessControlEnumerable {
         uint oldLevel,
         uint newLevel
     ) external override onlyReliquary {
-
         uint length = childrenRewarders.length();
         for (uint i; i < length; ) {
             IRewarder(childrenRewarders.at(i)).onReward(

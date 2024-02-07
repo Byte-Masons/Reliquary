@@ -3,10 +3,11 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../interfaces/IRollingRewarder.sol";
 
 
-contract RewardsPool {
+contract RewardsPool is Ownable {
     address public immutable rewardToken;
     address public immutable rewarder;
     uint256 public totalRewards;
@@ -17,7 +18,7 @@ contract RewardsPool {
         IERC20(_rewardToken).approve(_rewarder, type(uint256).max);
     }
 
-    function fundRewarder() external {
+    function fundRewarder() external onlyOwner {
         uint256 balance = IERC20(rewardToken).balanceOf(address(this));
         totalRewards += balance;
         IRollingRewarder(rewarder).fund();
