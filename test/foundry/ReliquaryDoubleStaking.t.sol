@@ -151,6 +151,7 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         rewardToken2.mint(address(rewardsPoolUSDT), usdtReward);
 
         //Call Fund on the pools
+
         rewardsPoolOHBR.fundRewarder();
         rewardsPoolUSDT.fundRewarder();
     
@@ -292,9 +293,14 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         reliquary.merge(2, 3);
 
         rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+
+        vm.stopPrank();
+        vm.prank(address(this));
         rewardsPoolOHBR.fundRewarder();
 
+
         skip(7 days);
+        vm.prank(user1);
         reliquary.harvest(3, user1);
         vm.stopPrank();
 
@@ -330,9 +336,14 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         reliquary.shift(2, 3, 100 ether);
 
         rewardToken1.mint(address(rewardsPoolOHBR), 10 ether);
+
+        vm.stopPrank();
+        vm.startPrank(address(this));
         rewardsPoolOHBR.fundRewarder();
 
         skip(7 days);
+        vm.stopPrank();
+        vm.startPrank(user1);
         reliquary.harvest(3, user1);
         reliquary.harvest(2, user1);
         vm.stopPrank();
