@@ -82,7 +82,6 @@ contract ParentRewarderRolling is IRewarder, AccessControlEnumerable {
         uint oldLevel,
         uint newLevel
     ) external override onlyReliquary {
-
         uint length = childrenRewarders.length();
         for (uint i; i < length; ) {
             IRewarder(childrenRewarders.at(i)).onReward(
@@ -258,7 +257,7 @@ contract ParentRewarderRolling is IRewarder, AccessControlEnumerable {
     function setChildsRewardPool(
         address child,
         address pool
-    ) external onlyRole(CHILD_SETTER) {
+    ) external onlyRole(REWARD_SETTER) {
         RollingRewarder(child).setRewardsPool(pool);
     }
 }
