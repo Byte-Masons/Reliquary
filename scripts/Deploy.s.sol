@@ -50,9 +50,6 @@ contract Deploy is Script {
         string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
         address rewardToken = config.readAddress(".rewardToken");
-        address thenaToken = config.readAddress(".thenaToken");
-        address voter = config.readAddress(".voter");
-        address thenaReceiver = config.readAddress(".thenaReceiver");
         uint emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
 
@@ -60,7 +57,7 @@ contract Deploy is Script {
 
         emissionCurve = new OwnableCurve(emissionRate);
 
-        reliquary = new Reliquary(rewardToken, address(emissionCurve), thenaToken, voter, thenaReceiver, name, symbol);
+        reliquary = new Reliquary(rewardToken, address(emissionCurve), name, symbol);
 
         _deployRewarders();
 

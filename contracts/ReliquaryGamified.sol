@@ -17,16 +17,8 @@ contract ReliquaryGamified is Reliquary, IReliquaryGamified {
     /// @dev Event emitted when a maturity bonus is actually applied.
     event MaturityBonus(uint indexed pid, address indexed to, uint indexed relicId, uint bonus);
 
-    constructor(
-        address _rewardToken,
-        address _emissionCurve,
-        address _thenaToken,
-        address _voter,
-        address _thenaReceiver,
-        string memory name,
-        string memory symbol
-    )
-        Reliquary(_rewardToken, _emissionCurve, _thenaToken, _voter, _thenaReceiver, name, symbol)
+    constructor(address _rewardToken, address _emissionCurve, string memory name, string memory symbol)
+        Reliquary(_rewardToken, _emissionCurve, name, symbol)
     {}
 
     /**

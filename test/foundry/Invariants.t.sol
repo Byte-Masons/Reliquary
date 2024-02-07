@@ -8,16 +8,10 @@ import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/ReliquaryUser.sol";
 import "contracts/test/Skipper.sol";
-import "contracts/test/MockVoter.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
-import "contracts/interfaces/IVoter.sol";
-import "contracts/interfaces/IMockVoter.sol";
 
 contract Invariants is Test {
     Reliquary reliquary;
-    ERC20DecimalsMock thenaToken;
-    address internal voter;
-    address internal thenaReceiver;
 
     address[] private _targetContracts;
 
@@ -26,26 +20,11 @@ contract Invariants is Test {
 
     function setUp() public {
         ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        thenaToken = new ERC20DecimalsMock("Thena Token", "THE", 18); 
-        voter = address(new MockVoter());
-
-        vm.label(voter, "Voter");
-        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
-        vm.label(thenaReceiver, "thenaReceiver");
-        reliquary = new Reliquary(
-            address(oath),
-            address(new Constant()),
-            address(thenaToken),
-            address(voter),
-            thenaReceiver,
-            "Reliquary Deposit",
-            "RELIC"
-            );
+        reliquary = new Reliquary(address(oath), address(new Constant()), "Reliquary Deposit", "RELIC");
         oath.mint(address(reliquary), 100_000_000 ether);
         ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
-        vm.prank(address(this));
         reliquary.addPool(1000, address(testToken), address(0), curve, levels, "Test Token", nftDescriptor, true);
 
         ReliquaryUser user = new ReliquaryUser(address(reliquary), address(testToken));

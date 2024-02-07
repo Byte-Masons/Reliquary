@@ -2,8 +2,6 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
-import "./IReliquary.sol";
-import "./IGauge.sol";
 
 /**
  * @notice Info for each Reliquary position.
@@ -38,17 +36,6 @@ struct PoolInfo {
     uint allocPoint;
     string name;
     bool allowPartialWithdrawals;
-    GaugeInfo gaugeInfo; // Gauge info (does this pool have a gauge and where is it)
-}
-
-/**
- * @notice Info for gauges
- * `isGauge` Indicates if the pool is a gauge.
- * `gauge` Corresponding gauge contract.
- */
-struct GaugeInfo {
-    bool isGauge;
-    IGauge gauge;
 }
 
 /**
@@ -125,5 +112,4 @@ interface IReliquary is IERC721Enumerable {
     function poolToken(uint) external view returns (address);
     function rewarder(uint) external view returns (address);
     function totalAllocPoint() external view returns (uint);
-    function updatePoolWithGaugeDeposit(uint256 pid) external;
 }
