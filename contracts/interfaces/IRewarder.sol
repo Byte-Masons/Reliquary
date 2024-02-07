@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.15;
 
-import "../Reliquary.sol";
-
 interface IRewarder {
     function onReward(
         uint relicId,

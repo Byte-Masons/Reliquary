@@ -11,7 +11,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
-/// @title Simple rewarder that distributes its own token based on a ratio to rewards emitted by the Reliquary
+/// @title Rewarder that can be funded with a set token, distributing it over a period of time.
 contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder, Ownable {
     using SafeERC20 for IERC20;
 
@@ -73,6 +73,9 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
         uint256 pending = ((oldAmountMultiplied * accRewardPerShare) /
             ACC_REWARD_PRECISION) - rewardDebt[relicId];
         pending += rewardCredit[relicId];
+
+        rewardCredit[relicId] = 0;
+
         rewardDebt[relicId] = ((newAmountMultiplied * accRewardPerShare) /
             ACC_REWARD_PRECISION);
         if (pending > 0) {

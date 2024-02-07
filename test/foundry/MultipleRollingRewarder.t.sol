@@ -49,8 +49,6 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         uint256 pid =  reliquary.poolLength() - 1;
 
         parent = new ParentRewarderRolling(
-            0,
-            address(grain),
             address(reliquary),
             pid
             );       
@@ -228,13 +226,14 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         vm.startPrank(user1);
         reliquary.createRelicAndDeposit(user1, 0, 100 ether);
         reliquary.merge(2, 3);
+        vm.stopPrank();
 
         rewardToken1.mint(address(rewardsPoolETH), 10 ether);
         rewardsPoolETH.fundRewarder();
-
         skip(7 days);
+        
+        vm.prank(user1);
         reliquary.harvest(3, user1);
-        vm.stopPrank();
 
         uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
         assertApproxEqAbs(
@@ -266,11 +265,13 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         vm.startPrank(user1);
         reliquary.createRelicAndDeposit(user1, 0, 100 ether);
         reliquary.shift(2, 3, 100 ether);
+        vm.stopPrank();
 
         rewardToken1.mint(address(rewardsPoolETH), 10 ether);
         rewardsPoolETH.fundRewarder();
-
         skip(7 days);
+
+        vm.startPrank(user1);
         reliquary.harvest(3, user1);
         reliquary.harvest(2, user1);
         vm.stopPrank();
