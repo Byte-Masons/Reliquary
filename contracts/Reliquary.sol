@@ -530,7 +530,7 @@ contract Reliquary is
                 vars.oldToLevel,
                 vars.newToLevel,
                 vars.poolId,
-                vars.fromAmount,
+                amount,
                 vars.toAmount,
                 vars.newToAmount
             ),
