@@ -13,37 +13,53 @@ import "contracts/Reliquary.sol";
 import "contracts/rewarders/RollingRewarder.sol";
 import "contracts/rewarders/ParentRewarder-Rolling.sol";
 import "contracts/rewarders/RewardsPool.sol";
+import "contracts/test/MockVoter.sol";
+
+import "forge-std/console.sol";
 
 contract MultipleRollingRewarderTest is ERC721Holder, Test {
     Reliquary reliquary;
     RollingRewarder rollingRewarderETH;
     RollingRewarder rollingRewarderUSDC;
-    ERC20DecimalsMock grain;
+    ERC20DecimalsMock hbrToken;
+    ERC20DecimalsMock thenaToken;
     ERC20DecimalsMock depositToken; //BPT
     ERC20DecimalsMock rewardToken1; //WETH
     ERC20DecimalsMock rewardToken2; //USDC
     ParentRewarderRolling parent;
     RewardsPool rewardsPoolETH;
     RewardsPool rewardsPoolUSDC;
+    address internal voter;
+    address internal thenaReceiver;
 
     uint[] requiredMaturity = [0, 7 days, 14 days, 21 days, 28 days, 90 days, 180 days, 365 days];
     uint[] levelMultipliers = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        grain = new ERC20DecimalsMock("Grain", "GRAIN", 18);
-        depositToken = new ERC20DecimalsMock("Grain-BPT", "BPT", 18);
+        hbrToken = new ERC20DecimalsMock("Harbor Token", "HBR", 18);
+        depositToken = new ERC20DecimalsMock("HBR-BNB LP", "LP", 18);
         rewardToken1 = new ERC20DecimalsMock("WETH", "WETH", 18);
         rewardToken2 = new ERC20DecimalsMock("USDC", "USDC", 6);
 
+        voter = address(new MockVoter());
+        vm.label(voter, "Voter");
+        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
+        vm.label(thenaReceiver, "thenaReceiver");
+
         reliquary = new Reliquary(
-            address(grain),
+            address(hbrToken),
             address(new Constant()),
+            address(thenaToken),
+            voter,
+            thenaReceiver,
             "Reliquary Deposit",
             "RELIC"
         );
 
+        reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
+
         reliquary.addPool(
-            1000, address(depositToken), address(0), requiredMaturity, levelMultipliers, "whole-grain", address(0), true
+            1000, address(depositToken), address(0), requiredMaturity, levelMultipliers, "harbor-staking", address(0), true
         );
 
         uint256 pid =  reliquary.poolLength() - 1;
@@ -51,25 +67,23 @@ contract MultipleRollingRewarderTest is ERC721Holder, Test {
         parent = new ParentRewarderRolling(
             address(reliquary),
             pid
-            );       
+        );       
 
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
         parent.grantRole(keccak256("REWARD_SETTER"), address(this));
-        reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.modifyPool(0, 1000, address(parent), "whole-grain", address(0), true);
+        reliquary.modifyPool(0, 1000, address(parent), "harbor-staking", address(0), true);
         rollingRewarderETH = RollingRewarder(parent.createChild(address(rewardToken1), address(this)));
         rollingRewarderUSDC = RollingRewarder(parent.createChild(address(rewardToken2), address(this)));
         
-        grain.mint(address(this), 100_000 ether);
-        grain.mint(address(reliquary), 100_000 ether);
-        grain.approve(address(reliquary), type(uint).max);
+        hbrToken.mint(address(this), 100_000 ether);
+        hbrToken.mint(address(reliquary), 100_000 ether);
+        hbrToken.approve(address(reliquary), type(uint).max);
 
         rewardsPoolUSDC = new RewardsPool(address(rewardToken2), address(rollingRewarderUSDC));
         rewardsPoolETH = new RewardsPool(address(rewardToken1), address(rollingRewarderETH));
     
         parent.setChildsRewardPool(address(rollingRewarderETH), address(rewardsPoolETH));
-        parent.setChildsRewardPool(address(rollingRewarderUSDC), address(rewardsPoolUSDC));
-    
+        parent.setChildsRewardPool(address(rollingRewarderUSDC), address(rewardsPoolUSDC));  
     }
 
     function testPoolLength() public {

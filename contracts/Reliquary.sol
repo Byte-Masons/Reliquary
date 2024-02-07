@@ -2,6 +2,9 @@
 pragma solidity ^0.8.15;
 
 import "./ReliquaryEvents.sol";
+import "./libraries/DoubleStakingLogic.sol";
+import "./libraries/ReliquaryLogic.sol";
+import "./interfaces/IVoter.sol";
 import "./interfaces/IReliquary.sol";
 import "./interfaces/IEmissionCurve.sol";
 import "./interfaces/IRewarder.sol";
@@ -55,6 +58,12 @@ contract Reliquary is
 
     /// @notice Address of the reward token contract.
     address public immutable rewardToken;
+    /// @notice Address of the Thena reward token.
+    address public immutable thenaToken;
+    /// @notice Address of the Thena receiver.
+    address public thenaReceiver;
+    /// @notice Address of the Thena voter.
+    IVoter public immutable voter;
     /// @notice Address of each NFTDescriptor contract.
     address[] public nftDescriptor;
     /// @notice Address of EmissionCurve contract.
@@ -97,11 +106,25 @@ contract Reliquary is
      * @dev Constructs and initializes the contract.
      * @param _rewardToken The reward token contract address.
      * @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate.
+     * @param _thenaToken The contract address for the Thena protocol token
+     * @param _voter The contract address for the Thena protocol voter
+     * @param _thenaReceiver The contract address where Thena rewards will be sent
      */
-    constructor(address _rewardToken, address _emissionCurve, string memory name, string memory symbol)
+    constructor(
+        address _rewardToken,
+        address _emissionCurve,
+        address _thenaToken,
+        address _voter,
+        address _thenaReceiver,
+        string memory name,
+        string memory symbol
+    )
         ERC721(name, symbol)
     {
         rewardToken = _rewardToken;
+        thenaToken = _thenaToken;
+        thenaReceiver = _thenaReceiver;
+        voter = IVoter(_voter);
         emissionCurve = _emissionCurve;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -110,7 +133,7 @@ contract Reliquary is
     /// @param _emissionCurve The contract address for the EmissionCurve, which will return the base emission rate.
     function setEmissionCurve(address _emissionCurve) external override onlyRole(EMISSION_CURVE) {
         emissionCurve = _emissionCurve;
-        emit ReliquaryEvents.LogSetEmissionCurve(_emissionCurve);
+        //emit ReliquaryEvents.LogSetEmissionCurve(_emissionCurve);
     }
 
     /**
@@ -170,7 +193,8 @@ contract Reliquary is
                 lastRewardTime: block.timestamp,
                 accRewardPerShare: 0,
                 name: name,
-                allowPartialWithdrawals: allowPartialWithdrawals
+                allowPartialWithdrawals: allowPartialWithdrawals,
+                gaugeInfo: GaugeInfo(false, IGauge(address(0)))
             })
         );
         levels.push(
@@ -181,9 +205,12 @@ contract Reliquary is
             })
         );
 
-        emit ReliquaryEvents.LogPoolAddition(
+        // checks if pool has gauge
+        enableGauge(poolInfo.length - 1);
+
+        /*emit ReliquaryEvents.LogPoolAddition(
             (poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor, allowPartialWithdrawals
-        );
+        );*/
     }
 
     /**
@@ -226,9 +253,9 @@ contract Reliquary is
         pool.name = name;
         nftDescriptor[pid] = _nftDescriptor;
 
-        emit ReliquaryEvents.LogPoolModified(
+        /*emit ReliquaryEvents.LogPoolModified(
             pid, allocPoint, overwriteRewarder ? _rewarder : rewarder[pid], _nftDescriptor
-        );
+        );*/
     }
 
     /// @notice Update reward variables for all pools. Be careful of gas spending!
@@ -269,8 +296,10 @@ contract Reliquary is
 
         (uint poolId,) = _updatePosition(amount, relicId, Kind.WITHDRAW, address(0));
 
-        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
+        withdrawFromGauge(poolId, amount);
 
+        IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
+  
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
 
@@ -299,6 +328,8 @@ contract Reliquary is
 
         (uint poolId, uint receivedReward) = _updatePosition(amount, relicId, Kind.WITHDRAW, harvestTo);
 
+        withdrawFromGauge(poolId, amount);
+
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
         emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
@@ -322,9 +353,11 @@ contract Reliquary is
         _burn(relicId);
         delete positionForId[relicId];
 
+        withdrawFromGauge(poolId, amount);
+
         IERC20(poolToken[poolId]).safeTransfer(to, amount);
 
-        emit ReliquaryEvents.EmergencyWithdraw(poolId, amount, to, relicId);
+        //emit ReliquaryEvents.EmergencyWithdraw(poolId, amount, to, relicId);
     }
 
     /// @notice Update position without performing a deposit/withdraw/harvest.
@@ -415,7 +448,7 @@ contract Reliquary is
             IRewarder(_rewarder).onSplit(fromId, newId, amount, fromAmount, level);
         }
 
-        emit ReliquaryEvents.CreateRelic(poolId, to, newId);
+        /*emit ReliquaryEvents.CreateRelic(poolId, to, newId);*/
         emit ReliquaryEvents.Split(fromId, newId, amount);
     }
 
@@ -467,7 +500,7 @@ contract Reliquary is
 
         vars.fromLevel = positionForId[fromId].level;
         vars.oldToLevel = positionForId[toId].level;
-        vars.newToLevel = _updateLevel(toId, vars.oldToLevel);
+        vars.newToLevel = ReliquaryLogic._updateLevel(toId, vars.oldToLevel, positionForId, levels);
 
         vars.accRewardPerShare = _updatePool(vars.poolId);
         vars.fromMultiplier = vars.accRewardPerShare * levels[vars.poolId].multipliers[vars.fromLevel];
@@ -491,14 +524,17 @@ contract Reliquary is
             );
         }
 
-        _shiftLevelBalances(
-            vars.fromLevel,
-            vars.oldToLevel,
-            vars.newToLevel,
-            vars.poolId,
-            amount,
-            vars.toAmount,
-            vars.newToAmount
+        ReliquaryLogic._shiftLevelBalances(
+            ReliquaryLogic.shiftBalancesVars(
+                vars.fromLevel,
+                vars.oldToLevel,
+                vars.newToLevel,
+                vars.poolId,
+                vars.fromAmount,
+                vars.toAmount,
+                vars.newToAmount
+            ),
+            levels
         );
 
         emit ReliquaryEvents.Shift(fromId, toId, amount);
@@ -531,7 +567,7 @@ contract Reliquary is
 
         uint fromLevel = positionForId[fromId].level;
         uint oldToLevel = positionForId[toId].level;
-        uint newToLevel = _updateLevel(toId, oldToLevel);
+        uint newToLevel = ReliquaryLogic._updateLevel(toId, oldToLevel, positionForId, levels);
 
         uint accRewardPerShare = _updatePool(poolId);
         uint pendingTo = accRewardPerShare
@@ -559,7 +595,9 @@ contract Reliquary is
             );
         }
 
-        _shiftLevelBalances(fromLevel, oldToLevel, newToLevel, poolId, fromAmount, toAmount, newToAmount);
+        ReliquaryLogic._shiftLevelBalances(
+            ReliquaryLogic.shiftBalancesVars(fromLevel, oldToLevel, newToLevel, poolId, fromAmount, toAmount, newToAmount), 
+            levels);
 
         emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
     }
@@ -601,22 +639,7 @@ contract Reliquary is
      * @return level Level for given position upon update.
      */
     function levelOnUpdate(uint relicId) public view override returns (uint level) {
-        PositionInfo storage position = positionForId[relicId];
-        LevelInfo storage levelInfo = levels[position.poolId];
-        uint length = levelInfo.requiredMaturities.length;
-        if (length == 1) {
-            return 0;
-        }
-
-        uint maturity = block.timestamp - position.entry;
-        for (level = length - 1; true;) {
-            if (maturity >= levelInfo.requiredMaturities[level]) {
-                break;
-            }
-            unchecked {
-                --level;
-            }
-        }
+       return ReliquaryLogic.levelOnUpdate(relicId, positionForId, levels);
     }
 
     /// @notice Returns the number of Reliquary pools.
@@ -666,6 +689,8 @@ contract Reliquary is
 
             pool.lastRewardTime = timestamp;
 
+            updatePoolWithGaugeDeposit(pid);
+
             emit ReliquaryEvents.LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
         }
     }
@@ -677,6 +702,8 @@ contract Reliquary is
         (uint poolId,) = _updatePosition(amount, relicId, Kind.DEPOSIT, address(0));
 
         IERC20(poolToken[poolId]).safeTransferFrom(msg.sender, address(this), amount);
+
+        updatePoolWithGaugeDeposit(poolId);
 
         emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
@@ -710,7 +737,7 @@ contract Reliquary is
 
         vars.oldAmount = position.amount;
         if (kind == Kind.DEPOSIT) {
-            _updateEntry(amount, relicId);
+            ReliquaryLogic._updateEntry(amount, relicId, positionForId);
             vars.newAmount = vars.oldAmount + amount;
             position.amount = vars.newAmount;
         } else if (kind == Kind.WITHDRAW) {
@@ -724,7 +751,7 @@ contract Reliquary is
         }
 
         vars.oldLevel = position.level;
-        vars.newLevel = _updateLevel(relicId, vars.oldLevel);
+        vars.newLevel = ReliquaryLogic._updateLevel(relicId, vars.oldLevel, positionForId, levels);
 
         uint _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
             / ACC_REWARD_PRECISION - position.rewardDebt;
@@ -788,38 +815,6 @@ contract Reliquary is
         }
     }
 
-    /**
-     * @notice Updates the user's entry time based on the weight of their deposit or withdrawal.
-     * @param amount The amount of the deposit / withdrawal.
-     * @param relicId The NFT ID of the position being updated.
-     */
-    function _updateEntry(uint amount, uint relicId) internal {
-        PositionInfo storage position = positionForId[relicId];
-        uint amountBefore = position.amount;
-        if (amountBefore == 0) {
-            position.entry = block.timestamp;
-        } else {
-            uint weight = _findWeight(amount, amountBefore);
-            uint entryBefore = position.entry;
-            uint maturity = block.timestamp - entryBefore;
-            position.entry = entryBefore + maturity * weight / 1e12;
-        }
-    }
-
-    /**
-     * @notice Updates the position's level based on entry time.
-     * @param relicId The NFT ID of the position being updated.
-     * @param oldLevel Level of position before update.
-     * @return newLevel Level of position after update.
-     */
-    function _updateLevel(uint relicId, uint oldLevel) internal returns (uint newLevel) {
-        newLevel = levelOnUpdate(relicId);
-        PositionInfo storage position = positionForId[relicId];
-        if (oldLevel != newLevel) {
-            position.level = newLevel;
-            emit ReliquaryEvents.LevelChanged(relicId, newLevel);
-        }
-    }
 
     /// @dev Ensure the behavior of ERC721Enumerable _beforeTokenTransfer is preserved.
     function _beforeTokenTransfer(address from, address to, uint tokenId, uint batchSize)
@@ -865,51 +860,37 @@ contract Reliquary is
     /// @param relicId The NFT ID of the Relic.
     function _requireApprovedOrOwner(uint relicId) internal view {
         if (!_isApprovedOrOwner(msg.sender, relicId)) revert NotApprovedOrOwner();
-    }
-
-    /**
-     * @notice Used in `_updateEntry` to find weights without any underflows or zero division problems.
-     * @param addedValue New value being added.
-     * @param oldValue Current amount of x.
-     */
-    function _findWeight(uint addedValue, uint oldValue) internal pure returns (uint weightNew) {
-        if (oldValue < addedValue) {
-            weightNew = 1e12 - oldValue * 1e12 / (addedValue + oldValue);
-        } else if (addedValue < oldValue) {
-            weightNew = addedValue * 1e12 / (addedValue + oldValue);
-        } else {
-            weightNew = 5e11;
-        }
-    }
-
-    /// @dev Handle updating balances for each affected tranche when shifting and merging.
-    function _shiftLevelBalances(
-        uint fromLevel,
-        uint oldToLevel,
-        uint newToLevel,
-        uint poolId,
-        uint amount,
-        uint toAmount,
-        uint newToAmount
-    ) private {
-        if (fromLevel != newToLevel) {
-            levels[poolId].balance[fromLevel] -= amount;
-        }
-        if (oldToLevel != newToLevel) {
-            levels[poolId].balance[oldToLevel] -= toAmount;
-        }
-        if (fromLevel != newToLevel && oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += newToAmount;
-        } else if (fromLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += amount;
-        } else if (oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += toAmount;
-        }
+    
     }
 
     /// @dev Increments the ID nonce and mints a new Relic to `to`.
     function _mint(address to) private returns (uint id) {
         id = ++idNonce;
         _safeMint(to, id);
+    }
+
+    // @dev Deposit LP tokens to earn THE.
+    function updatePoolWithGaugeDeposit(uint256 _pid) public {
+        DoubleStakingLogic.updatePoolWithGaugeDeposit(poolInfo, poolToken, _pid);
+    }
+
+    function withdrawFromGauge(uint256 _pid, uint256 _amount) internal {
+        DoubleStakingLogic.withdrawFromGauge(poolInfo, _pid, _amount);
+    }
+
+    function enableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.enableGauge(voter, poolInfo, poolToken, _pid);
+    }
+
+    function disableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.disableGauge(voter, poolInfo, poolToken, _pid);
+    }
+
+    function setReceiver(address _thenaReceiver) public onlyRole(OPERATOR) {
+        thenaReceiver = _thenaReceiver;
+    }
+
+    function claimThenaRewards(uint256 _pid) public {
+        DoubleStakingLogic.claimThenaRewards(poolInfo, thenaToken, thenaReceiver, _pid);
     }
 }

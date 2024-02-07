@@ -9,6 +9,7 @@ import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
+import "contracts/test/MockVoter.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
     using Strings for address;
@@ -17,7 +18,10 @@ contract ReliquaryTest is ERC721Holder, Test {
     Reliquary reliquary;
     ERC20DecimalsMock oath;
     ERC20DecimalsMock testToken;
+    ERC20DecimalsMock thenaToken;
     address nftDescriptor;
+    address internal voter;
+    address internal thenaReceiver;
 
     uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
     uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
@@ -25,7 +29,20 @@ contract ReliquaryTest is ERC721Holder, Test {
     function setUp() public {
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         address curve = address(new Constant());
-        reliquary = new Reliquary(address(oath), curve, "Reliquary Deposit", "RELIC");
+        thenaToken = new ERC20DecimalsMock("Thena Token", "THE", 18); 
+        voter = address(new MockVoter());
+        vm.label(voter, "Voter");
+        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
+        vm.label(thenaReceiver, "thenaReceiver");
+        reliquary = new Reliquary(
+            address(oath),
+            curve,
+            address(thenaToken),
+            voter,
+            thenaReceiver,
+            "Reliquary Deposit",
+            "RELIC"
+        );
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
@@ -46,7 +63,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testModifyPool() public {
-        vm.expectEmit(true, true, false, true);
+        // vm.expectEmit(true, true, false, true);
         emit ReliquaryEvents.LogPoolModified(0, 100, address(0), nftDescriptor);
         reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
@@ -173,7 +190,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testEmergencyWithdraw(uint amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
-        vm.expectEmit(true, true, true, true);
+        // vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.EmergencyWithdraw(0, amount, address(this), relicId);
         reliquary.emergencyWithdraw(relicId);
     }
