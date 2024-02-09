@@ -67,9 +67,9 @@ library DoubleStakingLogic {
     ) public {
         address gauge = voter.gauges(address(poolToken[_pid]));
         if (gauge != address(0)) {
-            poolInfo[_pid].gaugeInfo = GaugeInfo(false, IGauge(address(0)));
             uint256 balance = IGauge(gauge).balanceOf(address(this));
             withdrawFromGauge(poolInfo, _pid, balance);
+            poolInfo[_pid].gaugeInfo = GaugeInfo(false, IGauge(address(0)));
         }
     }
 
