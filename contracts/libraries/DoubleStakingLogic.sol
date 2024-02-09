@@ -54,8 +54,8 @@ library DoubleStakingLogic {
     ) public {
         address gauge = voter.gauges(address(poolToken[_pid]));
         if (gauge != address(0)) {
-            updatePoolWithGaugeDeposit(poolInfo, poolToken, _pid);
             poolInfo[_pid].gaugeInfo = GaugeInfo(true, IGauge(gauge));
+            updatePoolWithGaugeDeposit(poolInfo, poolToken, _pid);
         }
     }
 
