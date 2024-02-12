@@ -300,7 +300,7 @@ contract Reliquary is
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
   
-        emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
+        // emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
     }
 
     /**
@@ -313,7 +313,7 @@ contract Reliquary is
 
         (uint poolId, uint receivedReward) = _updatePosition(0, relicId, Kind.OTHER, harvestTo);
 
-        emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
+        // emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
     }
 
     /**
@@ -332,8 +332,8 @@ contract Reliquary is
 
         IERC20(poolToken[poolId]).safeTransfer(msg.sender, amount);
 
-        emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
-        emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
+        // emit ReliquaryEvents.Withdraw(poolId, amount, msg.sender, relicId);
+        // emit ReliquaryEvents.Harvest(poolId, receivedReward, harvestTo, relicId);
     }
 
     /**
@@ -405,7 +405,7 @@ contract Reliquary is
         PositionInfo storage position = positionForId[id];
         position.poolId = pid;
         _deposit(amount, id);
-        emit ReliquaryEvents.CreateRelic(pid, to, id);
+        // emit ReliquaryEvents.CreateRelic(pid, to, id);
     }
 
     /**
@@ -449,7 +449,7 @@ contract Reliquary is
         }
 
         /*emit ReliquaryEvents.CreateRelic(poolId, to, newId);*/
-        emit ReliquaryEvents.Split(fromId, newId, amount);
+        // emit ReliquaryEvents.Split(fromId, newId, amount);
     }
 
     struct LocalVariables_shift {
@@ -537,7 +537,7 @@ contract Reliquary is
             levels
         );
 
-        emit ReliquaryEvents.Shift(fromId, toId, amount);
+        // emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
 
     /**
@@ -599,7 +599,7 @@ contract Reliquary is
             ReliquaryLogic.shiftBalancesVars(fromLevel, oldToLevel, newToLevel, poolId, fromAmount, toAmount, newToAmount), 
             levels);
 
-        emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
+        // emit ReliquaryEvents.Merge(fromId, toId, fromAmount);
     }
 
     /// @notice Burns the Relic with ID `tokenId`. Cannot be called if there is any principal or rewards in the Relic.
@@ -691,7 +691,7 @@ contract Reliquary is
 
             updatePoolWithGaugeDeposit(pid);
 
-            emit ReliquaryEvents.LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
+            // emit ReliquaryEvents.LogUpdatePool(pid, timestamp, lpSupply, accRewardPerShare);
         }
     }
 
@@ -705,7 +705,7 @@ contract Reliquary is
 
         updatePoolWithGaugeDeposit(poolId);
 
-        emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
+        // emit ReliquaryEvents.Deposit(poolId, amount, ownerOf(relicId), relicId);
     }
 
     struct LocalVariables_updatePosition {
