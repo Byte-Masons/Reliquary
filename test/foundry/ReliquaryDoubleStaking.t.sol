@@ -42,15 +42,14 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     IPairFactory pairFactory;
     IPair poolToken;
     address internal thenaReceiver;
-    address constant veNFT = 0xfBBF371C9B0B994EebFcC977CEf603F7f31c070D;
 
     uint[] requiredMaturity = [0, 7 days, 14 days, 21 days, 28 days, 90 days, 180 days, 365 days];
     uint[] levelMultipliers = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        vm.createSelectFork("binance", 35652076);
+        vm.createSelectFork("binance", 36082336);
 
-        harborToken = IERC20Metadata(0xa045E37a0D1dd3A45fefb8803D22457abc0A728a); // GHNY
+        harborToken = IERC20Metadata(0x42c95788F791a2be3584446854c8d9BB01BE88A9 ); // HBR
         counterAsset = IWETH(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c); // WBNB
         hoax(address(this));
 
@@ -60,8 +59,8 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         thenaToken = IERC20Metadata(0xF4C8E32EaDEC4BFe97E0F595AdD0f4450a863a11);
         vm.label(address(thenaToken), "Thena Token");
 
-        poolToken = IPair(0xA97E46DC17e2b678e5f049A2670fAe000b57F05E);
-        gauge = IGauge(0xe1aD94646E9866d48cca59080535eF782d03B4af);
+        poolToken = IPair(0x5134729Cd5a5b40336BC3CA71349f2c108718428);
+        gauge = IGauge(0xf3c04d74B62544772e8efddD5448a3c1a85F8F3c);
         vm.label(address(gauge), "Gauge");
 
         rewardToken1 = new ERC20DecimalsMock("Harbor oToken", "oHBR", 18);
@@ -120,9 +119,9 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     function testDeposit() public {
         counterAsset.deposit{value: 1 ether}();
 
-        vm.prank(0x981B04CBDCEE0C510D331fAdc7D6836a77085030); // GHNY admin
+        vm.prank(0x6eB1fF8E939aFBF3086329B2b32725b72095512C); // HBR admin
         IAccessControl(address(harborToken)).grantRole(
-            0x60400965d90814aa36ab657cbeca3e3b701e320f6373ae1db85824fee2a79822, // Bridge minting role
+            0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6 , // minting role
             address(this)
         );
         vm.prank(address(this));
@@ -157,9 +156,9 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     
         //DEPOSIT
         counterAsset.deposit{value: 1 ether}();
-        vm.prank(0x981B04CBDCEE0C510D331fAdc7D6836a77085030); // GHNY admin
+        vm.prank(0x6eB1fF8E939aFBF3086329B2b32725b72095512C); // HBR admin
         IAccessControl(address(harborToken)).grantRole(
-            0x60400965d90814aa36ab657cbeca3e3b701e320f6373ae1db85824fee2a79822, // Bridge minting role
+            0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6 , // minting role
             address(this)
         );
         vm.prank(address(this));
