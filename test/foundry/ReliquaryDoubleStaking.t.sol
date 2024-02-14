@@ -301,7 +301,6 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         skip(7 days);
         vm.prank(user1);
         reliquary.harvest(3, user1);
-        vm.stopPrank();
 
         uint256 rewardMergedRelic = IERC20(rewardToken1).balanceOf(user1);
         assertApproxEqAbs(
