@@ -5,7 +5,7 @@ pragma solidity ^0.8.15;
 import "../interfaces/IRollingRewarder.sol";
 import "./ChildRewarder.sol";
 import "./SingleAssetRewarder.sol";
-import {IReliquary, LevelInfo} from "../interfaces/IReliquary.sol";
+import {IReliquary, LevelInfo, PositionInfo} from "../interfaces/IReliquary.sol";
 import {IEmissionCurve} from "../interfaces/IEmissionCurve.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -209,16 +209,45 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
     }
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
-    function pendingTokens(
-        uint, //relicId
-        uint rewardAmount
+    function pendingToken(
+        uint relicId,
+        uint // rewardAmount
     )
-        external
+        public
         view
-        override(IRewarder, SingleAssetRewarder)
-        returns (address[] memory, uint[] memory)
-    {}
+        override(SingleAssetRewarder)
+        returns (uint amount)
+    {
+        uint256 poolBalance = _poolBalance();
+        uint256 _lastIssuanceTimestamp = lastIssuanceTimestamp; //last time token was distributed
+        uint256 _lastDistributionTime = lastDistributionTime; //timestamp of the final distribution of tokens
+        uint256 _totalIssued = totalIssued; //how many tokens to issue
+        uint256 newAccReward;
+        if (_lastIssuanceTimestamp < _lastDistributionTime) {
+            uint256 endTimestamp = block.timestamp > _lastDistributionTime
+                ? _lastDistributionTime
+                : block.timestamp;
+            uint256 timePassed = endTimestamp - _lastIssuanceTimestamp;
+            uint256 issuance = getRewardAmount(timePassed);
+            if (poolBalance != 0) {
+                newAccReward = accRewardPerShare +
+                    (issuance * ACC_REWARD_PRECISION) /
+                    poolBalance;
+
+                _totalIssued = _totalIssued + issuance;
+            }
+        }
+
+        PositionInfo memory position = IReliquary(reliquary).getPositionForId(relicId);
+
+        uint256 amountMultiplied = position.amount * multipliers[position.level];
+
+        uint256 pending = ((amountMultiplied * newAccReward) /
+            ACC_REWARD_PRECISION) - rewardDebt[relicId];
+        pending += rewardCredit[relicId];
+        
+        amount = pending;
+    }
 
     function _updateDistributionPeriod(
         uint256 _newDistributionPeriod
