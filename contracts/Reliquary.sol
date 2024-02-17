@@ -608,6 +608,7 @@ contract Reliquary is
 
     /**
      * @notice View function to see level of position if it were to be updated.
+     * @dev Uses dichotomous search to scale with large number of levels.
      * @param relicId ID of the position.
      * @return level Level for given position upon update.
      */
@@ -620,14 +621,17 @@ contract Reliquary is
         }
 
         uint maturity = block.timestamp - position.entry;
-        for (level = length - 1; true;) {
-            if (maturity >= levelInfo.requiredMaturities[level]) {
-                break;
-            }
-            unchecked {
-                --level;
+        uint low = 0;
+        uint high = length - 1;
+        while (low < high) {
+            uint mid = (low + high + 1) / 2;
+            if (maturity >= levelInfo.requiredMaturities[mid]) {
+                low = mid;
+            } else {
+                high = mid - 1;
             }
         }
+        return low;
     }
 
     /// @notice Returns the number of Reliquary pools.
