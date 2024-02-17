@@ -19,13 +19,34 @@ contract ReliquaryTest is ERC721Holder, Test {
     ERC20DecimalsMock testToken;
     address nftDescriptor;
 
-    uint[] requiredMaturity = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
-    uint[] allocPoints = [100, 120, 150, 200, 300, 400, 500, 750];
+    uint256 numLevels = 8; // < to config
+    uint256[] requiredMaturity = new uint256[](numLevels);
+    uint256[] allocPoints = new uint256[](numLevels);
 
     function setUp() public {
+        // config levels
+        uint256 minRequiredMaturity = 0;
+        uint256 maxRequiredMaturity = 356;
+        uint256 minAllocPoints = 100;
+        uint256 maxAllocPoints = 1000;
+        uint256 maturityStep = (maxRequiredMaturity - minRequiredMaturity) /
+            (numLevels - 1);
+        uint256 allocPointsStep = (maxAllocPoints - minAllocPoints) /
+            (numLevels - 1);
+
+        for (uint256 i = 0; i < numLevels; i++) {
+            requiredMaturity[i] = minRequiredMaturity + i * maturityStep;
+            allocPoints[i] = minAllocPoints + i * allocPointsStep;
+        }
+
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         address curve = address(new Constant());
-        reliquary = new Reliquary(address(oath), curve, "Reliquary Deposit", "RELIC");
+        reliquary = new Reliquary(
+            address(oath),
+            curve,
+            "Reliquary Deposit",
+            "RELIC"
+        );
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
@@ -34,7 +55,14 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            100, address(testToken), address(0), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+            100,
+            address(testToken),
+            address(0),
+            requiredMaturity,
+            allocPoints,
+            "ETH Pool",
+            nftDescriptor,
+            true
         );
 
         testToken.mint(address(this), 100_000_000 ether);
@@ -48,12 +76,26 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
         emit ReliquaryEvents.LogPoolModified(0, 100, address(0), nftDescriptor);
-        reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(
+            0,
+            100,
+            address(0),
+            "USDC Pool",
+            nftDescriptor,
+            true
+        );
     }
 
     function testRevertOnModifyInvalidPool() public {
         vm.expectRevert(Reliquary.NonExistentPool.selector);
-        reliquary.modifyPool(1, 100, address(0), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(
+            1,
+            100,
+            address(0),
+            "USDC Pool",
+            nftDescriptor,
+            true
+        );
     }
 
     function testRevertOnModifyPoolUnauthorized() public {
@@ -68,13 +110,24 @@ contract ReliquaryTest is ERC721Holder, Test {
             )
         );
         vm.prank(address(1));
-        reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
+        reliquary.modifyPool(
+            0,
+            100,
+            address(0),
+            "USDC Pool",
+            nftDescriptor,
+            true
+        );
     }
 
     function testPendingOath(uint amount, uint time) public {
         time = bound(time, 0, 3650 days);
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amount
+        );
         skip(time);
         reliquary.updatePosition(relicId);
         assertApproxEqAbs(reliquary.pendingReward(relicId), time * 1e17, 1e16);
@@ -108,7 +161,11 @@ contract ReliquaryTest is ERC721Holder, Test {
         amountA = bound(amountA, 1, type(uint).max / 2);
         amountB = bound(amountB, 1, type(uint).max / 2);
         vm.assume(amountA + amountB <= testToken.balanceOf(address(this)));
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amountA);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amountA
+        );
         reliquary.deposit(amountB, relicId);
         assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
     }
@@ -128,7 +185,11 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testWithdraw(uint amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amount
+        );
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.Withdraw(0, amount, address(this), relicId);
         reliquary.withdraw(amount, relicId);
@@ -152,7 +213,11 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.deposit(1 ether, relicIdA);
 
         vm.stopPrank();
-        uint relicIdB = reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
+        uint relicIdB = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            100 ether
+        );
         skip(180 days);
         reliquary.harvest(relicIdB, address(this));
 
@@ -160,7 +225,10 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.harvest(relicIdA, address(this));
         vm.stopPrank();
 
-        assertEq((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110399);
+        assertEq(
+            (oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18,
+            3110399
+        );
     }
 
     function testRevertOnHarvestUnauthorized() public {
@@ -172,9 +240,18 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testEmergencyWithdraw(uint amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amount
+        );
         vm.expectEmit(true, true, true, true);
-        emit ReliquaryEvents.EmergencyWithdraw(0, amount, address(this), relicId);
+        emit ReliquaryEvents.EmergencyWithdraw(
+            0,
+            amount,
+            address(this),
+            relicId
+        );
         reliquary.emergencyWithdraw(relicId);
     }
 
@@ -186,77 +263,181 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testSplit(uint depositAmount, uint splitAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)));
+        depositAmount = bound(
+            depositAmount,
+            1,
+            testToken.balanceOf(address(this))
+        );
         splitAmount = bound(splitAmount, 1, depositAmount);
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount
+        );
         uint newRelicId = reliquary.split(relicId, splitAmount, address(this));
 
         assertEq(reliquary.balanceOf(address(this)), 2);
-        assertEq(reliquary.getPositionForId(relicId).amount, depositAmount - splitAmount);
+        assertEq(
+            reliquary.getPositionForId(relicId).amount,
+            depositAmount - splitAmount
+        );
         assertEq(reliquary.getPositionForId(newRelicId).amount, splitAmount);
     }
 
-    function testRevertOnSplitUnderflow(uint depositAmount, uint splitAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
-        splitAmount = bound(splitAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount);
+    function testRevertOnSplitUnderflow(
+        uint depositAmount,
+        uint splitAmount
+    ) public {
+        depositAmount = bound(
+            depositAmount,
+            1,
+            testToken.balanceOf(address(this)) / 2 - 1
+        );
+        splitAmount = bound(
+            splitAmount,
+            depositAmount + 1,
+            testToken.balanceOf(address(this)) - depositAmount
+        );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount
+        );
         vm.expectRevert(stdError.arithmeticError);
         reliquary.split(relicId, splitAmount, address(this));
     }
 
-    function testShift(uint depositAmount1, uint depositAmount2, uint shiftAmount) public {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
-        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+    function testShift(
+        uint depositAmount1,
+        uint depositAmount2,
+        uint shiftAmount
+    ) public {
+        depositAmount1 = bound(
+            depositAmount1,
+            1,
+            testToken.balanceOf(address(this)) - 1
+        );
+        depositAmount2 = bound(
+            depositAmount2,
+            1,
+            testToken.balanceOf(address(this)) - depositAmount1
+        );
         shiftAmount = bound(shiftAmount, 1, depositAmount1);
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
-        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount1
+        );
+        uint newRelicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount2
+        );
         reliquary.shift(relicId, newRelicId, shiftAmount);
 
-        assertEq(reliquary.getPositionForId(relicId).amount, depositAmount1 - shiftAmount);
-        assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount2 + shiftAmount);
+        assertEq(
+            reliquary.getPositionForId(relicId).amount,
+            depositAmount1 - shiftAmount
+        );
+        assertEq(
+            reliquary.getPositionForId(newRelicId).amount,
+            depositAmount2 + shiftAmount
+        );
     }
 
-    function testRevertOnShiftUnderflow(uint depositAmount, uint shiftAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
-        shiftAmount = bound(shiftAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount);
+    function testRevertOnShiftUnderflow(
+        uint depositAmount,
+        uint shiftAmount
+    ) public {
+        depositAmount = bound(
+            depositAmount,
+            1,
+            testToken.balanceOf(address(this)) / 2 - 1
+        );
+        shiftAmount = bound(
+            shiftAmount,
+            depositAmount + 1,
+            testToken.balanceOf(address(this)) - depositAmount
+        );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount
+        );
         uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
         vm.expectRevert(stdError.arithmeticError);
         reliquary.shift(relicId, newRelicId, shiftAmount);
     }
 
     function testMerge(uint depositAmount1, uint depositAmount2) public {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
-        depositAmount2 = bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+        depositAmount1 = bound(
+            depositAmount1,
+            1,
+            testToken.balanceOf(address(this)) - 1
+        );
+        depositAmount2 = bound(
+            depositAmount2,
+            1,
+            testToken.balanceOf(address(this)) - depositAmount1
+        );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
-        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount1
+        );
+        uint newRelicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount2
+        );
         reliquary.merge(relicId, newRelicId);
 
-        assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
+        assertEq(
+            reliquary.getPositionForId(newRelicId).amount,
+            depositAmount1 + depositAmount2
+        );
     }
 
-    function testCompareDepositAndMerge(uint amount1, uint amount2, uint32 time) public {
+    function testCompareDepositAndMerge(
+        uint amount1,
+        uint amount2,
+        uint32 time
+    ) public {
         amount1 = bound(amount1, 1, testToken.balanceOf(address(this)) - 1);
-        amount2 = bound(amount2, 1, testToken.balanceOf(address(this)) - amount1);
+        amount2 = bound(
+            amount2,
+            1,
+            testToken.balanceOf(address(this)) - amount1
+        );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amount1
+        );
         skip(time);
         reliquary.deposit(amount2, relicId);
-        uint maturity1 = block.timestamp - reliquary.getPositionForId(relicId).entry;
+        uint maturity1 = block.timestamp -
+            reliquary.getPositionForId(relicId).entry;
 
         //reset maturity
         reliquary.withdraw(amount1 + amount2, relicId);
         reliquary.deposit(amount1, relicId);
 
         skip(time);
-        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount2);
+        uint newRelicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            amount2
+        );
         reliquary.merge(newRelicId, relicId);
-        uint maturity2 = block.timestamp - reliquary.getPositionForId(relicId).entry;
+        uint maturity2 = block.timestamp -
+            reliquary.getPositionForId(relicId).entry;
 
         assertApproxEqAbs(maturity1, maturity2, 1);
     }
@@ -264,17 +445,29 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testMergeAfterSplit() public {
         uint depositAmount1 = 100 ether;
         uint depositAmount2 = 50 ether;
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount1
+        );
         skip(2 days);
         reliquary.harvest(relicId, address(this));
         reliquary.split(relicId, 50 ether, address(this));
-        uint newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        uint newRelicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            depositAmount2
+        );
         reliquary.merge(relicId, newRelicId);
         assertEq(reliquary.getPositionForId(newRelicId).amount, 100 ether);
     }
 
     function testBurn() public {
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            0,
+            1 ether
+        );
         vm.expectRevert(Reliquary.BurningPrincipal.selector);
         reliquary.burn(relicId);
 
@@ -299,10 +492,21 @@ contract ReliquaryTest is ERC721Holder, Test {
         oath.mint(address(rewarder), 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(rewarder), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+            100,
+            address(testToken),
+            address(rewarder),
+            requiredMaturity,
+            allocPoints,
+            "ETH Pool",
+            nftDescriptor,
+            true
         );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            1,
+            1 ether
+        );
         skip(1 days);
         rewarder.claimDepositBonus(relicId, address(this));
 
@@ -310,20 +514,47 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testParentRewarder() public {
-        ERC20DecimalsMock parentToken = new ERC20DecimalsMock("Parent Token", "PT", 18);
-        ParentRewarder parent = new ParentRewarder(5e17, address(parentToken), address(reliquary));
+        ERC20DecimalsMock parentToken = new ERC20DecimalsMock(
+            "Parent Token",
+            "PT",
+            18
+        );
+        ParentRewarder parent = new ParentRewarder(
+            5e17,
+            address(parentToken),
+            address(reliquary)
+        );
         parentToken.mint(address(parent), 1_000_000 ether);
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
 
-        ERC20DecimalsMock childToken = new ERC20DecimalsMock("Child Token", "CT", 6);
-        address child = parent.createChild(address(childToken), 2e6, address(this));
+        ERC20DecimalsMock childToken = new ERC20DecimalsMock(
+            "Child Token",
+            "CT",
+            6
+        );
+        address child = parent.createChild(
+            address(childToken),
+            2e6,
+            address(this)
+        );
         childToken.mint(child, 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(parent), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+            100,
+            address(testToken),
+            address(parent),
+            requiredMaturity,
+            allocPoints,
+            "ETH Pool",
+            nftDescriptor,
+            true
         );
 
-        uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
+        uint relicId = reliquary.createRelicAndDeposit(
+            address(this),
+            1,
+            1 ether
+        );
         skip(1 days);
         reliquary.harvest(relicId, address(this));
 
