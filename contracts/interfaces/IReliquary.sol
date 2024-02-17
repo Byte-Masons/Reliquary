@@ -25,6 +25,7 @@ struct PositionInfo {
  * @notice Info of each Reliquary pool.
  * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12).
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
+ * `totalLpSupplied` Total number of LPs in the pool. Represents the sum of all levelInfo.balance * levelInfo.multipliers.
  * `allocPoint` Pool's individual allocation - ratio of the total allocation.
  * `name` Name of pool to be displayed in NFT image.
  * `allowPartialWithdrawals` Whether users can withdraw less than their entire position.
@@ -33,6 +34,7 @@ struct PositionInfo {
 struct PoolInfo {
     uint accRewardPerShare;
     uint lastRewardTime;
+    uint totalLpSupplied;
     uint allocPoint;
     string name;
     bool allowPartialWithdrawals;

@@ -9,7 +9,6 @@ import "./interfaces/INFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
@@ -31,7 +30,6 @@ contract Reliquary is
     ERC721Burnable,
     ERC721Enumerable,
     AccessControlEnumerable,
-    Multicall,
     ReentrancyGuard
 {
     using SafeERC20 for IERC20;
@@ -168,6 +166,7 @@ contract Reliquary is
             PoolInfo({
                 allocPoint: allocPoint,
                 lastRewardTime: block.timestamp,
+                totalLpSupplied: 0,
                 accRewardPerShare: 0,
                 name: name,
                 allowPartialWithdrawals: allowPartialWithdrawals
@@ -314,10 +313,15 @@ contract Reliquary is
         if (to != msg.sender) revert NotOwner();
 
         PositionInfo storage position = positionForId[relicId];
+
         uint amount = position.amount;
         uint poolId = position.poolId;
+        uint levelId = position.level;
 
-        levels[poolId].balance[position.level] -= amount;
+        _updatePool(poolId);
+
+        levels[poolId].balance[levelId] -= amount;
+        poolInfo[poolId].totalLpSupplied -= amount * levels[poolId].multipliers[levelId];
 
         _burn(relicId);
         delete positionForId[relicId];
@@ -340,12 +344,12 @@ contract Reliquary is
     }
 
     /// @notice Returns a PoolInfo object for pool ID `pid`.
-    function getPoolInfo(uint pid) external view override returns (PoolInfo memory pool) {
+    function getPoolInfo(uint pid) public view override returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
     }
 
     /// @notice Returns a LevelInfo object for pool ID `pid`.
-    function getLevelInfo(uint pid) external view override returns (LevelInfo memory levelInfo) {
+    function getLevelInfo(uint pid) public view override returns (LevelInfo memory levelInfo) {
         levelInfo = levels[pid];
     }
 
@@ -419,8 +423,7 @@ contract Reliquary is
     {
         if (pid >= poolInfo.length) revert NonExistentPool();
         id = _mint(to);
-        PositionInfo storage position = positionForId[id];
-        position.poolId = pid;
+        positionForId[id].poolId = pid;
         _deposit(amount, id);
         emit ReliquaryEvents.CreateRelic(pid, to, id);
     }
@@ -614,8 +617,8 @@ contract Reliquary is
      */
     function levelOnUpdate(uint relicId) public view override returns (uint level) {
         PositionInfo storage position = positionForId[relicId];
-        LevelInfo storage levelInfo = levels[position.poolId];
-        uint length = levelInfo.requiredMaturities.length;
+        LevelInfo storage level = levels[position.poolId];
+        uint length = level.requiredMaturities.length;
         if (length == 1) {
             return 0;
         }
@@ -625,7 +628,7 @@ contract Reliquary is
         uint high = length - 1;
         while (low < high) {
             uint mid = (low + high + 1) / 2;
-            if (maturity >= levelInfo.requiredMaturities[mid]) {
+            if (maturity >= level.requiredMaturities[mid]) {
                 low = mid;
             } else {
                 high = mid - 1;
@@ -740,19 +743,28 @@ contract Reliquary is
 
         vars.oldLevel = position.level;
         vars.newLevel = _updateLevel(relicId, vars.oldLevel);
+        LevelInfo storage level = levels[poolId];
+
         if (vars.oldLevel != vars.newLevel) {
-            levels[poolId].balance[vars.oldLevel] -= vars.oldAmount;
-            levels[poolId].balance[vars.newLevel] += vars.newAmount;
-        } else if (kind == Kind.DEPOSIT) {
-            levels[poolId].balance[vars.oldLevel] += amount;
-        } else if (kind == Kind.WITHDRAW) {
-            levels[poolId].balance[vars.oldLevel] -= amount;
+            level.balance[vars.oldLevel] -= vars.oldAmount;
+            poolInfo[poolId].totalLpSupplied -= vars.oldAmount * level.multipliers[vars.oldLevel];
+
+            level.balance[vars.newLevel] += vars.newAmount;
+            poolInfo[poolId].totalLpSupplied += vars.newAmount * level.multipliers[vars.newLevel];
+        } 
+        else if (kind == Kind.DEPOSIT) {
+            level.balance[vars.oldLevel] += amount;
+            poolInfo[poolId].totalLpSupplied += amount * level.multipliers[vars.oldLevel];
+        } 
+        else if (kind == Kind.WITHDRAW) {
+            level.balance[vars.oldLevel] -= amount;
+            poolInfo[poolId].totalLpSupplied -= amount * level.multipliers[vars.oldLevel];
         }
 
-        uint _pendingReward = vars.oldAmount * levels[poolId].multipliers[vars.oldLevel] * vars.accRewardPerShare
+        uint _pendingReward = vars.oldAmount * level.multipliers[vars.oldLevel] * vars.accRewardPerShare
             / ACC_REWARD_PRECISION - position.rewardDebt;
         position.rewardDebt =
-            vars.newAmount * levels[poolId].multipliers[vars.newLevel] * vars.accRewardPerShare / ACC_REWARD_PRECISION;
+            vars.newAmount * level.multipliers[vars.newLevel] * vars.accRewardPerShare / ACC_REWARD_PRECISION;
 
         vars.harvest = harvestTo != address(0);
         if (!vars.harvest && _pendingReward != 0) {
@@ -846,14 +858,7 @@ contract Reliquary is
      * @return total The amount of pool tokens held by the contract.
      */
     function _poolBalance(uint pid) internal view returns (uint total) {
-        LevelInfo storage levelInfo = levels[pid];
-        uint length = levelInfo.balance.length;
-        for (uint i; i < length;) {
-            total += levelInfo.balance[i] * levelInfo.multipliers[i];
-            unchecked {
-                ++i;
-            }
-        }
+        return poolInfo[pid].totalLpSupplied;
     }
 
     /// @notice Require the sender is either the owner of the Relic or approved to transfer it.
@@ -885,18 +890,30 @@ contract Reliquary is
         fromLevel = positionForId[fromId].level;
         oldToLevel = positionForId[toId].level;
         newToLevel = _updateLevel(toId, oldToLevel);
+
+        LevelInfo storage level = levels[poolId];
+        PoolInfo storage pool = poolInfo[poolId];
+
         if (fromLevel != newToLevel) {
-            levels[poolId].balance[fromLevel] -= amount;
+            level.balance[fromLevel] -= amount;
+            pool.totalLpSupplied -= amount * level.multipliers[fromLevel];
         }
         if (oldToLevel != newToLevel) {
-            levels[poolId].balance[oldToLevel] -= toAmount;
+            level.balance[oldToLevel] -= toAmount;
+            pool.totalLpSupplied -= toAmount * level.multipliers[oldToLevel];
         }
+
         if (fromLevel != newToLevel && oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += newToAmount;
-        } else if (fromLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += amount;
-        } else if (oldToLevel != newToLevel) {
-            levels[poolId].balance[newToLevel] += toAmount;
+            level.balance[newToLevel] += newToAmount;
+            pool.totalLpSupplied += newToAmount * level.multipliers[newToLevel];
+        }
+        else if (fromLevel != newToLevel) {
+            level.balance[newToLevel] += amount;
+            pool.totalLpSupplied += amount * level.multipliers[newToLevel];
+        }
+        else if (oldToLevel != newToLevel) {
+            level.balance[newToLevel] += toAmount;
+            pool.totalLpSupplied += toAmount * level.multipliers[newToLevel];
         }
     }
 

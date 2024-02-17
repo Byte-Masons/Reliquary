@@ -41,8 +41,8 @@ struct DepositData {
 
 contract ReliquaryProperties {
     uint public emissionRate = 1e18;
-    uint[] public maturities = [0, 86400, 604800, 1209600]; //, 2592000, 7776000, 15552000, 31536000];
-    uint[] public multipliers = [100, 120, 150, 200]; //, 300, 400, 500, 750];
+    uint[] public maturities = [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000];
+    uint[] public multipliers = [100, 120, 150, 200, 300, 400, 500, 750];
     uint public initialMint = 100 ether;
     uint public constant ACC_REWARD_PRECISION = 1e12;
     uint public immutable startTimestamp;
@@ -61,6 +61,8 @@ contract ReliquaryProperties {
     OwnableCurve public emissionCurve;
     ReliquaryEchidna public reliquary;
     NFTDescriptor public nftDescriptor;
+
+    event LogUint(uint256 a);
 
     constructor() payable {
         // config -----------
@@ -521,6 +523,9 @@ contract ReliquaryProperties {
         // only works for constant emission rate
         uint maxEmission = (block.timestamp - startTimestamp) * emissionCurve.getRate(0);
 
+        emit LogUint(totalReward);
+        emit LogUint(maxEmission);
+
         assert(totalReward <= maxEmission);
     }
 
@@ -532,6 +537,16 @@ contract ReliquaryProperties {
             amountPos = reliquary.getPositionForId(relicIds[i]).amount;
             amountLevel = getLevelTotalAmount(reliquary.getPositionForId(relicIds[i]).poolId);
             assert(amountPos <= amountLevel);
+        }
+    }
+
+    /// @custom:invariant - pool.totalLpSupplied should remain equal to the sum of all levelInfo.balance * levelInfo.multipliers
+    function lpIntegrity() public {
+        reliquary.updateAllPools();
+        for (uint pid = 0; pid < poolIds.length; pid++) {
+            uint sum = reliquary.poolBalanceSum(pid);
+            uint supplied = reliquary.poolBalance(pid);
+            assert(sum == supplied || sum == supplied + 1 || sum == supplied - 1);
         }
     }
 

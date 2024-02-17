@@ -22,6 +22,16 @@ contract ReliquaryEchidna is Reliquary {
     function exists(uint id) public returns (bool) {
         return _exists(id);
     }
+    function poolBalanceSum(uint pid) external view returns (uint total) {
+        LevelInfo memory level = getLevelInfo(pid);
+        uint length = level.balance.length;
+        for (uint i; i < length;) {
+            total += level.balance[i] * level.multipliers[i];
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
     function poolBalance(uint pid) public view returns (uint) {
         return _poolBalance(pid);
