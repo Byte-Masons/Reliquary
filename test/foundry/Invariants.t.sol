@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 import "forge-std/console2.sol";
 import "contracts/Reliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
-import "contracts/test/ReliquaryUser.sol";
-import "contracts/test/Skipper.sol";
+import "./helpers/ReliquaryUser.sol";
+import "./helpers/Skipper.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
 contract Invariants is Test {

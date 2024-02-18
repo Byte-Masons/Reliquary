@@ -1,4 +1,4 @@
-import '../../contracts/Reliquary.sol';
+import 'contracts/Reliquary.sol';
 
 /// this contract extend Reliquary and provide some fonctions to help extract invariants
 contract ReliquaryEchidna is Reliquary {

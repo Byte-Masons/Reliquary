@@ -2,11 +2,11 @@
 pragma solidity ^0.8.13;
 
 import './mocks/ReliquaryEchidna.sol';
-import '../contracts/interfaces/IReliquary.sol';
-import '../contracts/rewarders/ParentRewarder.sol';
+import 'contracts/interfaces/IReliquary.sol';
+import 'contracts/rewarders/ParentRewarder.sol';
 import './mocks/ERC20Mock.sol';
-import '../contracts/nft_descriptors/NFTDescriptorPair.sol';
-import '../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
+import 'contracts/nft_descriptors/NFTDescriptorPair.sol';
+import 'lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
 
 // The only unfuzzed method is reliquary.setEmissionRate()
 

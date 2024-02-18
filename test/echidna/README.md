@@ -5,7 +5,7 @@ Echidna is a program designed for fuzzing/property-based testing of Ethereum sma
 Run with:
 
 ```sh
-echidna echidna/ReliquaryProperties.sol  --contract ReliquaryProperties --config echidna/config1_fast.yaml
+echidna test/echidna/ReliquaryProperties.sol  --contract ReliquaryProperties --config test/echidna/config1_fast.yaml
 ```
 
 You can fine in `/echidna` 3 config files to run the fuzzer:
