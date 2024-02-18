@@ -68,7 +68,7 @@ struct PendingReward {
 }
 
 interface IReliquary is IERC721Enumerable {
-    function setEmissionCurve(address _emissionCurve) external;
+    function setEmissionRate(uint _emissionRate) external;
     function addPool(
         uint allocPoint,
         address _poolToken,
@@ -115,7 +115,7 @@ interface IReliquary is IERC721Enumerable {
 
     function rewardToken() external view returns (address);
     function nftDescriptor(uint) external view returns (address);
-    function emissionCurve() external view returns (address);
+    function emissionRate() external view returns (uint);
     function poolToken(uint) external view returns (address);
     function rewarder(uint) external view returns (address);
     function totalAllocPoint() external view returns (uint);

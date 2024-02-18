@@ -3,7 +3,6 @@ pragma solidity ^0.8.15;
 
 import "./ReliquaryEvents.sol";
 import "./interfaces/IReliquary.sol";
-import "./interfaces/IEmissionCurve.sol";
 import "./interfaces/IRewarder.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -36,7 +35,7 @@ contract Reliquary is
 
     /// @dev Access control roles.
     bytes32 private constant OPERATOR = keccak256("OPERATOR");
-    bytes32 private constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    bytes32 private constant EMISSION_RATE = keccak256("EMISSION_RATE");
 
     /// @dev Indicates whether tokens are being added to, or removed from, a pool.
     enum Kind {
@@ -55,8 +54,8 @@ contract Reliquary is
     address public immutable rewardToken;
     /// @notice Address of each NFTDescriptor contract.
     address[] public nftDescriptor;
-    /// @notice Address of EmissionCurve contract.
-    address public emissionCurve;
+    /// @notice value of emission rate.
+    uint256 public emissionRate;
     /// @notice Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
     /// @notice Level system for each Reliquary pool.
@@ -94,21 +93,23 @@ contract Reliquary is
     /**
      * @dev Constructs and initializes the contract.
      * @param _rewardToken The reward token contract address.
-     * @param _emissionCurve The contract address for the EmissionCurve, which will return the emission rate.
+     * @param _emissionRate The contract address for the EmissionRate, which will return the emission rate.
      */
-    constructor(address _rewardToken, address _emissionCurve, string memory name, string memory symbol)
+    constructor(address _rewardToken, uint256 _emissionRate, string memory name, string memory symbol)
         ERC721(name, symbol)
     {
+        if (_emissionRate > 6e18) revert MaxEmissionRateExceeded();
         rewardToken = _rewardToken;
-        emissionCurve = _emissionCurve;
+        emissionRate = _emissionRate;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /// @notice Sets a new EmissionCurve for overall rewardToken emissions. Can only be called with the proper role.
-    /// @param _emissionCurve The contract address for the EmissionCurve, which will return the base emission rate.
-    function setEmissionCurve(address _emissionCurve) external override onlyRole(EMISSION_CURVE) {
-        emissionCurve = _emissionCurve;
-        emit ReliquaryEvents.LogSetEmissionCurve(_emissionCurve);
+    /// @notice Sets a new EmissionRate for overall rewardToken emissions. Can only be called with the proper role.
+    /// @param _emissionRate The contract address for the EmissionRate, which will return the base emission rate.
+    function setEmissionRate(uint256 _emissionRate) external override onlyRole(EMISSION_RATE) {
+        if (_emissionRate > 6e18) revert MaxEmissionRateExceeded();
+        emissionRate = _emissionRate;
+        emit ReliquaryEvents.LogSetEmissionRate(_emissionRate);
     }
 
     /**
@@ -601,7 +602,7 @@ contract Reliquary is
         uint secondsSinceReward = block.timestamp - lastRewardTime;
         if (secondsSinceReward != 0 && lpSupply != 0) {
             uint reward =
-                secondsSinceReward * _baseEmissionsPerSecond(lastRewardTime) * pool.allocPoint / totalAllocPoint;
+                secondsSinceReward * emissionRate * pool.allocPoint / totalAllocPoint;
             accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
         }
 
@@ -677,7 +678,7 @@ contract Reliquary is
 
             if (lpSupply != 0) {
                 uint reward =
-                    secondsSinceReward * _baseEmissionsPerSecond(lastRewardTime) * pool.allocPoint / totalAllocPoint;
+                    secondsSinceReward * emissionRate * pool.allocPoint / totalAllocPoint;
                 accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
                 pool.accRewardPerShare = accRewardPerShare;
             }
@@ -844,12 +845,6 @@ contract Reliquary is
     function _receivedReward(uint _pendingReward) internal view returns (uint received) {
         uint available = IERC20(rewardToken).balanceOf(address(this));
         received = (available > _pendingReward) ? _pendingReward : available;
-    }
-
-    /// @notice Gets the base emission rate from external, upgradable contract.
-    function _baseEmissionsPerSecond(uint lastRewardTime) internal view returns (uint rate) {
-        rate = IEmissionCurve(emissionCurve).getRate(lastRewardTime);
-        if (rate > 6e18) revert MaxEmissionRateExceeded();
     }
 
     /**

@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import {Reliquary} from "contracts/Reliquary.sol";
-import {OwnableCurve} from "contracts/emission_curves/OwnableCurve.sol";
 import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
 import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
@@ -30,13 +29,12 @@ contract Deploy is Script {
     }
 
     bytes32 constant OPERATOR = keccak256("OPERATOR");
-    bytes32 constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
+    bytes32 constant EMISSION_RATE = keccak256("EMISSION_RATE");
     bytes32 constant CHILD_SETTER = keccak256("CHILD_SETTER");
 
     string config;
     address multisig;
     Reliquary reliquary;
-    OwnableCurve emissionCurve;
     address[] rewarderAddresses;
     ParentRewarder[] parentRewarders;
     address nftDescriptorNormal;
@@ -55,9 +53,7 @@ contract Deploy is Script {
 
         vm.startBroadcast();
 
-        emissionCurve = new OwnableCurve(emissionRate);
-
-        reliquary = new Reliquary(rewardToken, address(emissionCurve), name, symbol);
+        reliquary = new Reliquary(rewardToken, emissionRate, name, symbol);
 
         _deployRewarders();
 
@@ -137,10 +133,9 @@ contract Deploy is Script {
         bytes32 defaultAdminRole = reliquary.DEFAULT_ADMIN_ROLE();
         reliquary.grantRole(defaultAdminRole, multisig);
         reliquary.grantRole(OPERATOR, multisig);
-        reliquary.grantRole(EMISSION_CURVE, multisig);
+        reliquary.grantRole(EMISSION_RATE, multisig);
         reliquary.renounceRole(OPERATOR, tx.origin);
         reliquary.renounceRole(defaultAdminRole, tx.origin);
-        emissionCurve.transferOwnership(multisig);
         for (uint i; i < parentRewarders.length; ++i) {
             parentRewarders[i].renounceRole(defaultAdminRole, tx.origin);
             parentRewarders[i].renounceRole(CHILD_SETTER, tx.origin);

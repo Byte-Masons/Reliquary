@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "contracts/emission_curves/Constant.sol";
 import "contracts/helpers/DepositHelperReaperVault.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
@@ -38,7 +37,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         oath = IERC20(0x00e1724885473B63bCE08a9f0a52F35b0979e35A);
         reliquary = new Reliquary(
             address(oath),
-            address(new Constant()),
+            1e17,
             "Reliquary Deposit",
             "RELIC"
         );

@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "contracts/Reliquary.sol";
-import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
@@ -20,6 +19,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     address nftDescriptor;
 
     uint256 numLevels = 8; // < to config
+    uint256 emissionRate = 1e17;
     uint256[] requiredMaturity = new uint256[](numLevels);
     uint256[] allocPoints = new uint256[](numLevels);
 
@@ -40,10 +40,9 @@ contract ReliquaryTest is ERC721Holder, Test {
         }
 
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        address curve = address(new Constant());
         reliquary = new Reliquary(
             address(oath),
-            curve,
+            emissionRate,
             "Reliquary Deposit",
             "RELIC"
         );

@@ -6,7 +6,6 @@ import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC4626Mock.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
-import "contracts/emission_curves/Constant.sol";
 import "contracts/helpers/DepositHelperERC4626.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/Reliquary.sol";
@@ -27,7 +26,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         reliquary = new Reliquary(
             address(oath),
-            address(new Constant()),
+            1e17,
             "Reliquary Deposit",
             "RELIC"
         );

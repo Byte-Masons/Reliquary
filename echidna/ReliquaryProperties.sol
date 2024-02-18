@@ -3,13 +3,12 @@ pragma solidity ^0.8.13;
 
 import './mocks/ReliquaryEchidna.sol';
 import '../contracts/interfaces/IReliquary.sol';
-import '../contracts/emission_curves/OwnableCurve.sol';
 import '../contracts/rewarders/ParentRewarder.sol';
 import './mocks/ERC20Mock.sol';
 import '../contracts/nft_descriptors/NFTDescriptorPair.sol';
 import '../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
 
-// The only unfuzzed method is reliquary.setEmissionCurve()
+// The only unfuzzed method is reliquary.setEmissionRate()
 
 contract User {
     function proxy(
@@ -58,7 +57,6 @@ contract ReliquaryProperties {
     uint public rewardLostByEmergencyWithdraw;
 
     ERC20Mock public rewardToken;
-    OwnableCurve public emissionCurve;
     ReliquaryEchidna public reliquary;
     NFTDescriptor public nftDescriptor;
 
@@ -73,10 +71,9 @@ contract ReliquaryProperties {
         startTimestamp = block.timestamp;
         /// setup reliquary
         rewardToken = new ERC20Mock('OATH Token', 'OATH');
-        emissionCurve = new OwnableCurve(emissionRate);
         reliquary = new ReliquaryEchidna(
             address(rewardToken),
-            address(emissionCurve),
+            emissionRate,
             'Relic',
             'NFT'
         );
@@ -106,7 +103,7 @@ contract ReliquaryProperties {
         // admin is this contract
         reliquary.grantRole(keccak256('DEFAULT_ADMIN_ROLE'), address(this));
         reliquary.grantRole(keccak256('OPERATOR'), address(this));
-        reliquary.grantRole(keccak256('EMISSION_CURVE'), address(this));
+        reliquary.grantRole(keccak256('EMISSION_RATE'), address(this));
 
         for (uint i = 0; i < totalNbUsers; i++) {
             User user = new User();
@@ -521,7 +518,7 @@ contract ReliquaryProperties {
         }
 
         // only works for constant emission rate
-        uint maxEmission = (block.timestamp - startTimestamp) * emissionCurve.getRate(0);
+        uint maxEmission = (block.timestamp - startTimestamp) * reliquary.emissionRate();
 
         emit LogUint(totalReward);
         emit LogUint(maxEmission);

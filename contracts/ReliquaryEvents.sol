@@ -17,7 +17,7 @@ library ReliquaryEvents {
     );
     event LogPoolModified(uint indexed pid, uint allocPoint, address indexed rewarder, address nftDescriptor);
     event LogUpdatePool(uint indexed pid, uint lastRewardTime, uint lpSupply, uint accRewardPerShare);
-    event LogSetEmissionCurve(address indexed emissionCurveAddress);
+    event LogSetEmissionRate(uint indexed emissionRate);
     event LevelChanged(uint indexed relicId, uint newLevel);
     event Split(uint indexed fromId, uint indexed toId, uint amount);
     event Shift(uint indexed fromId, uint indexed toId, uint amount);

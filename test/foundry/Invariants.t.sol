@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
 import "contracts/Reliquary.sol";
-import "contracts/emission_curves/Constant.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/test/ReliquaryUser.sol";
 import "contracts/test/Skipper.sol";
@@ -20,7 +19,7 @@ contract Invariants is Test {
 
     function setUp() public {
         ERC20DecimalsMock oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        reliquary = new Reliquary(address(oath), address(new Constant()), "Reliquary Deposit", "RELIC");
+        reliquary = new Reliquary(address(oath), 1e17, "Reliquary Deposit", "RELIC");
         oath.mint(address(reliquary), 100_000_000 ether);
         ERC20DecimalsMock testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
