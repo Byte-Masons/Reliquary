@@ -617,8 +617,8 @@ contract Reliquary is
      */
     function levelOnUpdate(uint relicId) public view override returns (uint level) {
         PositionInfo storage position = positionForId[relicId];
-        LevelInfo storage level = levels[position.poolId];
-        uint length = level.requiredMaturities.length;
+        LevelInfo storage levelPtr = levels[position.poolId];
+        uint length = levelPtr.requiredMaturities.length;
         if (length == 1) {
             return 0;
         }
@@ -628,7 +628,7 @@ contract Reliquary is
         uint high = length - 1;
         while (low < high) {
             uint mid = (low + high + 1) / 2;
-            if (maturity >= level.requiredMaturities[mid]) {
+            if (maturity >= levelPtr.requiredMaturities[mid]) {
                 low = mid;
             } else {
                 high = mid - 1;
