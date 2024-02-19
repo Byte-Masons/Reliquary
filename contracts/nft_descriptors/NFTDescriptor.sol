@@ -6,6 +6,8 @@ import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.s
 import "base64/base64.sol";
 import "../interfaces/INFTDescriptor.sol";
 import "../interfaces/IReliquary.sol";
+import "contracts/interfaces/ICurves.sol";
+
 
 contract NFTDescriptor is INFTDescriptor {
     using Strings for uint;
@@ -39,7 +41,7 @@ contract NFTDescriptor is INFTDescriptor {
         IReliquary _reliquary = IReliquary(reliquary);
         PositionInfo memory position = _reliquary.getPositionForId(relicId);
         PoolInfo memory pool = _reliquary.getPoolInfo(position.poolId);
-        LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
+        // LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
         LocalVariables_constructTokenURI memory vars;
         vars.underlying = address(_reliquary.poolToken(position.poolId));
         vars.amount = generateDecimalString(position.amount, IERC20Metadata(vars.underlying).decimals());
@@ -53,11 +55,11 @@ contract NFTDescriptor is INFTDescriptor {
         vars.image = Base64.encode(
             bytes(
                 string.concat(
-                    generateSVGImage(position.level, levelInfo.balance.length),
+                    generateSVGImage(position.level, pool.curve.getNbLevel()),
                     generateImageText(relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity),
                     generateTextFromToken(vars.underlying, position.amount, vars.amount),
                     "</text>",
-                    generateBars(position.level, levelInfo),
+                    // generateBars(position.level, levelInfo),
                     "</svg></svg>"
                 )
             )
@@ -197,40 +199,40 @@ contract NFTDescriptor is INFTDescriptor {
      * @param level Current level of the position.
      * @param levelInfo Level info for this pool.
      */
-    function generateBars(uint level, LevelInfo memory levelInfo) internal pure returns (string memory bars) {
-        uint highestMultiplier = levelInfo.multipliers[0];
-        for (uint i = 1; i < levelInfo.multipliers.length; i++) {
-            if (levelInfo.multipliers[i] > highestMultiplier) {
-                highestMultiplier = levelInfo.multipliers[i];
-            }
-        }
+    // function generateBars(uint level, LevelInfo memory levelInfo) internal view returns (string memory bars) {
+    //     uint highestMultiplier = levelInfo.curve.getMultiplerFromLevel(0);
+    //     for (uint i = 1; i < levelInfo.curve.getNbLevel(); i++) {
+    //         if (levelInfo.curve.getMultiplerFromLevel(i) > highestMultiplier) {
+    //             highestMultiplier = levelInfo.curve.getMultiplerFromLevel(i);
+    //         }
+    //     }
 
-        uint barWidth = GRAPH_WIDTH * 10 / levelInfo.multipliers.length;
-        uint barWidthInt = barWidth / 10;
-        string memory barWidthString =
-            string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
-        bars = '<svg x="58" y="50" width="180" height="150">';
-        for (uint i; i < levelInfo.multipliers.length; i++) {
-            uint barHeight = levelInfo.multipliers[i] * GRAPH_HEIGHT / highestMultiplier;
-            bars = string.concat(
-                bars,
-                '<rect x="',
-                (barWidth * i / 10).toString(),
-                ".",
-                (barWidth * i % 10).toString(),
-                '" y="',
-                (GRAPH_HEIGHT - barHeight).toString(),
-                '" class="shape',
-                '" width="',
-                barWidthString,
-                '" height="',
-                barHeight.toString(),
-                '" style="fill:#',
-                (i == level) ? "e6de59" : "fff",
-                '"/>'
-            );
-        }
-    }
+    //     uint barWidth = GRAPH_WIDTH * 10 / levelInfo.curve.getNbLevel();
+    //     uint barWidthInt = barWidth / 10;
+    //     string memory barWidthString =
+    //         string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
+    //     bars = '<svg x="58" y="50" width="180" height="150">';
+    //     for (uint i; i < levelInfo.curve.getNbLevel(); i++) {
+    //         uint barHeight = levelInfo.curve.getMultiplerFromLevel(i) * GRAPH_HEIGHT / highestMultiplier;
+    //         bars = string.concat(
+    //             bars,
+    //             '<rect x="',
+    //             (barWidth * i / 10).toString(),
+    //             ".",
+    //             (barWidth * i % 10).toString(),
+    //             '" y="',
+    //             (GRAPH_HEIGHT - barHeight).toString(),
+    //             '" class="shape',
+    //             '" width="',
+    //             barWidthString,
+    //             '" height="',
+    //             barHeight.toString(),
+    //             '" style="fill:#',
+    //             (i == level) ? "e6de59" : "fff",
+    //             '"/>'
+    //         );
+    //     }
+    // }
 
     /**
      * @notice Generate human-readable string from a number with given decimal places.

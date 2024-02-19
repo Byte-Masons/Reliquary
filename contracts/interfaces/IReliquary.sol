@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+import "contracts/interfaces/ICurves.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
 /**
@@ -26,6 +27,7 @@ struct PositionInfo {
  * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12).
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
  * `totalLpSupplied` Total number of LPs in the pool. Represents the sum of all levelInfo.balance * levelInfo.multipliers.
+ * `curve` Contract that define the function: f(maturity) = multiplier.
  * `allocPoint` Pool's individual allocation - ratio of the total allocation.
  * `name` Name of pool to be displayed in NFT image.
  * `allowPartialWithdrawals` Whether users can withdraw less than their entire position.
@@ -35,24 +37,10 @@ struct PoolInfo {
     uint accRewardPerShare;
     uint lastRewardTime;
     uint totalLpSupplied;
+    ICurves curve;
     uint allocPoint;
     string name;
     bool allowPartialWithdrawals;
-}
-
-/**
- * @notice Info for each level in a pool that determines how maturity is rewarded.
- * `requiredMaturities` The minimum maturity (in seconds) required to reach each Level.
- * `multipliers` Multiplier for each level applied to amount of incentivized token when calculating rewards in the pool.
- *     This is applied to both the numerator and denominator in the calculation such that the size of a user's position
- *     is effectively considered to be the actual number of tokens times the multiplier for their level.
- *     Also note that these multipliers do not affect the overall emission rate.
- * `balance` Total (actual) number of tokens deposited in positions at each level.
- */
-struct LevelInfo {
-    uint[] requiredMaturities;
-    uint[] multipliers;
-    uint[] balance;
 }
 
 /**
@@ -73,8 +61,7 @@ interface IReliquary is IERC721Enumerable {
         uint allocPoint,
         address _poolToken,
         address _rewarder,
-        uint[] calldata requiredMaturity,
-        uint[] calldata levelMultipliers,
+        ICurves _curve,
         string memory name,
         address _nftDescriptor,
         bool allowPartialWithdrawals
@@ -87,7 +74,7 @@ interface IReliquary is IERC721Enumerable {
         address _nftDescriptor,
         bool overwriteRewarder
     ) external;
-    function massUpdatePools(uint[] calldata pids) external;
+    function massUpdatePools() external;
     function updatePool(uint pid) external;
     function deposit(uint amount, uint relicId) external;
     function withdraw(uint amount, uint relicId) external;
@@ -97,7 +84,6 @@ interface IReliquary is IERC721Enumerable {
     function updatePosition(uint relicId) external;
     function getPositionForId(uint) external view returns (PositionInfo memory);
     function getPoolInfo(uint) external view returns (PoolInfo memory);
-    function getLevelInfo(uint) external view returns (LevelInfo memory);
     function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
     function relicPositionsOfOwner(address owner)
         external

@@ -6,6 +6,8 @@ import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "contracts/helpers/DepositHelperReaperVault.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
+import "contracts/curves/Curves.sol";
+import "contracts/curves/functions/LinearFunction.sol";
 
 interface IReaperVaultTest is IReaperVault {
     function balance() external view returns (uint);
@@ -20,14 +22,20 @@ interface IStrategy is IAccessControlEnumerable {
 contract DepositHelperReaperVaultTest is ERC721Holder, Test {
     DepositHelperReaperVault helper;
     Reliquary reliquary;
+    Curves curve;
+    LinearFunction linearFunction;
     IReaperVaultTest wethVault = IReaperVaultTest(0x1bAd45E92DCe078Cf68C2141CD34f54A02c92806);
     IReaperVaultTest usdcVault = IReaperVaultTest(0x508734b52BA7e04Ba068A2D4f67720Ac1f63dF47);
     IReaperVaultTest sternVault = IReaperVaultTest(0x3eE6107d9C93955acBb3f39871D32B02F82B78AB);
     IERC20 oath;
     IWeth weth;
+    uint256 emissionRate = 1e17;
 
-    uint[] requiredMaturities = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
-    uint[] levelMultipliers = [100, 120, 150, 200, 300, 400, 500, 750];
+    // Linear function config (to config)
+    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
+    uint256 slope = 100; // Increase of multiplier every second
+    uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
+    uint256 samplingPeriod = 1 days; // One level each day
 
     receive() external payable {}
 
@@ -37,20 +45,22 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         oath = IERC20(0x00e1724885473B63bCE08a9f0a52F35b0979e35A);
         reliquary = new Reliquary(
             address(oath),
-            1e17,
+            emissionRate,
             "Reliquary Deposit",
             "RELIC"
         );
+        linearFunction = new LinearFunction(slope, minMultiplier);
+        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.addPool(
-            1000, address(wethVault), address(0), requiredMaturities, levelMultipliers, "WETH", nftDescriptor, true
+            1000, address(wethVault), address(0), curve, "WETH", nftDescriptor, true
         );
         reliquary.addPool(
-            1000, address(usdcVault), address(0), requiredMaturities, levelMultipliers, "USDC", nftDescriptor, true
+            1000, address(usdcVault), address(0), curve, "USDC", nftDescriptor, true
         );
         reliquary.addPool(
-            1000, address(sternVault), address(0), requiredMaturities, levelMultipliers, "ERN", nftDescriptor, true
+            1000, address(sternVault), address(0), curve, "ERN", nftDescriptor, true
         );
 
         weth = IWeth(address(wethVault.token()));

@@ -27,3 +27,7 @@ Please run the following command in this project's root directory to enable pre-
 ```bash
 ln -s ../../pre-commit .git/hooks/pre-commit
 ```
+
+## TODO
+- NFT Desccriptor needs to be ajusted
+- Deployment script needs to be ajusted

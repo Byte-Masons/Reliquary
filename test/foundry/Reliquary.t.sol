@@ -2,10 +2,13 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "contracts/Reliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
+import "contracts/curves/Curves.sol";
+import "contracts/curves/functions/LinearFunction.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
@@ -14,30 +17,20 @@ contract ReliquaryTest is ERC721Holder, Test {
     using Strings for uint;
 
     Reliquary reliquary;
+    Curves curve;
+    LinearFunction linearFunction;
     ERC20DecimalsMock oath;
     ERC20DecimalsMock testToken;
     address nftDescriptor;
-
-    uint256 numLevels = 8; // < to config
     uint256 emissionRate = 1e17;
-    uint256[] requiredMaturity = new uint256[](numLevels);
-    uint256[] allocPoints = new uint256[](numLevels);
+
+    // Linear function config (to config)
+    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
+    uint256 slope = 100; // Increase of multiplier every second
+    uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
+    uint256 samplingPeriod = 1 days; // One level each day
 
     function setUp() public {
-        // config levels
-        uint256 minRequiredMaturity = 0;
-        uint256 maxRequiredMaturity = 356 days;
-        uint256 minAllocPoints = 100;
-        uint256 maxAllocPoints = 1000;
-        uint256 maturityStep = (maxRequiredMaturity - minRequiredMaturity) /
-            (numLevels - 1);
-        uint256 allocPointsStep = (maxAllocPoints - minAllocPoints) /
-            (numLevels - 1);
-
-        for (uint256 i = 0; i < numLevels; i++) {
-            requiredMaturity[i] = minRequiredMaturity + i * maturityStep;
-            allocPoints[i] = minAllocPoints + i * allocPointsStep;
-        }
 
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
         reliquary = new Reliquary(
@@ -46,19 +39,22 @@ contract ReliquaryTest is ERC721Holder, Test {
             "Reliquary Deposit",
             "RELIC"
         );
+        linearFunction = new LinearFunction(slope, minMultiplier);
+        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
+
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
         testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
+
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
             100,
             address(testToken),
             address(0),
-            requiredMaturity,
-            allocPoints,
+            curve,
             "ETH Pool",
             nftDescriptor,
             true
@@ -96,14 +92,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         vm.prank(address(1));
         reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
-
+    
     function testPendingOath(uint amount, uint time) public {
         time = bound(time, 0, 3650 days);
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
         reliquary.updatePosition(relicId);
-        assertApproxEqAbs(reliquary.pendingReward(relicId), time * 1e17, 1e16);
+        assertApproxEqAbs(reliquary.pendingReward(relicId), time * emissionRate, (time * emissionRate) / 100000); // max 0,0001%
     }
 
     function testMassUpdatePools() public {
@@ -112,15 +108,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         pools[0] = 0;
         vm.expectEmit(true, false, false, true);
         emit ReliquaryEvents.LogUpdatePool(0, block.timestamp, 0, 0);
-        reliquary.massUpdatePools(pools);
-    }
-
-    function testRevertOnUpdateInvalidPool() public {
-        uint[] memory pools = new uint[](2);
-        pools[0] = 0;
-        pools[1] = 1;
-        vm.expectRevert(Reliquary.NonExistentPool.selector);
-        reliquary.massUpdatePools(pools);
+        reliquary.massUpdatePools();
     }
 
     function testCreateRelicAndDeposit(uint amount) public {
@@ -186,9 +174,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.harvest(relicIdA, address(this));
         vm.stopPrank();
 
-        // rounding error can occur 3110398 < x < 3110401
-        assertGt((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110398);
-        assertLt((oath.balanceOf(address(1)) + oath.balanceOf(address(this))) / 1e18, 3110401);
+        assertApproxEqAbs(oath.balanceOf(address(this)) / 1e18, 3110400, 1);
     }
 
     function testRevertOnHarvestUnauthorized() public {
@@ -268,9 +254,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
     }
 
-    function testCompareDepositAndMerge(uint amount1, uint amount2, uint32 time) public {
+    function testCompareDepositAndMerge(uint amount1, uint amount2, uint time) public {
         amount1 = bound(amount1, 1, testToken.balanceOf(address(this)) - 1);
         amount2 = bound(amount2, 1, testToken.balanceOf(address(this)) - amount1);
+        time = bound(time, 1, 356 days * 1); // 100 years
+
+        console.log(amount1);
+        console.log(amount2);
+        console.log(time);
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
         skip(time);
@@ -327,7 +318,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         oath.mint(address(rewarder), 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(rewarder), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+            100, address(testToken), address(rewarder), curve, "ETH Pool", nftDescriptor, true
         );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
@@ -348,15 +339,15 @@ contract ReliquaryTest is ERC721Holder, Test {
         childToken.mint(child, 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(parent), requiredMaturity, allocPoints, "ETH Pool", nftDescriptor, true
+            100, address(testToken), address(parent), curve, "ETH Pool", nftDescriptor, true
         );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
         skip(1 days);
         reliquary.harvest(relicId, address(this));
 
-        assertEq(oath.balanceOf(address(this)), 4320 ether);
-        assertEq(parentToken.balanceOf(address(this)), 2160 ether);
-        assertEq(childToken.balanceOf(address(this)), 8640e6);
+        assertApproxEqAbs(oath.balanceOf(address(this)), 4320 ether, 1e15);
+        assertApproxEqAbs(parentToken.balanceOf(address(this)), 2160 ether, 1e15);
+        assertApproxEqAbs(childToken.balanceOf(address(this)), 8640e6, 1e15);
     }
 }

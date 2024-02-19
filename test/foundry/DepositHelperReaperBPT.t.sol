@@ -6,6 +6,8 @@ import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
+import "contracts/curves/Curves.sol";
+import "contracts/curves/functions/LinearFunction.sol";
 
 interface IReaperVaultTest is IReaperVault {
     function balance() external view returns (uint);
@@ -25,12 +27,18 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     IReZapTest reZap;
     Reliquary reliquary;
     IReaperVaultTest vault;
+    Curves curve;
+    LinearFunction linearFunction;
     address bpt;
     IERC20 oath;
     IWftm wftm;
+    uint256 emissionRate = 1e17;
 
-    uint[] quartetCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
-    uint[] quartetLevels = [100, 120, 150, 200, 300, 400, 500, 750];
+    // Linear function config (to config)
+    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
+    uint256 slope = 100; // Increase of multiplier every second
+    uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
+    uint256 samplingPeriod = 1 days; // One level each day
 
     receive() external payable {}
 
@@ -40,10 +48,12 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
         reliquary = new Reliquary(
             address(oath),
-            1e17,
+            emissionRate,
             "Reliquary Deposit",
             "RELIC"
         );
+        linearFunction = new LinearFunction(slope, minMultiplier);
+        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
 
         vault = IReaperVaultTest(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);
         bpt = address(vault.token());
@@ -51,7 +61,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            1000, address(vault), address(0), quartetCurve, quartetLevels, "A Late Quartet", nftDescriptor, true
+            1000, address(vault), address(0), curve, "A Late Quartet", nftDescriptor, true
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);

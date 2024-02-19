@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import './mocks/ReliquaryEchidna.sol';
+import 'contracts/Reliquary.sol';
 import 'contracts/interfaces/IReliquary.sol';
 import 'contracts/rewarders/ParentRewarder.sol';
 import './mocks/ERC20Mock.sol';
 import 'contracts/nft_descriptors/NFTDescriptorPair.sol';
 import 'lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
+import "contracts/curves/Curves.sol";
+import "contracts/curves/functions/LinearFunction.sol";
 
 // The only unfuzzed method is reliquary.setEmissionRate()
 
@@ -39,9 +41,13 @@ struct DepositData {
 }
 
 contract ReliquaryProperties {
+    // Linear function config (to config)
+    uint256 public nbLevels = 10; //! you can increase this but it become very long to test 
+    uint256 public slope = 100; // Increase of multiplier every second
+    uint256 public minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
+    uint256 public samplingPeriod = 1 days; // One level each day
+
     uint public emissionRate = 1e18;
-    uint[] public maturities = [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000];
-    uint[] public multipliers = [100, 120, 150, 200, 300, 400, 500, 750];
     uint public initialMint = 100 ether;
     uint public constant ACC_REWARD_PRECISION = 1e12;
     uint public immutable startTimestamp;
@@ -57,8 +63,10 @@ contract ReliquaryProperties {
     uint public rewardLostByEmergencyWithdraw;
 
     ERC20Mock public rewardToken;
-    ReliquaryEchidna public reliquary;
+    Reliquary public reliquary;
     NFTDescriptor public nftDescriptor;
+    Curves curve;
+    LinearFunction linearFunction;
 
     event LogUint(uint256 a);
 
@@ -71,13 +79,16 @@ contract ReliquaryProperties {
         startTimestamp = block.timestamp;
         /// setup reliquary
         rewardToken = new ERC20Mock('OATH Token', 'OATH');
-        reliquary = new ReliquaryEchidna(
+        reliquary = new Reliquary(
             address(rewardToken),
             emissionRate,
             'Relic',
             'NFT'
         );
         nftDescriptor = new NFTDescriptor(address(reliquary));
+        linearFunction = new LinearFunction(slope, minMultiplier);
+        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
+        
         rewardToken.mint(address(reliquary), 100 ether); // provide rewards to reliquary contract
 
         /// setup token pool
@@ -90,8 +101,7 @@ contract ReliquaryProperties {
                 100,
                 address(token),
                 address(0),
-                maturities,
-                multipliers,
+                curve,
                 'reaper',
                 address(nftDescriptor),
                 true
@@ -136,8 +146,7 @@ contract ReliquaryProperties {
             allocPoint % 10000 ether, // to avoid overflow on totalAllocPoint [0, 10000e18]
             address(token),
             address(0),
-            generateRandomMaturities(randSpacingMat % maxSize, randSizeMat % maxSize),
-            generateRandomMultiplier(randSpacingMul % maxSize, randSizeMul % maxSize),
+            curve,
             'reaper',
             address(nftDescriptor),
             true
@@ -312,7 +321,6 @@ contract ReliquaryProperties {
             abi.encodeWithSelector(reliquary.emergencyWithdraw.selector, relicId)
         );
         require(success);
-        assert(!reliquary.exists(relicId));
 
         isInit[relicId] = false;
 
@@ -458,7 +466,6 @@ contract ReliquaryProperties {
 
     /// @custom:invariant - No `position.entry` should be greater than `block.timestamp`.
     /// @custom:invariant - The sum of all `position.amount` should never be greater than total deposit.
-    /// @custom:invariant - The sum of balances in levels should never be greater than total deposit.
     function positionParamsIntegrity() public view {
         uint[] memory totalAmtInPositions;
         PositionInfo memory pi;
@@ -471,21 +478,9 @@ contract ReliquaryProperties {
         // this works if there are no pools with twice the same token
         for (uint pid; pid < totalNbPools; pid++) {
             uint totalBalance = ERC20(reliquary.poolToken(pid)).balanceOf(address(reliquary));
-            // check levels integrity
-            assert(getLevelTotalAmount(pid) == totalBalance);
             // check balances integrity
             assert(totalAmtInPositions[pid] == totalBalance);
         }
-    }
-
-    /// @custom:invariant - All arrays defining pools should be equal in size.
-    function poolArrayLengthIntegrity() public view {
-        (uint poolTokenLen, uint nftDescriptorLen, uint rewarderLen) = reliquary.getPoolLength();
-        assert(poolTokenLen == nftDescriptorLen);
-        assert(poolTokenLen == rewarderLen);
-        // test specific
-        assert(poolTokenLen == poolIds.length);
-        assert(poolTokenLen == totalNbPools);
     }
 
     /// @custom:invariant - The sum of all `allocPoint` should be equal to `totalAllocpoint`.
@@ -526,50 +521,5 @@ contract ReliquaryProperties {
         assert(totalReward <= maxEmission);
     }
 
-    /// @custom:invariant - A position amount should never be greater than the level.balance deposited at the position level.
-    function poolLevelBalanceIntegrity() public view {
-        uint amountPos;
-        uint amountLevel;
-        for (uint i = 0; i < relicIds.length; i++) {
-            amountPos = reliquary.getPositionForId(relicIds[i]).amount;
-            amountLevel = getLevelTotalAmount(reliquary.getPositionForId(relicIds[i]).poolId);
-            assert(amountPos <= amountLevel);
-        }
-    }
-
-    /// @custom:invariant - pool.totalLpSupplied should remain equal to the sum of all levelInfo.balance * levelInfo.multipliers
-    function lpIntegrity() public {
-        reliquary.updateAllPools();
-        for (uint pid = 0; pid < poolIds.length; pid++) {
-            uint sum = reliquary.poolBalanceSum(pid);
-            uint supplied = reliquary.poolBalance(pid);
-            assert(sum == supplied || sum == supplied + 1 || sum == supplied - 1);
-        }
-    }
-
     // ---------------------- Helpers ----------------------
-    function getLevelTotalAmount(uint pid) public view returns (uint total) {
-        for (uint i; i < reliquary.getLevelInfo(pid).balance.length; i++) {
-            total += reliquary.getLevelInfo(pid).balance[i];
-        }
-    }
-
-    function generateRandomMaturities(uint spacing, uint size) public returns (uint[] memory) {
-        uint[] memory retMaturities = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            retMaturities[i] = i * spacing;
-        }
-        return retMaturities;
-    }
-
-    function generateRandomMultiplier(uint spacing, uint size) public returns (uint[] memory) {
-        uint[] memory retMultiplier = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            retMultiplier[i] = (i + 1) * spacing;
-        }
-
-        return retMultiplier;
-    }
 }

@@ -12,4 +12,4 @@ shrinkLimit: 5000
 
 # Ignore helpers
 filterBlacklist: true
-filterFunctions: ['getLevelTotalAmount', 'generateRandomMaturities', 'generateRandomMultiplier']
+filterFunctions: []

@@ -10,10 +10,11 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 /**
  * @title Reliquary
- * @author Justin Bebis, Zokunei & the Byte Masons team
+ * @author Justin Bebis, Zokunei, Beirao & the Byte Masons team
  *
  * @notice This system is designed to manage incentives for deposited assets such that
  * behaviors can be programmed on a per-pool basis using maturity levels. Stake in a
@@ -33,10 +34,6 @@ contract Reliquary is
 {
     using SafeERC20 for IERC20;
 
-    /// @dev Access control roles.
-    bytes32 private constant OPERATOR = keccak256("OPERATOR");
-    bytes32 private constant EMISSION_RATE = keccak256("EMISSION_RATE");
-
     /// @dev Indicates whether tokens are being added to, or removed from, a pool.
     enum Kind {
         DEPOSIT,
@@ -44,41 +41,39 @@ contract Reliquary is
         OTHER
     }
 
-    /// @dev Level of precision rewards are calculated to.
-    uint private constant ACC_REWARD_PRECISION = 1e12;
+    /// @dev Access control roles.
+    bytes32 private constant OPERATOR = keccak256("OPERATOR");
+    bytes32 private constant EMISSION_RATE = keccak256("EMISSION_RATE");
 
+    /// @dev Level of precision rewards are calculated to.
+    uint private constant ACC_REWARD_PRECISION = 1e45;
+
+    /// @dev Address of the reward token contract.
+    address public immutable rewardToken;
+    /// @dev value of emission rate.
+    uint256 public emissionRate;
+    /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
+    uint public totalAllocPoint;
     /// @dev Nonce to use for new relicId.
     uint private idNonce;
 
-    /// @notice Address of the reward token contract.
-    address public immutable rewardToken;
-    /// @notice Address of each NFTDescriptor contract.
+    /// @dev Address of each NFTDescriptor contract.
     address[] public nftDescriptor;
-    /// @notice value of emission rate.
-    uint256 public emissionRate;
-    /// @notice Info of each Reliquary pool.
+    /// @dev Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
-    /// @notice Level system for each Reliquary pool.
-    LevelInfo[] private levels;
-    /// @notice Address of the LP token for each Reliquary pool.
+    /// @dev Address of the LP token for each Reliquary pool.
     address[] public poolToken;
-    /// @notice Address of IRewarder contract for each Reliquary pool.
+    /// @dev Address of IRewarder contract for each Reliquary pool.
     address[] public rewarder;
 
-    /// @notice Info of each staked position.
+    /// @dev Info of each staked position.
     mapping(uint => PositionInfo) internal positionForId;
 
-    /// @dev Total allocation points. Must be the sum of all allocation points in all pools.
-    uint public totalAllocPoint;
-
+    // Errors
     error NonExistentRelic();
     error BurningPrincipal();
     error BurningRewards();
     error RewardTokenAsPoolToken();
-    error EmptyArray();
-    error ArrayLengthMismatch();
-    error NonZeroFirstMaturity();
-    error UnsortedMaturityLevels();
     error ZeroTotalAllocPoint();
     error NonExistentPool();
     error ZeroAmount();
@@ -89,14 +84,14 @@ contract Reliquary is
     error MaxEmissionRateExceeded();
     error NotApprovedOrOwner();
     error PartialWithdrawalsDisabled();
-
+    
     /**
      * @dev Constructs and initializes the contract.
      * @param _rewardToken The reward token contract address.
      * @param _emissionRate The contract address for the EmissionRate, which will return the emission rate.
      */
-    constructor(address _rewardToken, uint256 _emissionRate, string memory name, string memory symbol)
-        ERC721(name, symbol)
+    constructor(address _rewardToken, uint256 _emissionRate, string memory _name, string memory _symbol)
+        ERC721(_name, _symbol)
     {
         if (_emissionRate > 6e18) revert MaxEmissionRateExceeded();
         rewardToken = _rewardToken;
@@ -109,45 +104,31 @@ contract Reliquary is
     function setEmissionRate(uint256 _emissionRate) external override onlyRole(EMISSION_RATE) {
         if (_emissionRate > 6e18) revert MaxEmissionRateExceeded();
         emissionRate = _emissionRate;
+
         emit ReliquaryEvents.LogSetEmissionRate(_emissionRate);
     }
 
     /**
      * @notice Add a new pool for the specified LP. Can only be called by an operator.
-     * @param allocPoint The allocation points for the new pool.
+     * @param _allocPoint The allocation points for the new pool.
      * @param _poolToken Address of the pooled ERC-20 token.
      * @param _rewarder Address of the rewarder delegate.
-     * @param requiredMaturities Array of maturity (in seconds) required to achieve each level for this pool.
-     * @param levelMultipliers The multipliers applied to the amount of `_poolToken` for each level within this pool.
-     * @param name Name of pool to be displayed in NFT image.
+     * @param _curve Curve that will be applied to the pool.
+     * @param _name Name of pool to be displayed in NFT image.
      * @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI.
-     * @param allowPartialWithdrawals Whether users can withdraw less than their entire position. A value of false
+     * @param _allowPartialWithdrawals Whether users can withdraw less than their entire position. A value of false
      * will also disable shift and split functionality. This is useful for adding pools with decreasing levelMultipliers.
      */
     function addPool(
-        uint allocPoint,
+        uint _allocPoint,
         address _poolToken,
         address _rewarder,
-        uint[] calldata requiredMaturities,
-        uint[] calldata levelMultipliers,
-        string memory name,
+        ICurves _curve,
+        string memory _name,
         address _nftDescriptor,
-        bool allowPartialWithdrawals
+        bool _allowPartialWithdrawals
     ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_poolToken == rewardToken) revert RewardTokenAsPoolToken();
-        if (requiredMaturities.length == 0) revert EmptyArray();
-        if (requiredMaturities.length != levelMultipliers.length) revert ArrayLengthMismatch();
-        if (requiredMaturities[0] != 0) revert NonZeroFirstMaturity();
-        if (requiredMaturities.length > 1) {
-            uint highestMaturity;
-            for (uint i = 1; i < requiredMaturities.length;) {
-                if (requiredMaturities[i] <= highestMaturity) revert UnsortedMaturityLevels();
-                highestMaturity = requiredMaturities[i];
-                unchecked {
-                    ++i;
-                }
-            }
-        }
 
         for (uint i; i < poolLength();) {
             _updatePool(i);
@@ -156,7 +137,7 @@ contract Reliquary is
             }
         }
 
-        uint totalAlloc = totalAllocPoint + allocPoint;
+        uint totalAlloc = totalAllocPoint + _allocPoint;
         if (totalAlloc == 0) revert ZeroTotalAllocPoint();
         totalAllocPoint = totalAlloc;
         poolToken.push(_poolToken);
@@ -165,24 +146,18 @@ contract Reliquary is
 
         poolInfo.push(
             PoolInfo({
-                allocPoint: allocPoint,
+                allocPoint: _allocPoint,
                 lastRewardTime: block.timestamp,
                 totalLpSupplied: 0,
+                curve: _curve,
                 accRewardPerShare: 0,
-                name: name,
-                allowPartialWithdrawals: allowPartialWithdrawals
+                name: _name,
+                allowPartialWithdrawals: _allowPartialWithdrawals
             })
         );
-        levels.push(
-            LevelInfo({
-                requiredMaturities: requiredMaturities,
-                multipliers: levelMultipliers,
-                balance: new uint[](levelMultipliers.length)
-            })
-        );
-
+        
         emit ReliquaryEvents.LogPoolAddition(
-            (poolToken.length - 1), allocPoint, _poolToken, _rewarder, _nftDescriptor, allowPartialWithdrawals
+            (poolToken.length - 1), _allocPoint, _poolToken, _rewarder, _nftDescriptor, _allowPartialWithdrawals
         );
     }
 
@@ -232,10 +207,9 @@ contract Reliquary is
     }
 
     /// @notice Update reward variables for all pools. Be careful of gas spending!
-    /// @param pids Pool IDs of all to be updated. Make sure to update all active pools.
-    function massUpdatePools(uint[] calldata pids) external override nonReentrant {
-        for (uint i; i < pids.length;) {
-            _updatePool(pids[i]);
+    function massUpdatePools() external override nonReentrant {
+        for (uint i; i < poolLength(); ) {
+            _updatePool(i);
             unchecked {
                 ++i;
             }
@@ -321,8 +295,7 @@ contract Reliquary is
 
         _updatePool(poolId);
 
-        levels[poolId].balance[levelId] -= amount;
-        poolInfo[poolId].totalLpSupplied -= amount * levels[poolId].multipliers[levelId];
+        poolInfo[poolId].totalLpSupplied -= amount * poolInfo[poolId].curve.getMultiplerFromLevel(levelId);
 
         _burn(relicId);
         delete positionForId[relicId];
@@ -347,11 +320,6 @@ contract Reliquary is
     /// @notice Returns a PoolInfo object for pool ID `pid`.
     function getPoolInfo(uint pid) public view override returns (PoolInfo memory pool) {
         pool = poolInfo[pid];
-    }
-
-    /// @notice Returns a LevelInfo object for pool ID `pid`.
-    function getLevelInfo(uint pid) public view override returns (LevelInfo memory levelInfo) {
-        levelInfo = levels[pid];
     }
 
     /**
@@ -456,13 +424,14 @@ contract Reliquary is
         newPosition.level = level;
         newPosition.poolId = poolId;
 
-        uint multiplier = _updatePool(poolId) * levels[poolId].multipliers[level];
-        uint pendingFrom = fromAmount * multiplier / ACC_REWARD_PRECISION - fromPosition.rewardDebt;
+        uint multiplier = _updatePool(poolId) * poolInfo[poolId].curve.getMultiplerFromLevel(level);
+        uint pendingFrom = Math.mulDiv(fromAmount, multiplier, ACC_REWARD_PRECISION) - fromPosition.rewardDebt;
         if (pendingFrom != 0) {
             fromPosition.rewardCredit += pendingFrom;
         }
-        fromPosition.rewardDebt = newFromAmount * multiplier / ACC_REWARD_PRECISION;
-        newPosition.rewardDebt = amount * multiplier / ACC_REWARD_PRECISION;
+
+        fromPosition.rewardDebt = Math.mulDiv(newFromAmount, multiplier, ACC_REWARD_PRECISION);
+        newPosition.rewardDebt = Math.mulDiv(amount, multiplier, ACC_REWARD_PRECISION);
 
         emit ReliquaryEvents.CreateRelic(poolId, to, newId);
         emit ReliquaryEvents.Split(fromId, newId, amount);
@@ -518,19 +487,18 @@ contract Reliquary is
             _shiftLevelBalances(fromId, toId, vars.poolId, amount, vars.toAmount, vars.newToAmount);
 
         vars.accRewardPerShare = _updatePool(vars.poolId);
-        vars.fromMultiplier = vars.accRewardPerShare * levels[vars.poolId].multipliers[vars.fromLevel];
-        vars.pendingFrom = vars.fromAmount * vars.fromMultiplier / ACC_REWARD_PRECISION - fromPosition.rewardDebt;
+        vars.fromMultiplier = vars.accRewardPerShare * poolInfo[vars.poolId].curve.getMultiplerFromLevel(vars.fromLevel);
+        vars.pendingFrom = Math.mulDiv(vars.fromAmount, vars.fromMultiplier, ACC_REWARD_PRECISION) - fromPosition.rewardDebt;
         if (vars.pendingFrom != 0) {
             fromPosition.rewardCredit += vars.pendingFrom;
         }
-        vars.pendingTo = vars.toAmount * levels[vars.poolId].multipliers[vars.oldToLevel] * vars.accRewardPerShare
-            / ACC_REWARD_PRECISION - toPosition.rewardDebt;
+        vars.pendingTo = Math.mulDiv(vars.toAmount, vars.accRewardPerShare * poolInfo[vars.poolId].curve.getMultiplerFromLevel(vars.oldToLevel), ACC_REWARD_PRECISION) 
+            - toPosition.rewardDebt;
         if (vars.pendingTo != 0) {
             toPosition.rewardCredit += vars.pendingTo;
         }
-        fromPosition.rewardDebt = vars.newFromAmount * vars.fromMultiplier / ACC_REWARD_PRECISION;
-        toPosition.rewardDebt = vars.newToAmount * vars.accRewardPerShare
-            * levels[vars.poolId].multipliers[vars.newToLevel] / ACC_REWARD_PRECISION;
+        fromPosition.rewardDebt = Math.mulDiv(vars.newFromAmount, vars.fromMultiplier, ACC_REWARD_PRECISION);
+        toPosition.rewardDebt = Math.mulDiv(vars.newToAmount * vars.accRewardPerShare, poolInfo[vars.poolId].curve.getMultiplerFromLevel(vars.newToLevel), ACC_REWARD_PRECISION);
 
         emit ReliquaryEvents.Shift(fromId, toId, amount);
     }
@@ -564,14 +532,18 @@ contract Reliquary is
             _shiftLevelBalances(fromId, toId, poolId, fromAmount, toAmount, newToAmount);
 
         uint accRewardPerShare = _updatePool(poolId);
-        uint pendingTo = accRewardPerShare
-            * (fromAmount * levels[poolId].multipliers[fromLevel] + toAmount * levels[poolId].multipliers[oldToLevel])
-            / ACC_REWARD_PRECISION + fromPosition.rewardCredit - fromPosition.rewardDebt - toPosition.rewardDebt;
+
+        // We split the calculation into two mulDiv()'s to minimise the risk of overflow.
+        uint pendingTo = 
+             (Math.mulDiv(fromAmount, accRewardPerShare * poolInfo[poolId].curve.getMultiplerFromLevel(fromLevel), ACC_REWARD_PRECISION) 
+            + Math.mulDiv(toAmount, accRewardPerShare * poolInfo[poolId].curve.getMultiplerFromLevel(oldToLevel), ACC_REWARD_PRECISION))
+            + fromPosition.rewardCredit - fromPosition.rewardDebt - toPosition.rewardDebt;
+        
         if (pendingTo != 0) {
             toPosition.rewardCredit += pendingTo;
         }
-        toPosition.rewardDebt =
-            newToAmount * accRewardPerShare * levels[poolId].multipliers[newToLevel] / ACC_REWARD_PRECISION;
+        toPosition.rewardDebt = 
+            Math.mulDiv(newToAmount, accRewardPerShare * poolInfo[poolId].curve.getMultiplerFromLevel(newToLevel), ACC_REWARD_PRECISION);
 
         _burn(fromId);
         delete positionForId[fromId];
@@ -596,18 +568,18 @@ contract Reliquary is
         uint poolId = position.poolId;
         PoolInfo storage pool = poolInfo[poolId];
         uint accRewardPerShare = pool.accRewardPerShare;
-        uint lpSupply = _poolBalance(position.poolId);
+        uint lpSupply = pool.totalLpSupplied;
 
         uint lastRewardTime = pool.lastRewardTime;
         uint secondsSinceReward = block.timestamp - lastRewardTime;
         if (secondsSinceReward != 0 && lpSupply != 0) {
             uint reward =
                 secondsSinceReward * emissionRate * pool.allocPoint / totalAllocPoint;
-            accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
+            accRewardPerShare += Math.mulDiv(reward, ACC_REWARD_PRECISION, lpSupply);
         }
 
-        uint leveledAmount = position.amount * levels[poolId].multipliers[position.level];
-        pending = leveledAmount * accRewardPerShare / ACC_REWARD_PRECISION + position.rewardCredit - position.rewardDebt;
+        uint leveledAmount = position.amount * poolInfo[poolId].curve.getMultiplerFromLevel(position.level);
+        pending = Math.mulDiv(leveledAmount, accRewardPerShare, ACC_REWARD_PRECISION) + position.rewardCredit - position.rewardDebt;
     }
 
     /**
@@ -617,25 +589,13 @@ contract Reliquary is
      * @return level Level for given position upon update.
      */
     function levelOnUpdate(uint relicId) public view override returns (uint level) {
-        PositionInfo storage position = positionForId[relicId];
-        LevelInfo storage levelPtr = levels[position.poolId];
-        uint length = levelPtr.requiredMaturities.length;
-        if (length == 1) {
+        PositionInfo storage positionPtr = positionForId[relicId];
+        PoolInfo storage poolPtr = poolInfo[positionPtr.poolId];
+
+        if (poolPtr.curve.getNbLevel() == 1) {
             return 0;
         }
-
-        uint maturity = block.timestamp - position.entry;
-        uint low = 0;
-        uint high = length - 1;
-        while (low < high) {
-            uint mid = (low + high + 1) / 2;
-            if (maturity >= levelPtr.requiredMaturities[mid]) {
-                low = mid;
-            } else {
-                high = mid - 1;
-            }
-        }
-        return low;
+        return poolPtr.curve.getLevelFromMaturity(block.timestamp - positionPtr.entry);
     }
 
     /// @notice Returns the number of Reliquary pools.
@@ -674,12 +634,12 @@ contract Reliquary is
 
         accRewardPerShare = pool.accRewardPerShare;
         if (secondsSinceReward != 0) {
-            uint lpSupply = _poolBalance(pid);
+            uint lpSupply = poolInfo[pid].totalLpSupplied;
 
             if (lpSupply != 0) {
                 uint reward =
                     secondsSinceReward * emissionRate * pool.allocPoint / totalAllocPoint;
-                accRewardPerShare += reward * ACC_REWARD_PRECISION / lpSupply;
+                accRewardPerShare += Math.mulDiv(reward, ACC_REWARD_PRECISION, lpSupply);
                 pool.accRewardPerShare = accRewardPerShare;
             }
 
@@ -744,28 +704,22 @@ contract Reliquary is
 
         vars.oldLevel = position.level;
         vars.newLevel = _updateLevel(relicId, vars.oldLevel);
-        LevelInfo storage level = levels[poolId];
 
         if (vars.oldLevel != vars.newLevel) {
-            level.balance[vars.oldLevel] -= vars.oldAmount;
-            poolInfo[poolId].totalLpSupplied -= vars.oldAmount * level.multipliers[vars.oldLevel];
-
-            level.balance[vars.newLevel] += vars.newAmount;
-            poolInfo[poolId].totalLpSupplied += vars.newAmount * level.multipliers[vars.newLevel];
+            poolInfo[poolId].totalLpSupplied -= vars.oldAmount * poolInfo[poolId].curve.getMultiplerFromLevel(vars.oldLevel);
+            poolInfo[poolId].totalLpSupplied += vars.newAmount * poolInfo[poolId].curve.getMultiplerFromLevel(vars.newLevel);
         } 
         else if (kind == Kind.DEPOSIT) {
-            level.balance[vars.oldLevel] += amount;
-            poolInfo[poolId].totalLpSupplied += amount * level.multipliers[vars.oldLevel];
+            poolInfo[poolId].totalLpSupplied += amount * poolInfo[poolId].curve.getMultiplerFromLevel(vars.oldLevel);
         } 
         else if (kind == Kind.WITHDRAW) {
-            level.balance[vars.oldLevel] -= amount;
-            poolInfo[poolId].totalLpSupplied -= amount * level.multipliers[vars.oldLevel];
+            poolInfo[poolId].totalLpSupplied -= amount * poolInfo[poolId].curve.getMultiplerFromLevel(vars.oldLevel);
         }
 
-        uint _pendingReward = vars.oldAmount * level.multipliers[vars.oldLevel] * vars.accRewardPerShare
-            / ACC_REWARD_PRECISION - position.rewardDebt;
+        uint _pendingReward = Math.mulDiv(vars.oldAmount, poolInfo[poolId].curve.getMultiplerFromLevel(vars.oldLevel) * vars.accRewardPerShare, ACC_REWARD_PRECISION) 
+            - position.rewardDebt;
         position.rewardDebt =
-            vars.newAmount * level.multipliers[vars.newLevel] * vars.accRewardPerShare / ACC_REWARD_PRECISION;
+            Math.mulDiv(vars.newAmount, poolInfo[poolId].curve.getMultiplerFromLevel(vars.newLevel) * vars.accRewardPerShare, ACC_REWARD_PRECISION);
 
         vars.harvest = harvestTo != address(0);
         if (!vars.harvest && _pendingReward != 0) {
@@ -822,9 +776,8 @@ contract Reliquary is
      */
     function _updateLevel(uint relicId, uint oldLevel) internal returns (uint newLevel) {
         newLevel = levelOnUpdate(relicId);
-        PositionInfo storage position = positionForId[relicId];
         if (oldLevel != newLevel) {
-            position.level = newLevel;
+            positionForId[relicId].level = newLevel;
             emit ReliquaryEvents.LevelChanged(relicId, newLevel);
         }
     }
@@ -845,15 +798,6 @@ contract Reliquary is
     function _receivedReward(uint _pendingReward) internal view returns (uint received) {
         uint available = IERC20(rewardToken).balanceOf(address(this));
         received = (available > _pendingReward) ? _pendingReward : available;
-    }
-
-    /**
-     * @notice returns The total deposits of the pool's token, weighted by maturity level allocation.
-     * @param pid The index of the pool. See poolInfo.
-     * @return total The amount of pool tokens held by the contract.
-     */
-    function _poolBalance(uint pid) internal view returns (uint total) {
-        return poolInfo[pid].totalLpSupplied;
     }
 
     /// @notice Require the sender is either the owner of the Relic or approved to transfer it.
@@ -886,29 +830,23 @@ contract Reliquary is
         oldToLevel = positionForId[toId].level;
         newToLevel = _updateLevel(toId, oldToLevel);
 
-        LevelInfo storage level = levels[poolId];
         PoolInfo storage pool = poolInfo[poolId];
 
         if (fromLevel != newToLevel) {
-            level.balance[fromLevel] -= amount;
-            pool.totalLpSupplied -= amount * level.multipliers[fromLevel];
+            pool.totalLpSupplied -= amount * pool.curve.getMultiplerFromLevel(fromLevel);
         }
         if (oldToLevel != newToLevel) {
-            level.balance[oldToLevel] -= toAmount;
-            pool.totalLpSupplied -= toAmount * level.multipliers[oldToLevel];
+            pool.totalLpSupplied -= toAmount * pool.curve.getMultiplerFromLevel(oldToLevel);
         }
 
         if (fromLevel != newToLevel && oldToLevel != newToLevel) {
-            level.balance[newToLevel] += newToAmount;
-            pool.totalLpSupplied += newToAmount * level.multipliers[newToLevel];
+            pool.totalLpSupplied += newToAmount * pool.curve.getMultiplerFromLevel(newToLevel);
         }
         else if (fromLevel != newToLevel) {
-            level.balance[newToLevel] += amount;
-            pool.totalLpSupplied += amount * level.multipliers[newToLevel];
+            pool.totalLpSupplied += amount * pool.curve.getMultiplerFromLevel(newToLevel);
         }
         else if (oldToLevel != newToLevel) {
-            level.balance[newToLevel] += toAmount;
-            pool.totalLpSupplied += toAmount * level.multipliers[newToLevel];
+            pool.totalLpSupplied += toAmount * pool.curve.getMultiplerFromLevel(newToLevel);
         }
     }
 

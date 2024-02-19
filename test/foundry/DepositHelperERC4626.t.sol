@@ -9,6 +9,8 @@ import {WETH} from "solmate/tokens/WETH.sol";
 import "contracts/helpers/DepositHelperERC4626.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/Reliquary.sol";
+import "contracts/curves/Curves.sol";
+import "contracts/curves/functions/LinearFunction.sol";
 
 contract DepositHelperERC4626Test is ERC721Holder, Test {
     DepositHelperERC4626 helper;
@@ -16,9 +18,15 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
     IERC4626 vault;
     ERC20DecimalsMock oath;
     WETH weth;
+    Curves curve;
+    LinearFunction linearFunction;
+    uint256 emissionRate = 1e17;
 
-    uint[] wethCurve = [0, 1 days, 7 days, 14 days, 30 days, 90 days, 180 days, 365 days];
-    uint[] wethLevels = [100, 120, 150, 200, 300, 400, 500, 750];
+    // Linear function config (to config)
+    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
+    uint256 slope = 100; // Increase of multiplier every second
+    uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
+    uint256 samplingPeriod = 1 days; // One level each day
 
     receive() external payable {}
 
@@ -33,10 +41,12 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
         weth = new WETH();
         vault = new ERC4626Mock(IERC20Metadata(address(weth)), "ETH Optimizer", "relETH");
+        linearFunction = new LinearFunction(slope, minMultiplier);
+        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(1000, address(vault), address(0), wethCurve, wethLevels, "ETH Crypt", nftDescriptor, true);
+        reliquary.addPool(1000, address(vault), address(0), curve, "ETH Crypt", nftDescriptor, true);
 
         helper = new DepositHelperERC4626(reliquary, address(weth));
 
