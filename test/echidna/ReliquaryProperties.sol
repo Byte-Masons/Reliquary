@@ -7,9 +7,9 @@ import 'contracts/rewarders/ParentRewarder.sol';
 import './mocks/ERC20Mock.sol';
 import 'contracts/nft_descriptors/NFTDescriptorPair.sol';
 import 'lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
-import "contracts/curves/Curves.sol";
-import "contracts/curves/functions/LinearFunction.sol";
-import "contracts/curves/functions/LinearPlateauFunction.sol";
+import "contracts/interfaces/ICurves.sol";
+import "contracts/curves/LinearCurve.sol";
+import "contracts/curves/LinearPlateauCurve.sol";
 
 // The only unfuzzed method is reliquary.setEmissionRate()
 contract User {
@@ -58,15 +58,15 @@ contract ReliquaryProperties {
     uint[] public relicIds;
     uint[] public poolIds;
     User[] public users;
+    ICurves[] public curves;
     ERC20Mock[] public tokenPoolIds;
     uint public rewardLostByEmergencyWithdraw;
 
     ERC20Mock public rewardToken;
     Reliquary public reliquary;
     NFTDescriptor public nftDescriptor;
-    Curves curve;
-    LinearFunction linearFunction;
-    LinearPlateauFunction linearPlateauFunction;
+    LinearCurve linearCurve;
+    LinearPlateauCurve linearPlateauCurve;
 
     event LogUint(uint256 a);
 
@@ -87,10 +87,12 @@ contract ReliquaryProperties {
         );
         nftDescriptor = new NFTDescriptor(address(reliquary));
 
-        linearFunction = new LinearFunction(slope, minMultiplier);
-        linearPlateauFunction = new LinearPlateauFunction(slope, minMultiplier, plateau);
-        curve = new Curves(linearFunction);
+        linearCurve = new LinearCurve(slope, minMultiplier);
+        linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
         
+        curves.push(linearCurve);
+        curves.push(linearPlateauCurve);
+
         rewardToken.mint(address(reliquary), 100 ether); // provide rewards to reliquary contract
 
         /// setup token pool
@@ -103,7 +105,7 @@ contract ReliquaryProperties {
                 100,
                 address(token),
                 address(0),
-                curve,
+                linearCurve,
                 'reaper',
                 address(nftDescriptor),
                 true
@@ -135,13 +137,15 @@ contract ReliquaryProperties {
         uint randSpacingMul,
         uint randSizeMul,
         uint randSpacingMat,
-        uint randSizeMat
+        uint randSizeMat,
+        uint randCurves
     ) public {
         uint maxSize = 10;
         require(allocPoint > 0);
         uint startPoolIdsLen = poolIds.length;
         ERC20Mock token = new ERC20Mock('Pool Token', 'PT');
         tokenPoolIds.push(token);
+        ICurves curve = curves[randCurves % curves.length];
 
         // no rewarder for now
         reliquary.addPool(

@@ -9,8 +9,7 @@ import {WETH} from "solmate/tokens/WETH.sol";
 import "contracts/helpers/DepositHelperERC4626.sol";
 import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import "contracts/Reliquary.sol";
-import "contracts/curves/Curves.sol";
-import "contracts/curves/functions/LinearFunction.sol";
+import "contracts/curves/LinearCurve.sol";
 
 contract DepositHelperERC4626Test is ERC721Holder, Test {
     DepositHelperERC4626 helper;
@@ -18,8 +17,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
     IERC4626 vault;
     ERC20DecimalsMock oath;
     WETH weth;
-    Curves curve;
-    LinearFunction linearFunction;
+    LinearCurve linearCurve;
     uint256 emissionRate = 1e17;
 
     // Linear function config (to config)
@@ -39,12 +37,11 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
         weth = new WETH();
         vault = new ERC4626Mock(IERC20Metadata(address(weth)), "ETH Optimizer", "relETH");
-        linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearFunction);
+        linearCurve = new LinearCurve(slope, minMultiplier);
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(1000, address(vault), address(0), curve, "ETH Crypt", nftDescriptor, true);
+        reliquary.addPool(1000, address(vault), address(0), linearCurve, "ETH Crypt", nftDescriptor, true);
 
         helper = new DepositHelperERC4626(reliquary, address(weth));
 

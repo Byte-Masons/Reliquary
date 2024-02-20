@@ -6,8 +6,7 @@ import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
-import "contracts/curves/Curves.sol";
-import "contracts/curves/functions/LinearFunction.sol";
+import "contracts/curves/LinearCurve.sol";
 
 interface IReaperVaultTest is IReaperVault {
     function balance() external view returns (uint);
@@ -27,8 +26,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     IReZapTest reZap;
     Reliquary reliquary;
     IReaperVaultTest vault;
-    Curves curve;
-    LinearFunction linearFunction;
+    LinearCurve linearCurve;
     address bpt;
     IERC20 oath;
     IWftm wftm;
@@ -50,8 +48,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
             "Reliquary Deposit",
             "RELIC"
         );
-        linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearFunction);
+        linearCurve = new LinearCurve(slope, minMultiplier);
 
         vault = IReaperVaultTest(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);
         bpt = address(vault.token());
@@ -59,7 +56,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            1000, address(vault), address(0), curve, "A Late Quartet", nftDescriptor, true
+            1000, address(vault), address(0), linearCurve, "A Late Quartet", nftDescriptor, true
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "contracts/interfaces/IFunction.sol";
+import "contracts/interfaces/ICurves.sol";
 
-contract LinearFunction is IFunction {
+contract LinearCurve is ICurves {
     uint256 public slope;
     uint256 public minMultiplier; // getFunction(0) = minMultiplier
 

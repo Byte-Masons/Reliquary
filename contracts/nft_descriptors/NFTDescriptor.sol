@@ -200,10 +200,10 @@ contract NFTDescriptor is INFTDescriptor {
      * @param levelInfo Level info for this pool.
      */
     // function generateBars(uint256 level, LevelInfo memory levelInfo) internal view returns (string memory bars) {
-    //     uint256 highestMultiplier = levelInfo.curve.getMultiplerFromLevel(0);
+    //     uint256 highestMultiplier = levelInfo.curve.getFunction(0);
     //     for (uint256 i = 1; i < levelInfo.curve.getNbLevel(); i++) {
-    //         if (levelInfo.curve.getMultiplerFromLevel(i) > highestMultiplier) {
-    //             highestMultiplier = levelInfo.curve.getMultiplerFromLevel(i);
+    //         if (levelInfo.curve.getFunction(i) > highestMultiplier) {
+    //             highestMultiplier = levelInfo.curve.getFunction(i);
     //         }
     //     }
 
@@ -213,7 +213,7 @@ contract NFTDescriptor is INFTDescriptor {
     //         string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
     //     bars = '<svg x="58" y="50" width="180" height="150">';
     //     for (uint256 i; i < levelInfo.curve.getNbLevel(); i++) {
-    //         uint256 barHeight = levelInfo.curve.getMultiplerFromLevel(i) * GRAPH_HEIGHT / highestMultiplier;
+    //         uint256 barHeight = levelInfo.curve.getFunction(i) * GRAPH_HEIGHT / highestMultiplier;
     //         bars = string.concat(
     //             bars,
     //             '<rect x="',

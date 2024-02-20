@@ -7,9 +7,8 @@ import "contracts/Reliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
-import "contracts/curves/Curves.sol";
-import "contracts/curves/functions/LinearFunction.sol";
-import "contracts/curves/functions/LinearPlateauFunction.sol";
+import "contracts/curves/LinearCurve.sol";
+import "contracts/curves/LinearPlateauCurve.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
@@ -18,9 +17,8 @@ contract ReliquaryTest is ERC721Holder, Test {
     using Strings for uint;
 
     Reliquary reliquary;
-    Curves curve;
-    LinearFunction linearFunction;
-    LinearPlateauFunction linearPlateauFunction;
+    LinearCurve linearCurve;
+    LinearPlateauCurve linearPlateauCurve;
     ERC20DecimalsMock oath;
     ERC20DecimalsMock testToken;
     address nftDescriptor;
@@ -40,9 +38,8 @@ contract ReliquaryTest is ERC721Holder, Test {
             "Reliquary Deposit",
             "RELIC"
         );
-        linearPlateauFunction = new LinearPlateauFunction(slope, minMultiplier, plateau);
-        linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearPlateauFunction);
+        linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
+        linearCurve = new LinearCurve(slope, minMultiplier);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
@@ -55,7 +52,7 @@ contract ReliquaryTest is ERC721Holder, Test {
             100,
             address(testToken),
             address(0),
-            curve,
+            linearCurve,
             "ETH Pool",
             nftDescriptor,
             true
@@ -75,7 +72,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnModifyInvalidPool() public {
-        vm.expectRevert(Reliquary.NonExistentPool.selector);
+        vm.expectRevert(Reliquary.Reliquary__NON_EXISTENT_POOL.selector);
         reliquary.modifyPool(1, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
@@ -130,13 +127,13 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnDepositInvalidPool(uint pool) public {
         pool = bound(pool, 1, type(uint).max);
-        vm.expectRevert(Reliquary.NonExistentPool.selector);
+        vm.expectRevert(Reliquary.Reliquary__NON_EXISTENT_POOL.selector);
         reliquary.createRelicAndDeposit(address(this), pool, 1);
     }
 
     function testRevertOnDepositUnauthorized() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.deposit(1, relicId);
     }
@@ -151,7 +148,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnWithdrawUnauthorized() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.withdraw(1, relicId);
     }
@@ -180,7 +177,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnHarvestUnauthorized() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.NotApprovedOrOwner.selector);
+        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.harvest(relicId, address(this));
     }
@@ -195,7 +192,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnEmergencyWithdrawNotOwner() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.NotOwner.selector);
+        vm.expectRevert(Reliquary.Reliquary__NOT_OWNER.selector);
         vm.prank(address(1));
         reliquary.emergencyWithdraw(relicId);
     }
@@ -295,7 +292,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testBurn() public {
         uint relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
-        vm.expectRevert(Reliquary.BurningPrincipal.selector);
+        vm.expectRevert(Reliquary.Reliquary__BURNING_PRINCIPAL.selector);
         reliquary.burn(relicId);
 
         reliquary.withdrawAndHarvest(1 ether, relicId, address(this));
@@ -319,7 +316,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         oath.mint(address(rewarder), 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(rewarder), curve, "ETH Pool", nftDescriptor, true
+            100, address(testToken), address(rewarder), linearPlateauCurve, "ETH Pool", nftDescriptor, true
         );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
@@ -340,7 +337,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         childToken.mint(child, 1_000_000 ether);
 
         reliquary.addPool(
-            100, address(testToken), address(parent), curve, "ETH Pool", nftDescriptor, true
+            100, address(testToken), address(parent), linearPlateauCurve, "ETH Pool", nftDescriptor, true
         );
 
         uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);

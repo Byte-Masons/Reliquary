@@ -1,9 +1,9 @@
 // // SPDX-License-Identifier: MIT
 // pragma solidity ^0.8.15;
 
-// import "contracts/interfaces/IFunction.sol";
+// import "contracts/interfaces/ICurves.sol";
 
-// contract SigmoidFunction is IFunction {
+// contract SigmoidCurve is ICurves {
 //     uint256 public constant WAD = 1e18;
 
 //     constructor() {}
