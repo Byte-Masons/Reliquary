@@ -14,12 +14,12 @@ import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerab
  * `level` Index of this position's level within the pool's array of levels.
  */
 struct PositionInfo {
-    uint amount;
-    uint rewardDebt;
-    uint rewardCredit;
-    uint entry; // position owner's relative entry into the pool.
-    uint poolId; // ensures that a single Relic is only used for one pool.
-    uint level;
+    uint256 amount;
+    uint256 rewardDebt;
+    uint256 rewardCredit;
+    uint256 entry; // position owner's relative entry into the pool.
+    uint256 poolId; // ensures that a single Relic is only used for one pool.
+    uint256 level;
 }
 
 /**
@@ -34,13 +34,16 @@ struct PositionInfo {
  *     A value of false will also disable shift and split functionality.
  */
 struct PoolInfo {
-    uint accRewardPerShare;
-    uint lastRewardTime;
-    uint totalLpSupplied;
+    uint256 accRewardPerShare;
+    uint256 lastRewardTime;
+    uint256 totalLpSupplied;
     ICurves curve;
-    uint allocPoint;
+    uint256 allocPoint;
     string name;
     bool allowPartialWithdrawals;
+    address nftDescriptor;
+    address rewarder;
+    address poolToken;
 }
 
 /**
@@ -50,59 +53,55 @@ struct PoolInfo {
  * `pendingReward` pending reward amount for a given position.
  */
 struct PendingReward {
-    uint relicId;
-    uint poolId;
-    uint pendingReward;
+    uint256 relicId;
+    uint256 poolId;
+    uint256 pendingReward;
 }
 
 interface IReliquary is IERC721Enumerable {
-    function setEmissionRate(uint _emissionRate) external;
+    function setEmissionRate(uint256 _emissionRate) external;
     function addPool(
-        uint allocPoint,
+        uint256 _allocPoint,
         address _poolToken,
         address _rewarder,
         ICurves _curve,
-        string memory name,
+        string memory _name,
         address _nftDescriptor,
-        bool allowPartialWithdrawals
+        bool _allowPartialWithdrawals
     ) external;
     function modifyPool(
-        uint pid,
-        uint allocPoint,
+        uint256 _pid,
+        uint256 _allocPoint,
         address _rewarder,
-        string calldata name,
+        string calldata _name,
         address _nftDescriptor,
-        bool overwriteRewarder
+        bool _overwriteRewarder
     ) external;
     function massUpdatePools() external;
-    function updatePool(uint pid) external;
-    function deposit(uint amount, uint relicId) external;
-    function withdraw(uint amount, uint relicId) external;
-    function harvest(uint relicId, address harvestTo) external;
-    function withdrawAndHarvest(uint amount, uint relicId, address harvestTo) external;
-    function emergencyWithdraw(uint relicId) external;
-    function updatePosition(uint relicId) external;
-    function getPositionForId(uint) external view returns (PositionInfo memory);
-    function getPoolInfo(uint) external view returns (PoolInfo memory);
-    function pendingRewardsOfOwner(address owner) external view returns (PendingReward[] memory pendingRewards);
-    function relicPositionsOfOwner(address owner)
+    function updatePool(uint256 _pid) external;
+    function deposit(uint256 _amount, uint256 _relicId) external;
+    function withdraw(uint256 _amount, uint256 _relicId) external;
+    function harvest(uint256 _relicId, address _harvestTo) external;
+    function withdrawAndHarvest(uint256 _amount, uint256 _relicId, address _harvestTo) external;
+    function emergencyWithdraw(uint256 _relicId) external;
+    function updatePosition(uint256 _relicId) external;
+    function getPositionForId(uint256 _pid) external view returns (PositionInfo memory);
+    function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory);
+    function pendingRewardsOfOwner(address _owner) external view returns (PendingReward[] memory pendingRewards_);
+    function relicPositionsOfOwner(address _owner)
         external
         view
-        returns (uint[] memory relicIds, PositionInfo[] memory positionInfos);
-    function isApprovedOrOwner(address, uint) external view returns (bool);
-    function createRelicAndDeposit(address to, uint pid, uint amount) external returns (uint id);
-    function split(uint relicId, uint amount, address to) external returns (uint newId);
-    function shift(uint fromId, uint toId, uint amount) external;
-    function merge(uint fromId, uint toId) external;
-    function burn(uint tokenId) external;
-    function pendingReward(uint relicId) external view returns (uint pending);
-    function levelOnUpdate(uint relicId) external view returns (uint level);
-    function poolLength() external view returns (uint);
+        returns (uint256[] memory relicIds_, PositionInfo[] memory positionInfos_);
+    function isApprovedOrOwner(address, uint256) external view returns (bool);
+    function createRelicAndDeposit(address _to, uint256 _pid, uint256 _amount) external returns (uint256 id_);
+    function split(uint256 _relicId, uint256 _amount, address to) external returns (uint256 newId_);
+    function shift(uint256 _fromId, uint256 _toId, uint256 _amount) external;
+    function merge(uint256 _fromId, uint256 _toId) external;
+    function burn(uint256 _tokenId) external;
+    function pendingReward(uint256 _relicId) external view returns (uint256 pending_);
+    function poolLength() external view returns (uint256);
 
     function rewardToken() external view returns (address);
-    function nftDescriptor(uint) external view returns (address);
-    function emissionRate() external view returns (uint);
-    function poolToken(uint) external view returns (address);
-    function rewarder(uint) external view returns (address);
-    function totalAllocPoint() external view returns (uint);
+    function emissionRate() external view returns (uint256);
+    function totalAllocPoint() external view returns (uint256);
 }

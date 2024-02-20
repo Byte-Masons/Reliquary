@@ -10,11 +10,11 @@ import "contracts/interfaces/ICurves.sol";
 
 
 contract NFTDescriptor is INFTDescriptor {
-    using Strings for uint;
+    using Strings for uint256;
 
     /// @notice Constants for drawing graph.
-    uint private constant GRAPH_WIDTH = 180;
-    uint private constant GRAPH_HEIGHT = 150;
+    uint256 private constant GRAPH_WIDTH = 180;
+    uint256 private constant GRAPH_HEIGHT = 150;
 
     // TODO: testing account, not ipfs to be used in production
     string private constant IPFS = "https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/";
@@ -29,7 +29,7 @@ contract NFTDescriptor is INFTDescriptor {
         address underlying;
         string amount;
         string pendingReward;
-        uint maturity;
+        uint256 maturity;
         string rewardSymbol;
         string description;
         string attributes;
@@ -37,13 +37,13 @@ contract NFTDescriptor is INFTDescriptor {
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values.
-    function constructTokenURI(uint relicId) external view override returns (string memory uri) {
+    function constructTokenURI(uint256 relicId) external view override returns (string memory uri) {
         IReliquary _reliquary = IReliquary(reliquary);
         PositionInfo memory position = _reliquary.getPositionForId(relicId);
         PoolInfo memory pool = _reliquary.getPoolInfo(position.poolId);
         // LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
         LocalVariables_constructTokenURI memory vars;
-        vars.underlying = address(_reliquary.poolToken(position.poolId));
+        vars.underlying = address(_reliquary.getPoolInfo(position.poolId).poolToken);
         vars.amount = generateDecimalString(position.amount, IERC20Metadata(vars.underlying).decimals());
         vars.pendingReward = generateDecimalString(_reliquary.pendingReward(relicId), 18);
         vars.maturity = (block.timestamp - position.entry) / 1 days;
@@ -55,7 +55,7 @@ contract NFTDescriptor is INFTDescriptor {
         vars.image = Base64.encode(
             bytes(
                 string.concat(
-                    generateSVGImage(position.level, pool.curve.getNbLevel()),
+                    // generateSVGImage(position.level, pool.curve.getNbLevel()),
                     generateImageText(relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity),
                     generateTextFromToken(vars.underlying, position.amount, vars.amount),
                     "</text>",
@@ -108,7 +108,7 @@ contract NFTDescriptor is INFTDescriptor {
         string memory amount,
         string memory pendingReward,
         string memory rewardSymbol,
-        uint maturity
+        uint256 maturity
     ) internal pure returns (string memory attributes) {
         attributes = string.concat(
             '{"trait_type": "Pool ID", "value": ',
@@ -134,7 +134,7 @@ contract NFTDescriptor is INFTDescriptor {
      * @param level Current maturity level of the position.
      * @param numLevels Total number of levels in the pool.
      */
-    function generateSVGImage(uint level, uint numLevels) internal pure returns (string memory svg) {
+    function generateSVGImage(uint256 level, uint256 numLevels) internal pure returns (string memory svg) {
         level = (level + 1) * 5 / numLevels;
         svg = string.concat(
             '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
@@ -161,11 +161,11 @@ contract NFTDescriptor is INFTDescriptor {
      * @param maturity Weighted average of the maturity deposits into this position.
      */
     function generateImageText(
-        uint relicId,
+        uint256 relicId,
         string memory poolName,
         string memory pendingReward,
         string memory rewardSymbol,
-        uint maturity
+        uint256 maturity
     ) internal pure returns (string memory text) {
         text = string.concat(
             '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #',
@@ -188,7 +188,7 @@ contract NFTDescriptor is INFTDescriptor {
     /// @param amountString Amount of underlying tokens deposited in this position.
     function generateTextFromToken(
         address, //underlying
-        uint, //amount
+        uint256, //amount
         string memory amountString
     ) internal view virtual returns (string memory text) {
         text = string.concat('<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString);
@@ -199,21 +199,21 @@ contract NFTDescriptor is INFTDescriptor {
      * @param level Current level of the position.
      * @param levelInfo Level info for this pool.
      */
-    // function generateBars(uint level, LevelInfo memory levelInfo) internal view returns (string memory bars) {
-    //     uint highestMultiplier = levelInfo.curve.getMultiplerFromLevel(0);
-    //     for (uint i = 1; i < levelInfo.curve.getNbLevel(); i++) {
+    // function generateBars(uint256 level, LevelInfo memory levelInfo) internal view returns (string memory bars) {
+    //     uint256 highestMultiplier = levelInfo.curve.getMultiplerFromLevel(0);
+    //     for (uint256 i = 1; i < levelInfo.curve.getNbLevel(); i++) {
     //         if (levelInfo.curve.getMultiplerFromLevel(i) > highestMultiplier) {
     //             highestMultiplier = levelInfo.curve.getMultiplerFromLevel(i);
     //         }
     //     }
 
-    //     uint barWidth = GRAPH_WIDTH * 10 / levelInfo.curve.getNbLevel();
-    //     uint barWidthInt = barWidth / 10;
+    //     uint256 barWidth = GRAPH_WIDTH * 10 / levelInfo.curve.getNbLevel();
+    //     uint256 barWidthInt = barWidth / 10;
     //     string memory barWidthString =
     //         string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
     //     bars = '<svg x="58" y="50" width="180" height="150">';
-    //     for (uint i; i < levelInfo.curve.getNbLevel(); i++) {
-    //         uint barHeight = levelInfo.curve.getMultiplerFromLevel(i) * GRAPH_HEIGHT / highestMultiplier;
+    //     for (uint256 i; i < levelInfo.curve.getNbLevel(); i++) {
+    //         uint256 barHeight = levelInfo.curve.getMultiplerFromLevel(i) * GRAPH_HEIGHT / highestMultiplier;
     //         bars = string.concat(
     //             bars,
     //             '<rect x="',
@@ -240,23 +240,23 @@ contract NFTDescriptor is INFTDescriptor {
      * @param num A number.
      * @param decimals Number of decimal places.
      */
-    function generateDecimalString(uint num, uint decimals) internal pure returns (string memory decString) {
+    function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory decString) {
         if (num == 0) {
             return "0";
         }
 
-        uint numLength;
-        uint result;
+        uint256 numLength;
+        uint256 result;
         do {
             result = num / 10 ** (++numLength);
         } while (result != 0);
 
         bool lessThanOne = numLength <= decimals;
-        uint bufferLength;
+        uint256 bufferLength;
         if (lessThanOne) {
             bufferLength = decimals + 2;
         } else if (numLength > 19) {
-            uint difference = numLength - 19;
+            uint256 difference = numLength - 19;
             decimals -= difference > decimals ? decimals : difference;
             num /= 10 ** difference;
             bufferLength = 20;
@@ -268,11 +268,11 @@ contract NFTDescriptor is INFTDescriptor {
         if (lessThanOne) {
             buffer[0] = "0";
             buffer[1] = ".";
-            for (uint i = 0; i < decimals - numLength; i++) {
+            for (uint256 i = 0; i < decimals - numLength; i++) {
                 buffer[i + 2] = "0";
             }
         }
-        uint index = bufferLength - 1;
+        uint256 index = bufferLength - 1;
         while (num != 0) {
             if (!lessThanOne && index == bufferLength - decimals - 1) {
                 buffer[index--] = ".";

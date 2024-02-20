@@ -8,26 +8,26 @@ contract NFTDescriptorPair is NFTDescriptor {
     constructor(address _reliquary) NFTDescriptor(_reliquary) {}
 
     function generateTextFromToken(
-        address underlying,
-        uint amount,
-        string memory //amountString
-    ) internal view override returns (string memory text) {
-        IUniswapV2Pair lp = IUniswapV2Pair(underlying);
-        IERC20Metadata token0 = IERC20Metadata(lp.token0());
-        IERC20Metadata token1 = IERC20Metadata(lp.token1());
+        address _underlying,
+        uint256 _amount,
+        string memory //_amountString
+    ) internal view override returns (string memory text_) {
+        IUniswapV2Pair lp_ = IUniswapV2Pair(_underlying);
+        IERC20Metadata token0_ = IERC20Metadata(lp_.token0());
+        IERC20Metadata token1_ = IERC20Metadata(lp_.token1());
 
-        (uint reserves0, uint reserves1,) = lp.getReserves();
-        uint amount0 = amount * reserves0 / lp.totalSupply();
-        uint amount1 = amount * reserves1 / lp.totalSupply();
-        text = string.concat(
+        (uint256 reserves0_, uint256 reserves1_,) = lp_.getReserves();
+        uint256 amount0_ = _amount * reserves0_ / lp_.totalSupply();
+        uint256 amount1_ = _amount * reserves1_ / lp_.totalSupply();
+        text_ = string.concat(
             '<text x="50%" y="300" class="bit" style="font-size: 8">',
-            token0.symbol(),
+            token0_.symbol(),
             ":",
-            generateDecimalString(amount0, token0.decimals()),
+            generateDecimalString(amount0_, token0_.decimals()),
             '</text><text x="50%" y="315" class="bit" style="font-size: 8">',
-            token1.symbol(),
+            token1_.symbol(),
             ":",
-            generateDecimalString(amount1, token1.decimals())
+            generateDecimalString(amount1_, token1_.decimals())
         );
     }
 }

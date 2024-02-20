@@ -9,9 +9,9 @@ import 'contracts/nft_descriptors/NFTDescriptorPair.sol';
 import 'lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
 import "contracts/curves/Curves.sol";
 import "contracts/curves/functions/LinearFunction.sol";
+import "contracts/curves/functions/LinearPlateauFunction.sol";
 
 // The only unfuzzed method is reliquary.setEmissionRate()
-
 contract User {
     function proxy(
         address target,
@@ -42,10 +42,9 @@ struct DepositData {
 
 contract ReliquaryProperties {
     // Linear function config (to config)
-    uint256 public nbLevels = 10; //! you can increase this but it become very long to test 
-    uint256 public slope = 100; // Increase of multiplier every second
+    uint256 public slope = 1; // Increase of multiplier every second
     uint256 public minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
-    uint256 public samplingPeriod = 1 days; // One level each day
+    uint256 plateau = 10 days;
 
     uint public emissionRate = 1e18;
     uint public initialMint = 100 ether;
@@ -67,6 +66,7 @@ contract ReliquaryProperties {
     NFTDescriptor public nftDescriptor;
     Curves curve;
     LinearFunction linearFunction;
+    LinearPlateauFunction linearPlateauFunction;
 
     event LogUint(uint256 a);
 
@@ -86,8 +86,10 @@ contract ReliquaryProperties {
             'NFT'
         );
         nftDescriptor = new NFTDescriptor(address(reliquary));
+
         linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
+        linearPlateauFunction = new LinearPlateauFunction(slope, minMultiplier, plateau);
+        curve = new Curves(linearFunction);
         
         rewardToken.mint(address(reliquary), 100 ether); // provide rewards to reliquary contract
 
@@ -181,7 +183,7 @@ contract ReliquaryProperties {
         User user = users[randUser % users.length];
         uint amount = (randAmt % initialMint) / 100 + 1; // with seqLen: 100 we should not have supply issues
         uint poolId = randPool % totalNbPools;
-        ERC20 poolToken = ERC20(reliquary.poolToken(poolId));
+        ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
         uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
         uint balanceUserBefore = poolToken.balanceOf(address(user));
 
@@ -211,7 +213,7 @@ contract ReliquaryProperties {
         uint relicId = relicIds[randRelic % relicIds.length];
         User user = User(reliquary.ownerOf(relicId));
         uint amount = (randAmt % initialMint) / 100 + 1; // with seqLen: 100 we should not have supply issues
-        ERC20 poolToken = ERC20(reliquary.poolToken(reliquary.getPositionForId(relicId).poolId));
+        ERC20 poolToken = ERC20(reliquary.getPoolInfo(reliquary.getPositionForId(relicId).poolId).poolToken);
         uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
         uint balanceUserBefore = poolToken.balanceOf(address(user));
 
@@ -241,7 +243,7 @@ contract ReliquaryProperties {
             require(amountToWithdraw > 0);
 
             uint poolId = reliquary.getPositionForId(relicId).poolId;
-            ERC20 poolToken = ERC20(reliquary.poolToken(poolId));
+            ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
 
             uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
             uint balanceUserBefore = poolToken.balanceOf(address(user));
@@ -276,7 +278,7 @@ contract ReliquaryProperties {
             uint amountToWithdraw = randAmt % (amount + 1);
 
             uint poolId = reliquary.getPositionForId(relicId).poolId;
-            ERC20 poolToken = ERC20(reliquary.poolToken(poolId));
+            ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
 
             uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
             uint balanceUserBefore = poolToken.balanceOf(address(user));
@@ -308,7 +310,7 @@ contract ReliquaryProperties {
 
         PositionInfo memory pi = reliquary.getPositionForId(relicId);
         address owner = reliquary.ownerOf(relicId);
-        ERC20 poolToken = ERC20(reliquary.poolToken(pi.poolId));
+        ERC20 poolToken = ERC20(reliquary.getPoolInfo(pi.poolId).poolToken);
         uint amount = pi.amount;
 
         uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
@@ -477,7 +479,7 @@ contract ReliquaryProperties {
 
         // this works if there are no pools with twice the same token
         for (uint pid; pid < totalNbPools; pid++) {
-            uint totalBalance = ERC20(reliquary.poolToken(pid)).balanceOf(address(reliquary));
+            uint totalBalance = ERC20(reliquary.getPoolInfo(pid).poolToken).balanceOf(address(reliquary));
             // check balances integrity
             assert(totalAmtInPositions[pid] == totalBalance);
         }

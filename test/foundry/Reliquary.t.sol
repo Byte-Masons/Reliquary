@@ -9,6 +9,7 @@ import "contracts/rewarders/DepositBonusRewarder.sol";
 import "contracts/rewarders/ParentRewarder.sol";
 import "contracts/curves/Curves.sol";
 import "contracts/curves/functions/LinearFunction.sol";
+import "contracts/curves/functions/LinearPlateauFunction.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
 
@@ -19,16 +20,16 @@ contract ReliquaryTest is ERC721Holder, Test {
     Reliquary reliquary;
     Curves curve;
     LinearFunction linearFunction;
+    LinearPlateauFunction linearPlateauFunction;
     ERC20DecimalsMock oath;
     ERC20DecimalsMock testToken;
     address nftDescriptor;
     uint256 emissionRate = 1e17;
 
     // Linear function config (to config)
-    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
     uint256 slope = 100; // Increase of multiplier every second
     uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
-    uint256 samplingPeriod = 1 days; // One level each day
+    uint256 plateau = 10 days;
 
     function setUp() public {
 
@@ -39,9 +40,9 @@ contract ReliquaryTest is ERC721Holder, Test {
             "Reliquary Deposit",
             "RELIC"
         );
+        linearPlateauFunction = new LinearPlateauFunction(slope, minMultiplier, plateau);
         linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
-
+        curve = new Curves(linearPlateauFunction);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 

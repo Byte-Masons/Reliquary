@@ -17,7 +17,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     bytes32 public constant REWARD_SETTER = keccak256("REWARD_SETTER");
     bytes32 public constant CHILD_SETTER = keccak256("CHILD_SETTER");
 
-    event LogRewardMultiplier(uint rewardMultiplier);
+    event LogRewardMultiplier(uint256 rewardMultiplier);
     event ChildCreated(address indexed child, address indexed token);
     event ChildRemoved(address indexed child);
 
@@ -27,7 +27,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint _rewardMultiplier, address _rewardToken, address _reliquary)
+    constructor(uint256 _rewardMultiplier, address _rewardToken, address _reliquary)
         MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -38,7 +38,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * Separate role from who can add/remove children.
      * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
      */
-    function setRewardMultiplier(uint _rewardMultiplier) external onlyRole(REWARD_SETTER) {
+    function setRewardMultiplier(uint256 _rewardMultiplier) external onlyRole(REWARD_SETTER) {
         rewardMultiplier = _rewardMultiplier;
         emit LogRewardMultiplier(_rewardMultiplier);
     }
@@ -47,37 +47,36 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @notice Deploys a ChildRewarder contract and adds it to the childrenRewarders set.
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _rewardMultiplier Amount to multiply reward by, relative to BASIS_POINTS.
-     * @param owner Address to transfer ownership of the ChildRewarder contract to.
-     * @return child Address of the new ChildRewarder.
+     * @param _owner Address to transfer ownership of the ChildRewarder contract to.
+     * @return child_ Address of the new ChildRewarder.
      */
-    function createChild(address _rewardToken, uint _rewardMultiplier, address owner)
+    function createChild(address _rewardToken, uint256 _rewardMultiplier, address _owner)
         external
         onlyRole(CHILD_SETTER)
-        returns (address child)
+        returns (address child_)
     {
-        child = address(new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary));
-        Ownable(child).transferOwnership(owner);
-        childrenRewarders.add(child);
-        emit ChildCreated(child, address(_rewardToken));
+        child_ = address(new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary));
+        Ownable(child_).transferOwnership(_owner);
+        childrenRewarders.add(child_);
+        emit ChildCreated(child_, address(_rewardToken));
     }
 
     /// @notice Removes a ChildRewarder from the childrenRewarders set.
-    /// @param childRewarder Address of the ChildRewarder contract to remove.
-    function removeChild(address childRewarder) external onlyRole(CHILD_SETTER) {
-        require(childrenRewarders.remove(childRewarder), "That is not my child rewarder!");
-        emit ChildRemoved(childRewarder);
+    /// @param _childRewarder Address of the ChildRewarder contract to remove.
+    function removeChild(address _childRewarder) external onlyRole(CHILD_SETTER) {
+        require(childrenRewarders.remove(_childRewarder), "That is not my child rewarder!");
+        emit ChildRemoved(_childRewarder);
     }
 
     /// Call onReward function of each child.
     /// @inheritdoc SingleAssetRewarder
-    function onReward(uint relicId, uint rewardAmount, address to) external override onlyReliquary {
-        super._onReward(relicId, rewardAmount, to);
+    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external override onlyReliquary {
+        super._onReward(_relicId, _rewardAmount, _to);
 
-        uint length = childrenRewarders.length();
-        for (uint i; i < length;) {
-            IRewarder(childrenRewarders.at(i)).onReward(relicId, rewardAmount, to);
+        for (uint256 i_; i_ < childrenRewarders.length();) {
+            IRewarder(childrenRewarders.at(i_)).onReward(_relicId, _rewardAmount, _to);
             unchecked {
-                ++i;
+                ++i_;
             }
         }
     }
@@ -94,25 +93,25 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingTokens(uint relicId, uint rewardAmount)
+    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
         external
         view
         override
-        returns (address[] memory rewardTokens, uint[] memory rewardAmounts)
+        returns (address[] memory rewardTokens_, uint256[] memory rewardAmounts_)
     {
-        uint length = childrenRewarders.length() + 1;
-        rewardTokens = new address[](length);
-        rewardTokens[0] = rewardToken;
+        uint256 length_ = childrenRewarders.length() + 1;
+        rewardTokens_ = new address[](length_);
+        rewardTokens_[0] = rewardToken;
 
-        rewardAmounts = new uint[](length);
-        rewardAmounts[0] = pendingToken(relicId, rewardAmount);
+        rewardAmounts_ = new uint256[](length_);
+        rewardAmounts_[0] = pendingToken(_relicId, _rewardAmount);
 
-        for (uint i = 1; i < length;) {
-            ChildRewarder rewarder = ChildRewarder(childrenRewarders.at(i - 1));
-            rewardTokens[i] = rewarder.rewardToken();
-            rewardAmounts[i] = rewarder.pendingToken(relicId, rewardAmount);
+        for (uint256 i_ = 1; i_ < length_;) {
+            ChildRewarder rewarder_ = ChildRewarder(childrenRewarders.at(i_ - 1));
+            rewardTokens_[i_] = rewarder_.rewardToken();
+            rewardAmounts_[i_] = rewarder_.pendingToken(_relicId, _rewardAmount);
             unchecked {
-                ++i;
+                ++i_;
             }
         }
     }

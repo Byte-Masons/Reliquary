@@ -26,37 +26,40 @@ abstract contract SingleAssetRewarder is IRewarder {
 
     /**
      * @notice Called by Reliquary harvest or withdrawAndHarvest function.
-     * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
-     * @param to Address to send rewards to.
+     * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
+     * @param _to Address to send rewards to.
      */
-    function onReward(uint relicId, uint rewardAmount, address to) external virtual override {}
+    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external virtual override {}
 
     /// @notice Called by Reliquary _deposit function.
-    function onDeposit(uint relicId, uint depositAmount) external virtual override {}
+    function onDeposit(uint256 _relicId, uint256 _depositAmount) external virtual override {}
 
     /// @notice Called by Reliquary withdraw or withdrawAndHarvest function.
-    function onWithdraw(uint relicId, uint withdrawalAmount) external virtual override {}
+    function onWithdraw(uint256 _relicId, uint256 _withdrawalAmount) external virtual override {}
 
     /**
      * @notice Returns the amount of pending tokens for a position from this rewarder.
      * Interface supports multiple tokens.
-     * @param rewardAmount Amount of reward token owed for this position from the Reliquary.
+     * @param _relicId The NFT ID of the position.
+     * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
      */
-    function pendingTokens(uint relicId, uint rewardAmount)
+    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
         external
         view
         virtual
         override
-        returns (address[] memory rewardTokens, uint[] memory rewardAmounts)
+        returns (address[] memory rewardTokens_, uint256[] memory rewardAmounts_)
     {
-        rewardTokens = new address[](1);
-        rewardTokens[0] = rewardToken;
+        rewardTokens_ = new address[](1);
+        rewardTokens_[0] = rewardToken;
 
-        rewardAmounts = new uint[](1);
-        rewardAmounts[0] = pendingToken(relicId, rewardAmount);
+        rewardAmounts_ = new uint256[](1);
+        rewardAmounts_[0] = pendingToken(_relicId, _rewardAmount);
     }
-
-    /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
-    /// @param rewardAmount Amount of reward token owed for this position from the Reliquary.
-    function pendingToken(uint relicId, uint rewardAmount) public view virtual returns (uint pending) {}
+    /**
+     * @notice Returns the amount of pending rewardToken for a position from this rewarder.
+     * @param _relicId The NFT ID of the position.
+     * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
+     */
+    function pendingToken(uint256 _relicId, uint256 _rewardAmount) public view virtual returns (uint256 pending_) {}
 }

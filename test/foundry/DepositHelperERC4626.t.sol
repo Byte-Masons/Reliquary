@@ -23,10 +23,8 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
     uint256 emissionRate = 1e17;
 
     // Linear function config (to config)
-    uint256 nbLevels = 365; // 365 levels, 1 per day during one year then flat 
     uint256 slope = 100; // Increase of multiplier every second
     uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
-    uint256 samplingPeriod = 1 days; // One level each day
 
     receive() external payable {}
 
@@ -42,7 +40,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         weth = new WETH();
         vault = new ERC4626Mock(IERC20Metadata(address(weth)), "ETH Optimizer", "relETH");
         linearFunction = new LinearFunction(slope, minMultiplier);
-        curve = new Curves(linearFunction, samplingPeriod, nbLevels);
+        curve = new Curves(linearFunction);
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
