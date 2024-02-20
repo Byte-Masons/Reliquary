@@ -44,45 +44,18 @@ contract Deploy is Script {
     address[] rewarderAddresses;
     ParentRewarderRolling[] parentRewarders;
     address nftDescriptorNormal;
-    address nftDescriptor4626;
-    address nftDescriptorPair;
-    address depositHelper4626;
 
     function run() external {
         config = vm.readFile("scripts/deploy_conf.json");
-        //string memory name = config.readString(".name");
-        //string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
         address rewardToken = config.readAddress(".rewardToken");
-        //address thenaToken = config.readAddress(".thenaToken");
-        //address voter = config.readAddress(".voter");
-        //address thenaReceiver = config.readAddress(".thenaReceiver");
         uint emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
 
         vm.startBroadcast();
-
-        //emissionCurve = new OwnableCurve(emissionRate);
-
-        //reliquary = new Reliquary(rewardToken, address(emissionCurve), thenaToken, voter, thenaReceiver, name, symbol);
-
-
-        //reliquary.grantRole(OPERATOR, tx.origin);
         for (uint i = 0; i < pools.length; ++i) {
             Pool memory pool = pools[i];
-
             address nftDescriptor = _deployHelpers(pool.tokenType);
-
-            // reliquary.addPool(
-            //     pool.allocPoint,
-            //     pool.poolToken,
-            //     address(0),
-            //     pool.requiredMaturities,
-            //     pool.levelMultipliers,
-            //     pool.name,
-            //     nftDescriptor,
-            //     pool.allowPartialWithdrawals
-            // );
         }
 
         _deployRewarders();
@@ -107,10 +80,6 @@ contract Deploy is Script {
             newParent.grantRole(REWARD_SETTER, tx.origin);
             parentRewarders.push(newParent);
             rewarderAddresses.push(address(newParent));
-
-            Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
-            
-            reliquary.modifyPool(0, 100, address(newParent), pools[0].name, address(0), true);
         }
 
         Rewarder[] memory rewarders = abi.decode(config.parseRaw(".childRewarders"), (Rewarder[]));
@@ -150,12 +119,6 @@ contract Deploy is Script {
 
     function _renounceRoles() internal {
         // bytes32 defaultAdminRole = reliquary.DEFAULT_ADMIN_ROLE();
-        // reliquary.grantRole(defaultAdminRole, multisig);
-        // reliquary.grantRole(OPERATOR, multisig);
-        // reliquary.grantRole(EMISSION_CURVE, multisig);
-        // reliquary.renounceRole(OPERATOR, tx.origin);
-        // reliquary.renounceRole(defaultAdminRole, tx.origin);
-        // emissionCurve.transferOwnership(multisig);
         for (uint i; i < parentRewarders.length; ++i) {
             parentRewarders[i].grantRole(defaultAdminRole, multisig);
             parentRewarders[i].grantRole(CHILD_SETTER, multisig);
