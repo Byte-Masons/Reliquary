@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import 'contracts/Reliquary.sol';
-import 'contracts/interfaces/IReliquary.sol';
-import 'contracts/rewarders/ParentRewarder.sol';
-import './mocks/ERC20Mock.sol';
-import 'contracts/nft_descriptors/NFTDescriptorPair.sol';
-import 'lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol';
+import "contracts/Reliquary.sol";
+import "contracts/interfaces/IReliquary.sol";
+import "contracts/rewarders/ParentRewarder.sol";
+import "./mocks/ERC20Mock.sol";
+import "contracts/nft_descriptors/NFTDescriptorPair.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/ICurves.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
@@ -78,18 +78,13 @@ contract ReliquaryProperties {
 
         startTimestamp = block.timestamp;
         /// setup reliquary
-        rewardToken = new ERC20Mock('OATH Token', 'OATH');
-        reliquary = new Reliquary(
-            address(rewardToken),
-            emissionRate,
-            'Relic',
-            'NFT'
-        );
+        rewardToken = new ERC20Mock("OATH Token", "OATH");
+        reliquary = new Reliquary(address(rewardToken), emissionRate, "Relic", "NFT");
         nftDescriptor = new NFTDescriptor(address(reliquary));
 
         linearCurve = new LinearCurve(slope, minMultiplier);
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
-        
+
         curves.push(linearCurve);
         curves.push(linearPlateauCurve);
 
@@ -97,7 +92,7 @@ contract ReliquaryProperties {
 
         /// setup token pool
         for (uint i = 0; i < totalNbPools; i++) {
-            ERC20Mock token = new ERC20Mock('Pool Token', 'PT');
+            ERC20Mock token = new ERC20Mock("Pool Token", "PT");
             tokenPoolIds.push(token);
 
             // no rewarder for now
@@ -106,7 +101,7 @@ contract ReliquaryProperties {
                 address(token),
                 address(0),
                 linearCurve,
-                'reaper',
+                "reaper",
                 address(nftDescriptor),
                 true
             );
@@ -115,9 +110,9 @@ contract ReliquaryProperties {
 
         /// setup users
         // admin is this contract
-        reliquary.grantRole(keccak256('DEFAULT_ADMIN_ROLE'), address(this));
-        reliquary.grantRole(keccak256('OPERATOR'), address(this));
-        reliquary.grantRole(keccak256('EMISSION_RATE'), address(this));
+        reliquary.grantRole(keccak256("DEFAULT_ADMIN_ROLE"), address(this));
+        reliquary.grantRole(keccak256("OPERATOR"), address(this));
+        reliquary.grantRole(keccak256("EMISSION_RATE"), address(this));
 
         for (uint i = 0; i < totalNbUsers; i++) {
             User user = new User();
@@ -143,7 +138,7 @@ contract ReliquaryProperties {
         uint maxSize = 10;
         require(allocPoint > 0);
         uint startPoolIdsLen = poolIds.length;
-        ERC20Mock token = new ERC20Mock('Pool Token', 'PT');
+        ERC20Mock token = new ERC20Mock("Pool Token", "PT");
         tokenPoolIds.push(token);
         ICurves curve = curves[randCurves % curves.length];
 
@@ -153,7 +148,7 @@ contract ReliquaryProperties {
             address(token),
             address(0),
             curve,
-            'reaper',
+            "reaper",
             address(nftDescriptor),
             true
         );
@@ -176,7 +171,7 @@ contract ReliquaryProperties {
             randPoolId % totalNbPools,
             allocPoint % 10000 ether, // to avoid overflow on totalAllocPoint [0, 10000e18]
             address(0),
-            'reaper',
+            "reaper",
             address(nftDescriptor),
             true
         );
@@ -217,7 +212,9 @@ contract ReliquaryProperties {
         uint relicId = relicIds[randRelic % relicIds.length];
         User user = User(reliquary.ownerOf(relicId));
         uint amount = (randAmt % initialMint) / 100 + 1; // with seqLen: 100 we should not have supply issues
-        ERC20 poolToken = ERC20(reliquary.getPoolInfo(reliquary.getPositionForId(relicId).poolId).poolToken);
+        ERC20 poolToken = ERC20(
+            reliquary.getPoolInfo(reliquary.getPositionForId(relicId).poolId).poolToken
+        );
         uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
         uint balanceUserBefore = poolToken.balanceOf(address(user));
 
@@ -483,7 +480,9 @@ contract ReliquaryProperties {
 
         // this works if there are no pools with twice the same token
         for (uint pid; pid < totalNbPools; pid++) {
-            uint totalBalance = ERC20(reliquary.getPoolInfo(pid).poolToken).balanceOf(address(reliquary));
+            uint totalBalance = ERC20(reliquary.getPoolInfo(pid).poolToken).balanceOf(
+                address(reliquary)
+            );
             // check balances integrity
             assert(totalAmtInPositions[pid] == totalBalance);
         }

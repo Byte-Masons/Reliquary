@@ -9,5 +9,8 @@ interface IRewarder {
 
     function onWithdraw(uint256 _relicId, uint256 _withdrawalAmount) external;
 
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount) external view returns (address[] memory, uint256[] memory);
+    function pendingTokens(
+        uint256 _relicId,
+        uint256 _rewardAmount
+    ) external view returns (address[] memory, uint256[] memory);
 }

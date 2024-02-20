@@ -20,14 +20,20 @@ contract ChildRewarder is MultiplierRewarderOwnable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint256 _rewardMultiplier, address _rewardToken, address _reliquary)
-        MultiplierRewarderOwnable(_rewardMultiplier, _rewardToken, _reliquary)
-    {
+    constructor(
+        uint256 _rewardMultiplier,
+        address _rewardToken,
+        address _reliquary
+    ) MultiplierRewarderOwnable(_rewardMultiplier, _rewardToken, _reliquary) {
         parent = msg.sender;
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external override onlyParent {
+    function onReward(
+        uint256 _relicId,
+        uint256 _rewardAmount,
+        address _to
+    ) external override onlyParent {
         super._onReward(_relicId, _rewardAmount, _to);
     }
 }

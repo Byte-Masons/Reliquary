@@ -8,7 +8,6 @@ import "../interfaces/INFTDescriptor.sol";
 import "../interfaces/IReliquary.sol";
 import "contracts/interfaces/ICurves.sol";
 
-
 contract NFTDescriptor is INFTDescriptor {
     using Strings for uint256;
 
@@ -17,7 +16,8 @@ contract NFTDescriptor is INFTDescriptor {
     uint256 private constant GRAPH_HEIGHT = 150;
 
     // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS = "https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/";
+    string private constant IPFS =
+        "https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/";
 
     address public immutable reliquary;
 
@@ -44,19 +44,33 @@ contract NFTDescriptor is INFTDescriptor {
         // LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
         LocalVariables_constructTokenURI memory vars;
         vars.underlying = address(_reliquary.getPoolInfo(position.poolId).poolToken);
-        vars.amount = generateDecimalString(position.amount, IERC20Metadata(vars.underlying).decimals());
+        vars.amount = generateDecimalString(
+            position.amount,
+            IERC20Metadata(vars.underlying).decimals()
+        );
         vars.pendingReward = generateDecimalString(_reliquary.pendingReward(relicId), 18);
         vars.maturity = (block.timestamp - position.entry) / 1 days;
         vars.rewardSymbol = IERC20Metadata(address(_reliquary.rewardToken())).symbol();
 
         vars.description = generateDescription(pool.name);
-        vars.attributes =
-            generateAttributes(position, vars.amount, vars.pendingReward, vars.rewardSymbol, vars.maturity);
+        vars.attributes = generateAttributes(
+            position,
+            vars.amount,
+            vars.pendingReward,
+            vars.rewardSymbol,
+            vars.maturity
+        );
         vars.image = Base64.encode(
             bytes(
                 string.concat(
                     // generateSVGImage(position.level, pool.curve.getNbLevel()),
-                    generateImageText(relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity),
+                    generateImageText(
+                        relicId,
+                        pool.name,
+                        vars.pendingReward,
+                        vars.rewardSymbol,
+                        vars.maturity
+                    ),
                     generateTextFromToken(vars.underlying, position.amount, vars.amount),
                     "</text>",
                     // generateBars(position.level, levelInfo),
@@ -88,7 +102,9 @@ contract NFTDescriptor is INFTDescriptor {
 
     /// @notice Generate description of the liquidity position for NFT metadata.
     /// @param poolName Name of pool as provided by operator.
-    function generateDescription(string memory poolName) internal pure returns (string memory description) {
+    function generateDescription(
+        string memory poolName
+    ) internal pure returns (string memory description) {
         description = string.concat(
             "This NFT represents a position in a Reliquary ",
             poolName,
@@ -134,8 +150,11 @@ contract NFTDescriptor is INFTDescriptor {
      * @param level Current maturity level of the position.
      * @param numLevels Total number of levels in the pool.
      */
-    function generateSVGImage(uint256 level, uint256 numLevels) internal pure returns (string memory svg) {
-        level = (level + 1) * 5 / numLevels;
+    function generateSVGImage(
+        uint256 level,
+        uint256 numLevels
+    ) internal pure returns (string memory svg) {
+        level = ((level + 1) * 5) / numLevels;
         svg = string.concat(
             '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
             "<style>",
@@ -191,7 +210,10 @@ contract NFTDescriptor is INFTDescriptor {
         uint256, //amount
         string memory amountString
     ) internal view virtual returns (string memory text) {
-        text = string.concat('<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString);
+        text = string.concat(
+            '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:',
+            amountString
+        );
     }
 
     /**
@@ -240,7 +262,10 @@ contract NFTDescriptor is INFTDescriptor {
      * @param num A number.
      * @param decimals Number of decimal places.
      */
-    function generateDecimalString(uint256 num, uint256 decimals) internal pure returns (string memory decString) {
+    function generateDecimalString(
+        uint256 num,
+        uint256 decimals
+    ) internal pure returns (string memory decString) {
         if (num == 0) {
             return "0";
         }
@@ -277,7 +302,7 @@ contract NFTDescriptor is INFTDescriptor {
             if (!lessThanOne && index == bufferLength - decimals - 1) {
                 buffer[index--] = ".";
             }
-            buffer[index] = bytes1(uint8(48 + num % 10));
+            buffer[index] = bytes1(uint8(48 + (num % 10)));
             num /= 10;
             unchecked {
                 index--;

@@ -22,9 +22,11 @@ contract MultiplierRewarder is SingleAssetRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint256 _rewardMultiplier, address _rewardToken, address _reliquary)
-        SingleAssetRewarder(_rewardToken, _reliquary)
-    {
+    constructor(
+        uint256 _rewardMultiplier,
+        address _rewardToken,
+        address _reliquary
+    ) SingleAssetRewarder(_rewardToken, _reliquary) {
         rewardMultiplier = _rewardMultiplier;
     }
 
@@ -34,7 +36,11 @@ contract MultiplierRewarder is SingleAssetRewarder {
      * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
      * @param _to Address to send rewards to.
      */
-    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external virtual override onlyReliquary {
+    function onReward(
+        uint256 _relicId,
+        uint256 _rewardAmount,
+        address _to
+    ) external virtual override onlyReliquary {
         _onReward(_relicId, _rewardAmount, _to);
     }
 
@@ -52,6 +58,6 @@ contract MultiplierRewarder is SingleAssetRewarder {
         uint256, //relicId
         uint256 _rewardAmount
     ) public view override returns (uint256 pending_) {
-        pending_ = _rewardAmount * rewardMultiplier / BASIS_POINTS;
+        pending_ = (_rewardAmount * rewardMultiplier) / BASIS_POINTS;
     }
 }

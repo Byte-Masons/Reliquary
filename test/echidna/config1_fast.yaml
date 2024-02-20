@@ -3,11 +3,11 @@ testLimit: 10000
 
 workers: 10
 coverage: true
-corpusDir: 'corpus'
+corpusDir: "corpus"
 testMode: assertion
-deployer: '0x10000'
-sender: ['0x10000', '0x20000', '0x30000']
-coverageFormats: ['txt']
+deployer: "0x10000"
+sender: ["0x10000", "0x20000", "0x30000"]
+coverageFormats: ["txt"]
 shrinkLimit: 500
 
 # Ignore helpers

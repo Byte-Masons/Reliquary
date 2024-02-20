@@ -28,12 +28,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
     function setUp() public {
         oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
-        reliquary = new Reliquary(
-            address(oath),
-            1e17,
-            "Reliquary Deposit",
-            "RELIC"
-        );
+        reliquary = new Reliquary(address(oath), 1e17, "Reliquary Deposit", "RELIC");
 
         weth = new WETH();
         vault = new ERC4626Mock(IERC20Metadata(address(weth)), "ETH Optimizer", "relETH");
@@ -41,7 +36,15 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        reliquary.addPool(1000, address(vault), address(0), linearCurve, "ETH Crypt", nftDescriptor, true);
+        reliquary.addPool(
+            1000,
+            address(vault),
+            address(0),
+            linearCurve,
+            "ETH Crypt",
+            nftDescriptor,
+            true
+        );
 
         helper = new DepositHelperERC4626(reliquary, address(weth));
 

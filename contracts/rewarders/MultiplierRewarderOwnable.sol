@@ -15,9 +15,11 @@ contract MultiplierRewarderOwnable is MultiplierRewarder, Ownable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint256 _rewardMultiplier, address _rewardToken, address _reliquary)
-        MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
-    {}
+    constructor(
+        uint256 _rewardMultiplier,
+        address _rewardToken,
+        address _reliquary
+    ) MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary) {}
 
     /// @notice Set a new rewardMultiplier. Only callable by `owner`.
     function setRewardMultiplier(uint256 _rewardMultiplier) external onlyOwner {

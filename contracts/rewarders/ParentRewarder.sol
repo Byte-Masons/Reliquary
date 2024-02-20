@@ -27,9 +27,11 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint256 _rewardMultiplier, address _rewardToken, address _reliquary)
-        MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary)
-    {
+    constructor(
+        uint256 _rewardMultiplier,
+        address _rewardToken,
+        address _reliquary
+    ) MultiplierRewarder(_rewardMultiplier, _rewardToken, _reliquary) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -50,11 +52,11 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
      * @param _owner Address to transfer ownership of the ChildRewarder contract to.
      * @return child_ Address of the new ChildRewarder.
      */
-    function createChild(address _rewardToken, uint256 _rewardMultiplier, address _owner)
-        external
-        onlyRole(CHILD_SETTER)
-        returns (address child_)
-    {
+    function createChild(
+        address _rewardToken,
+        uint256 _rewardMultiplier,
+        address _owner
+    ) external onlyRole(CHILD_SETTER) returns (address child_) {
         child_ = address(new ChildRewarder(_rewardMultiplier, _rewardToken, reliquary));
         Ownable(child_).transferOwnership(_owner);
         childrenRewarders.add(child_);
@@ -70,10 +72,14 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
 
     /// Call onReward function of each child.
     /// @inheritdoc SingleAssetRewarder
-    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external override onlyReliquary {
+    function onReward(
+        uint256 _relicId,
+        uint256 _rewardAmount,
+        address _to
+    ) external override onlyReliquary {
         super._onReward(_relicId, _rewardAmount, _to);
 
-        for (uint256 i_; i_ < childrenRewarders.length();) {
+        for (uint256 i_; i_ < childrenRewarders.length(); ) {
             IRewarder(childrenRewarders.at(i_)).onReward(_relicId, _rewardAmount, _to);
             unchecked {
                 ++i_;
@@ -93,7 +99,10 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
     }
 
     /// @inheritdoc SingleAssetRewarder
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
+    function pendingTokens(
+        uint256 _relicId,
+        uint256 _rewardAmount
+    )
         external
         view
         override
@@ -106,7 +115,7 @@ contract ParentRewarder is MultiplierRewarder, AccessControlEnumerable {
         rewardAmounts_ = new uint256[](length_);
         rewardAmounts_[0] = pendingToken(_relicId, _rewardAmount);
 
-        for (uint256 i_ = 1; i_ < length_;) {
+        for (uint256 i_ = 1; i_ < length_; ) {
             ChildRewarder rewarder_ = ChildRewarder(childrenRewarders.at(i_ - 1));
             rewardTokens_[i_] = rewarder_.rewardToken();
             rewardAmounts_[i_] = rewarder_.pendingToken(_relicId, _rewardAmount);

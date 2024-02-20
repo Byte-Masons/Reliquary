@@ -16,9 +16,9 @@ contract NFTDescriptorPair is NFTDescriptor {
         IERC20Metadata token0_ = IERC20Metadata(lp_.token0());
         IERC20Metadata token1_ = IERC20Metadata(lp_.token1());
 
-        (uint256 reserves0_, uint256 reserves1_,) = lp_.getReserves();
-        uint256 amount0_ = _amount * reserves0_ / lp_.totalSupply();
-        uint256 amount1_ = _amount * reserves1_ / lp_.totalSupply();
+        (uint256 reserves0_, uint256 reserves1_, ) = lp_.getReserves();
+        uint256 amount0_ = (_amount * reserves0_) / lp_.totalSupply();
+        uint256 amount1_ = (_amount * reserves1_) / lp_.totalSupply();
         text_ = string.concat(
             '<text x="50%" y="300" class="bit" style="font-size: 8">',
             token0_.symbol(),

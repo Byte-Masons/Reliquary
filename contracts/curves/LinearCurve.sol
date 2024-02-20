@@ -10,8 +10,7 @@ contract LinearCurve is ICurves {
     error LinearFunction__MIN_MULTIPLIER_MUST_GREATER_THAN_ZERO();
 
     constructor(uint256 _slope, uint256 _minMultiplier) {
-        if (_minMultiplier == 0)
-            revert LinearFunction__MIN_MULTIPLIER_MUST_GREATER_THAN_ZERO();
+        if (_minMultiplier == 0) revert LinearFunction__MIN_MULTIPLIER_MUST_GREATER_THAN_ZERO();
         slope = _slope; // uint256 force the "strictly increasing" rule
         minMultiplier = _minMultiplier;
     }

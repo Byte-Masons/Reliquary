@@ -26,9 +26,13 @@ contract DepositBonusRewarder is SingleAssetRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(uint256 _depositBonus, uint256 _minimum, uint256 _cadence, address _rewardToken, address _reliquary)
-        SingleAssetRewarder(_rewardToken, _reliquary)
-    {
+    constructor(
+        uint256 _depositBonus,
+        uint256 _minimum,
+        uint256 _cadence,
+        address _rewardToken,
+        address _reliquary
+    ) SingleAssetRewarder(_rewardToken, _reliquary) {
         require(_minimum != 0, "no minimum set!");
         require(_cadence >= 1 days, "please set a reasonable cadence");
         depositBonus = _depositBonus;
@@ -42,7 +46,11 @@ contract DepositBonusRewarder is SingleAssetRewarder {
             uint256 lastDepositTime_ = lastDepositTime[_relicId];
             uint256 timestamp_ = block.timestamp;
             lastDepositTime[_relicId] = timestamp_;
-            _claimDepositBonus(IReliquary(reliquary).ownerOf(_relicId), timestamp_, lastDepositTime_);
+            _claimDepositBonus(
+                IReliquary(reliquary).ownerOf(_relicId),
+                timestamp_,
+                lastDepositTime_
+            );
         }
     }
 
@@ -53,7 +61,11 @@ contract DepositBonusRewarder is SingleAssetRewarder {
     ) external override onlyReliquary {
         uint256 lastDepositTime_ = lastDepositTime[_relicId];
         delete lastDepositTime[_relicId];
-        _claimDepositBonus(IReliquary(reliquary).ownerOf(_relicId), block.timestamp, lastDepositTime_);
+        _claimDepositBonus(
+            IReliquary(reliquary).ownerOf(_relicId),
+            block.timestamp,
+            lastDepositTime_
+        );
     }
 
     /**
@@ -62,7 +74,10 @@ contract DepositBonusRewarder is SingleAssetRewarder {
      * @param _to Address to send the depositBonus to.
      */
     function claimDepositBonus(uint256 _relicId, address _to) external {
-        require(IReliquary(reliquary).isApprovedOrOwner(msg.sender, _relicId), "not owner or approved");
+        require(
+            IReliquary(reliquary).isApprovedOrOwner(msg.sender, _relicId),
+            "not owner or approved"
+        );
         uint256 lastDepositTime_ = lastDepositTime[_relicId];
         delete lastDepositTime[_relicId];
         require(_claimDepositBonus(_to, block.timestamp, lastDepositTime_), "nothing to claim");
@@ -86,7 +101,11 @@ contract DepositBonusRewarder is SingleAssetRewarder {
      * @param _lastDepositTime Time of last deposit into this position, before being updated.
      * @return claimed_ Whether depositBonus was actually claimed.
      */
-    function _claimDepositBonus(address _to, uint256 _timestamp, uint256 _lastDepositTime) internal returns (bool claimed_) {
+    function _claimDepositBonus(
+        address _to,
+        uint256 _timestamp,
+        uint256 _lastDepositTime
+    ) internal returns (bool claimed_) {
         if (_lastDepositTime != 0 && _timestamp - _lastDepositTime >= cadence) {
             IERC20(rewardToken).safeTransfer(_to, depositBonus);
             claimed_ = true;

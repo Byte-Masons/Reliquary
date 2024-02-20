@@ -29,7 +29,11 @@ abstract contract SingleAssetRewarder is IRewarder {
      * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
      * @param _to Address to send rewards to.
      */
-    function onReward(uint256 _relicId, uint256 _rewardAmount, address _to) external virtual override {}
+    function onReward(
+        uint256 _relicId,
+        uint256 _rewardAmount,
+        address _to
+    ) external virtual override {}
 
     /// @notice Called by Reliquary _deposit function.
     function onDeposit(uint256 _relicId, uint256 _depositAmount) external virtual override {}
@@ -43,7 +47,10 @@ abstract contract SingleAssetRewarder is IRewarder {
      * @param _relicId The NFT ID of the position.
      * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
      */
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
+    function pendingTokens(
+        uint256 _relicId,
+        uint256 _rewardAmount
+    )
         external
         view
         virtual
@@ -56,10 +63,14 @@ abstract contract SingleAssetRewarder is IRewarder {
         rewardAmounts_ = new uint256[](1);
         rewardAmounts_[0] = pendingToken(_relicId, _rewardAmount);
     }
+
     /**
      * @notice Returns the amount of pending rewardToken for a position from this rewarder.
      * @param _relicId The NFT ID of the position.
      * @param _rewardAmount Amount of reward token owed for this position from the Reliquary.
      */
-    function pendingToken(uint256 _relicId, uint256 _rewardAmount) public view virtual returns (uint256 pending_) {}
+    function pendingToken(
+        uint256 _relicId,
+        uint256 _rewardAmount
+    ) public view virtual returns (uint256 pending_) {}
 }

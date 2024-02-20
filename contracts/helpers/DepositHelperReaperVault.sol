@@ -7,14 +7,19 @@ import {IReliquary, PositionInfo} from "../interfaces/IReliquary.sol";
 
 interface IReaperVault is IERC20 {
     function decimals() external view returns (uint8);
+
     function deposit(uint256 amount) external;
+
     function getPricePerFullShare() external view returns (uint256);
+
     function token() external view returns (IERC20);
+
     function withdrawAll() external;
 }
 
 interface IWeth is IERC20 {
     function deposit() external payable;
+
     function withdraw(uint256 amount) external;
 }
 
@@ -42,7 +47,10 @@ contract DepositHelperReaperVault is Ownable {
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
-    function createRelicAndDeposit(uint256 _pid, uint256 _amount) external payable returns (uint256 relicId_, uint256 shares_) {
+    function createRelicAndDeposit(
+        uint256 _pid,
+        uint256 _amount
+    ) external payable returns (uint256 relicId_, uint256 shares_) {
         shares_ = _prepareDeposit(_pid, _amount);
         relicId_ = reliquary.createRelicAndDeposit(msg.sender, _pid, shares_);
     }
@@ -116,9 +124,12 @@ contract DepositHelperReaperVault is Ownable {
         if (_amount == type(uint256).max) {
             shares_ = position_.amount;
         } else {
-            shares_ = _amount * 10 ** vault_.decimals() / vault_.getPricePerFullShare();
+            shares_ = (_amount * 10 ** vault_.decimals()) / vault_.getPricePerFullShare();
             if (shares_ > position_.amount) {
-                require(shares_ < position_.amount + position_.amount / 1000, "too much imprecision in share price");
+                require(
+                    shares_ < position_.amount + position_.amount / 1000,
+                    "too much imprecision in share price"
+                );
                 shares_ = position_.amount;
             }
         }
