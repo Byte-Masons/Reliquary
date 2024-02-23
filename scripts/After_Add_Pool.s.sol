@@ -52,42 +52,39 @@ contract Deploy is Script {
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
         reliquary = 0xF512283347C174399Cc3E11492ead8b49BD2712e;
         vm.startBroadcast();
-        for (uint i = 0; i < pools.length; ++i) {
-            Pool memory pool = pools[i];
-            address nftDescriptor = _deployHelpers(pool.tokenType);
-        }
 
         _deployRewarders();
-    
+
+        if (multisig != address(0)) {
+            _renounceRoles();
+        }
+        
+
         vm.stopBroadcast();
     }
 
     function _deployRewarders() internal {
-        ParentRewarder[] memory parents = abi.decode(config.parseRaw(".parentRewarders"), (ParentRewarder[]));
-        for (uint i; i < parents.length; ++i) {
-            ParentRewarder memory parent = parents[i];
+        address rewardToken = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+        ParentRewarderRolling parent = ParentRewarderRolling(0xc1Df4fC2B3d672A7152C7cF0C63604dfC192B0f9); // TODO: replace with actual parent contract
+        address rewarderAddress = parent.createChild(rewardToken, tx.origin);
+        RollingRewarder(rewarderAddress).updateDistributionPeriod(14 days);
+        rewardsPool = new RewardsPool(rewardToken, rewarderAddress);
+        parent.setChildsRewardPool(rewarderAddress, address(rewardsPool));
+        rewarderAddresses.push(rewarderAddress);
 
-            ParentRewarderRolling newParent = new ParentRewarderRolling(
-                reliquary, parent.poolId
-            );
-
-            newParent.grantRole(CHILD_SETTER, tx.origin);
-            newParent.grantRole(REWARD_SETTER, tx.origin);
-            parentRewarders.push(newParent);
-            rewarderAddresses.push(address(newParent));
-        }
     }
 
-    function _deployHelpers(string memory poolTokenType) internal returns (address nftDescriptor) {
-        bytes32 typeHash = keccak256(bytes(poolTokenType));
-        if (typeHash == keccak256("normal")) {
-            if (nftDescriptorNormal == address(0)) {
-                nftDescriptorNormal = address(new NFTDescriptor(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptorNormal;
-        } else {
-            revert(string.concat("invalid token type ", poolTokenType));
-        }
+
+    function _renounceRoles() internal {
+        bytes32 defaultAdminRole = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000);
+        rewardsPool.transferOwnership(multisig);
+        ParentRewarderRolling parent = ParentRewarderRolling(0xc1Df4fC2B3d672A7152C7cF0C63604dfC192B0f9); // TODO: replace with actual parent contract
+        parent.grantRole(defaultAdminRole, multisig);
+        parent.grantRole(CHILD_SETTER, multisig);
+        parent.grantRole(REWARD_SETTER, multisig);
+        parent.renounceRole(defaultAdminRole, tx.origin);
+        parent.renounceRole(CHILD_SETTER, tx.origin);
+        parent.renounceRole(REWARD_SETTER, tx.origin);
     }
 }
 
