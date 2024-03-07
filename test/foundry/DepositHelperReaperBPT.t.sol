@@ -9,25 +9,21 @@ import "contracts/Reliquary.sol";
 import "contracts/curves/LinearCurve.sol";
 
 interface IReaperVaultTest is IReaperVault {
-    function balance() external view returns (uint);
+    function balance() external view returns (uint256);
 }
 
 interface IReZapTest is IReZap {
-    function findStepsIn(
-        address zapInToken,
-        address BPT,
-        uint tokenInAmount
-    ) external returns (Step[] memory);
+    function findStepsIn(address zapInToken, address BPT, uint256 tokenInAmount)
+        external
+        returns (Step[] memory);
 
-    function findStepsOut(
-        address zapOutToken,
-        address BPT,
-        uint bptAmount
-    ) external returns (Step[] memory);
+    function findStepsOut(address zapOutToken, address BPT, uint256 bptAmount)
+        external
+        returns (Step[] memory);
 }
 
 interface IWftm is IERC20 {
-    function deposit() external payable returns (uint);
+    function deposit() external payable returns (uint256);
 }
 
 contract DepositHelperReaperBPTTest is ERC721Holder, Test {
@@ -60,13 +56,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            1000,
-            address(vault),
-            address(0),
-            linearCurve,
-            "A Late Quartet",
-            nftDescriptor,
-            true
+            1000, address(vault), address(0), linearCurve, "A Late Quartet", nftDescriptor, true
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);
@@ -74,18 +64,15 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
 
         wftm = IWftm(0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83);
         wftm.deposit{value: 1_000_000 ether}();
-        wftm.approve(address(helper), type(uint).max);
+        wftm.approve(address(helper), type(uint256).max);
         helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
-    function testCreateNew(uint amount, bool depositFTM) public {
+    function testCreateNew(uint256 amount, bool depositFTM) public {
         amount = bound(amount, 1 ether, wftm.balanceOf(address(this)));
         IReZap.Step[] memory steps = reZap.findStepsIn(address(wftm), bpt, amount);
-        (uint relicId, uint shares) = helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(
-            steps,
-            0,
-            amount
-        );
+        (uint256 relicId, uint256 shares) =
+            helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(steps, 0, amount);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
         assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
@@ -96,52 +83,45 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         );
     }
 
-    function testDepositExisting(uint amountA, uint amountB, bool aIsFTM, bool bIsFTM) public {
+    function testDepositExisting(uint256 amountA, uint256 amountB, bool aIsFTM, bool bIsFTM)
+        public
+    {
         amountA = bound(amountA, 1 ether, 500_000 ether);
         amountB = bound(amountB, 1 ether, 1_000_000 ether - amountA);
 
         IReZap.Step[] memory stepsA = reZap.findStepsIn(address(wftm), bpt, amountA);
-        (uint relicId, uint sharesA) = helper.createRelicAndDeposit{value: aIsFTM ? amountA : 0}(
-            stepsA,
-            0,
-            amountA
-        );
+        (uint256 relicId, uint256 sharesA) =
+            helper.createRelicAndDeposit{value: aIsFTM ? amountA : 0}(stepsA, 0, amountA);
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, amountB);
-        uint sharesB = helper.deposit{value: bIsFTM ? amountB : 0}(stepsB, amountB, relicId);
+        uint256 sharesB = helper.deposit{value: bIsFTM ? amountB : 0}(stepsB, amountB, relicId);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
-        uint relicAmount = reliquary.getPositionForId(relicId).amount;
+        uint256 relicAmount = reliquary.getPositionForId(relicId).amount;
         assertEq(relicAmount, sharesA + sharesB);
     }
 
     function testRevertOnDepositUnauthorized() public {
         IReZap.Step[] memory stepsA = reZap.findStepsIn(address(wftm), bpt, 1 ether);
-        (uint relicId, ) = helper.createRelicAndDeposit(stepsA, 0, 1 ether);
+        (uint256 relicId,) = helper.createRelicAndDeposit(stepsA, 0, 1 ether);
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, 1 ether);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.deposit(stepsB, 1 ether, relicId);
     }
 
-    function testWithdraw(uint amount, bool harvest, bool depositFTM, bool withdrawFTM) public {
-        uint ftmInitialBalance = address(this).balance;
-        uint wftmInitialBalance = wftm.balanceOf(address(this));
+    function testWithdraw(uint256 amount, bool harvest, bool depositFTM, bool withdrawFTM) public {
+        uint256 ftmInitialBalance = address(this).balance;
+        uint256 wftmInitialBalance = wftm.balanceOf(address(this));
         amount = bound(amount, 1 ether, 1_000_000 ether);
 
         IReZap.Step[] memory stepsIn = reZap.findStepsIn(address(wftm), bpt, amount);
-        (uint relicId, uint shares) = helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(
-            stepsIn,
-            0,
-            amount
-        );
-        IReZap.Step[] memory stepsOut = reZap.findStepsOut(
-            address(wftm),
-            bpt,
-            (shares * vault.balance()) / vault.totalSupply()
-        );
+        (uint256 relicId, uint256 shares) =
+            helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(stepsIn, 0, amount);
+        IReZap.Step[] memory stepsOut =
+            reZap.findStepsOut(address(wftm), bpt, (shares * vault.balance()) / vault.totalSupply());
         helper.withdraw(stepsOut, shares, relicId, harvest, withdrawFTM);
 
-        uint difference;
+        uint256 difference;
         if (depositFTM && withdrawFTM) {
             difference = ftmInitialBalance - address(this).balance;
         } else if (depositFTM && !withdrawFTM) {
@@ -153,7 +133,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         }
 
         // allow for 0.5% slippage after 0.1% security fee
-        uint afterFee = amount - (amount * 10) / 10_000;
+        uint256 afterFee = amount - (amount * 10) / 10_000;
         if (depositFTM == withdrawFTM) {
             assertTrue(difference <= (afterFee * 5) / 1000);
         } else {
@@ -163,12 +143,9 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
 
     function testRevertOnWithdrawUnauthorized(bool harvest, bool isETH) public {
         IReZap.Step[] memory stepsIn = reZap.findStepsIn(address(wftm), bpt, 1 ether);
-        (uint relicId, uint shares) = helper.createRelicAndDeposit(stepsIn, 0, 1 ether);
-        IReZap.Step[] memory stepsOut = reZap.findStepsOut(
-            address(wftm),
-            bpt,
-            (shares * vault.balance()) / vault.totalSupply()
-        );
+        (uint256 relicId, uint256 shares) = helper.createRelicAndDeposit(stepsIn, 0, 1 ether);
+        IReZap.Step[] memory stepsOut =
+            reZap.findStepsOut(address(wftm), bpt, (shares * vault.balance()) / vault.totalSupply());
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.withdraw(stepsOut, shares, relicId, harvest, isETH);

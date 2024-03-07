@@ -100,23 +100,25 @@ interface IReliquary is IERC721Enumerable {
 
     function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory);
 
-    function pendingRewardsOfOwner(
-        address _owner
-    ) external view returns (PendingReward[] memory pendingRewards_);
+    function pendingRewardsOfOwner(address _owner)
+        external
+        view
+        returns (PendingReward[] memory pendingRewards_);
 
-    function relicPositionsOfOwner(
-        address _owner
-    ) external view returns (uint256[] memory relicIds_, PositionInfo[] memory positionInfos_);
+    function relicPositionsOfOwner(address _owner)
+        external
+        view
+        returns (uint256[] memory relicIds_, PositionInfo[] memory positionInfos_);
 
     function isApprovedOrOwner(address, uint256) external view returns (bool);
 
-    function createRelicAndDeposit(
-        address _to,
-        uint256 _pid,
-        uint256 _amount
-    ) external returns (uint256 id_);
+    function createRelicAndDeposit(address _to, uint256 _pid, uint256 _amount)
+        external
+        returns (uint256 _id_);
 
-    function split(uint256 _relicId, uint256 _amount, address to) external returns (uint256 newId_);
+    function split(uint256 _relicId, uint256 _amount, address _to)
+        external
+        returns (uint256 newId_);
 
     function shift(uint256 _fromId, uint256 _toId, uint256 _amount) external;
 

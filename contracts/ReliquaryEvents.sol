@@ -5,16 +5,10 @@ library ReliquaryEvents {
     event CreateRelic(uint256 indexed pid, address indexed to, uint256 indexed relicId);
     event Deposit(uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
     event Withdraw(
-        uint256 indexed pid,
-        uint256 amount,
-        address indexed to,
-        uint256 indexed relicId
+        uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId
     );
     event EmergencyWithdraw(
-        uint256 indexed pid,
-        uint256 amount,
-        address indexed to,
-        uint256 indexed relicId
+        uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId
     );
     event Harvest(uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
     event LogPoolAddition(
@@ -26,16 +20,10 @@ library ReliquaryEvents {
         bool allowPartialWithdrawals
     );
     event LogPoolModified(
-        uint256 indexed pid,
-        uint256 allocPoint,
-        address indexed rewarder,
-        address nftDescriptor
+        uint256 indexed pid, uint256 allocPoint, address indexed rewarder, address nftDescriptor
     );
     event LogUpdatePool(
-        uint256 indexed pid,
-        uint256 lastRewardTime,
-        uint256 lpSupply,
-        uint256 accRewardPerShare
+        uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare
     );
     event LogSetEmissionRate(uint256 indexed emissionRate);
     event LevelChanged(uint256 indexed relicId, uint256 newLevel);

@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import "contracts/Reliquary.sol";
 import "contracts/interfaces/IReliquary.sol";
-import "contracts/rewarders/ParentRewarder.sol";
 import "./mocks/ERC20Mock.sol";
 import "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -48,7 +47,6 @@ contract ReliquaryProperties {
 
     uint public emissionRate = 1e18;
     uint public initialMint = 100 ether;
-    uint public constant ACC_REWARD_PRECISION = 1e12;
     uint public immutable startTimestamp;
 
     uint public totalNbPools;

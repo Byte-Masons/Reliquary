@@ -40,17 +40,22 @@ contract DepositHelperReaperVault is Ownable {
     receive() external payable {}
 
     /// @notice Deposit `_amount` of ERC20 tokens (or native ether for a supported pool) into existing Relic `_relicId`.
-    function deposit(uint256 _amount, uint256 _relicId) external payable returns (uint256 shares_) {
+    function deposit(uint256 _amount, uint256 _relicId)
+        external
+        payable
+        returns (uint256 shares_)
+    {
         _requireApprovedOrOwner(_relicId);
         shares_ = _prepareDeposit(reliquary.getPositionForId(_relicId).poolId, _amount);
         reliquary.deposit(shares_, _relicId);
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
-    function createRelicAndDeposit(
-        uint256 _pid,
-        uint256 _amount
-    ) external payable returns (uint256 relicId_, uint256 shares_) {
+    function createRelicAndDeposit(uint256 _pid, uint256 _amount)
+        external
+        payable
+        returns (uint256 relicId_, uint256 shares_)
+    {
         shares_ = _prepareDeposit(_pid, _amount);
         relicId_ = reliquary.createRelicAndDeposit(msg.sender, _pid, shares_);
     }
@@ -115,7 +120,9 @@ contract DepositHelperReaperVault is Ownable {
         }
     }
 
-    function _withdraw(uint256 _amount, uint256 _relicId, bool _harvest, bool _giveEther) internal {
+    function _withdraw(uint256 _amount, uint256 _relicId, bool _harvest, bool _giveEther)
+        internal
+    {
         _requireApprovedOrOwner(_relicId);
 
         PositionInfo memory position_ = reliquary.getPositionForId(_relicId);

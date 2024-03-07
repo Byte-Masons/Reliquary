@@ -24,14 +24,14 @@ contract ReliquaryUser is ERC721Holder, Test {
         reliquary.createRelicAndDeposit(address(this), 0, amount);
     }
 
-    function depositExisting(uint128 amount, uint index) external {
-        uint relicId = _getOwnedRelicId(index);
+    function depositExisting(uint128 amount, uint256 index) external {
+        uint256 relicId = _getOwnedRelicId(index);
         _getTokens(amount);
         reliquary.deposit(amount, relicId);
     }
 
-    function withdraw(uint amount, uint index, bool _harvest) external {
-        uint relicId = _getOwnedRelicId(index);
+    function withdraw(uint256 amount, uint256 index, bool _harvest) external {
+        uint256 relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
         if (_harvest) {
             reliquary.withdrawAndHarvest(amount, relicId, address(this));
@@ -40,39 +40,39 @@ contract ReliquaryUser is ERC721Holder, Test {
         }
     }
 
-    function harvest(uint index) external {
-        uint relicId = _getOwnedRelicId(index);
+    function harvest(uint256 index) external {
+        uint256 relicId = _getOwnedRelicId(index);
         reliquary.harvest(relicId, address(this));
     }
 
-    function split(uint amount, uint index) external {
-        uint relicId = _getOwnedRelicId(index);
+    function split(uint256 amount, uint256 index) external {
+        uint256 relicId = _getOwnedRelicId(index);
         amount = bound(amount, 1, reliquary.getPositionForId(relicId).amount);
         reliquary.split(relicId, amount, address(this));
     }
 
-    function shift(uint amount, uint fromIndex, uint toIndex) external {
+    function shift(uint256 amount, uint256 fromIndex, uint256 toIndex) external {
         vm.assume(fromIndex != toIndex);
-        uint fromId = _getOwnedRelicId(fromIndex);
-        uint toId = _getOwnedRelicId(toIndex);
+        uint256 fromId = _getOwnedRelicId(fromIndex);
+        uint256 toId = _getOwnedRelicId(toIndex);
         amount = bound(amount, 1, reliquary.getPositionForId(fromId).amount);
         reliquary.shift(fromId, toId, amount);
     }
 
-    function merge(uint fromIndex, uint toIndex) external {
+    function merge(uint256 fromIndex, uint256 toIndex) external {
         vm.assume(fromIndex != toIndex);
-        uint fromId = _getOwnedRelicId(fromIndex);
-        uint toId = _getOwnedRelicId(toIndex);
+        uint256 fromId = _getOwnedRelicId(fromIndex);
+        uint256 toId = _getOwnedRelicId(toIndex);
         reliquary.merge(fromId, toId);
     }
 
-    function emergencyWithdraw(uint index) external {
-        uint relicId = _getOwnedRelicId(index);
+    function emergencyWithdraw(uint256 index) external {
+        uint256 relicId = _getOwnedRelicId(index);
         reliquary.emergencyWithdraw(relicId);
     }
 
-    function _getOwnedRelicId(uint index) internal view returns (uint relicId) {
-        uint balance = reliquary.balanceOf(address(this));
+    function _getOwnedRelicId(uint256 index) internal view returns (uint256 relicId) {
+        uint256 balance = reliquary.balanceOf(address(this));
         require(balance != 0, "no existing Relics");
         index = bound(index, 0, balance - 1);
         relicId = reliquary.tokenOfOwnerByIndex(address(this), index);

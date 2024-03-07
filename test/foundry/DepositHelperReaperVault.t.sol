@@ -9,11 +9,11 @@ import "contracts/Reliquary.sol";
 import "contracts/curves/LinearCurve.sol";
 
 interface IReaperVaultTest is IReaperVault {
-    function balance() external view returns (uint);
+    function balance() external view returns (uint256);
 
-    function tvlCap() external view returns (uint);
+    function tvlCap() external view returns (uint256);
 
-    function withdrawalQueue(uint) external view returns (IStrategy);
+    function withdrawalQueue(uint256) external view returns (IStrategy);
 }
 
 interface IStrategy is IAccessControlEnumerable {
@@ -46,47 +46,27 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.addPool(
-            1000,
-            address(wethVault),
-            address(0),
-            linearCurve,
-            "WETH",
-            nftDescriptor,
-            true
+            1000, address(wethVault), address(0), linearCurve, "WETH", nftDescriptor, true
         );
         reliquary.addPool(
-            1000,
-            address(usdcVault),
-            address(0),
-            linearCurve,
-            "USDC",
-            nftDescriptor,
-            true
+            1000, address(usdcVault), address(0), linearCurve, "USDC", nftDescriptor, true
         );
         reliquary.addPool(
-            1000,
-            address(sternVault),
-            address(0),
-            linearCurve,
-            "ERN",
-            nftDescriptor,
-            true
+            1000, address(sternVault), address(0), linearCurve, "ERN", nftDescriptor, true
         );
 
         weth = IWeth(address(wethVault.token()));
         helper = new DepositHelperReaperVault(reliquary, address(weth));
 
         weth.deposit{value: 1_000_000 ether}();
-        weth.approve(address(helper), type(uint).max);
+        weth.approve(address(helper), type(uint256).max);
         helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
-    function testCreateNew(uint amount, bool depositETH) public {
+    function testCreateNew(uint256 amount, bool depositETH) public {
         amount = bound(amount, 10, weth.balanceOf(address(this)));
-        (uint relicId, uint shares) = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(
-            0,
-            amount
-        );
+        (uint256 relicId, uint256 shares) =
+            helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
 
         assertEq(weth.balanceOf(address(helper)), 0);
         assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
@@ -97,34 +77,34 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         );
     }
 
-    function testDepositExisting(uint amountA, uint amountB, bool aIsETH, bool bIsETH) public {
+    function testDepositExisting(uint256 amountA, uint256 amountB, bool aIsETH, bool bIsETH)
+        public
+    {
         amountA = bound(amountA, 10, 0.5 ether);
         amountB = bound(amountB, 10, 1 ether - amountA);
 
-        (uint relicId, uint sharesA) = helper.createRelicAndDeposit{value: aIsETH ? amountA : 0}(
-            0,
-            amountA
-        );
-        uint sharesB = helper.deposit{value: bIsETH ? amountB : 0}(amountB, relicId);
+        (uint256 relicId, uint256 sharesA) =
+            helper.createRelicAndDeposit{value: aIsETH ? amountA : 0}(0, amountA);
+        uint256 sharesB = helper.deposit{value: bIsETH ? amountB : 0}(amountB, relicId);
 
         assertEq(weth.balanceOf(address(helper)), 0);
-        uint relicAmount = reliquary.getPositionForId(relicId).amount;
+        uint256 relicAmount = reliquary.getPositionForId(relicId).amount;
         assertEq(relicAmount, sharesA + sharesB);
     }
 
     function testRevertOnDepositUnauthorized() public {
-        (uint relicId, ) = helper.createRelicAndDeposit(0, 1 ether);
+        (uint256 relicId,) = helper.createRelicAndDeposit(0, 1 ether);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.deposit(1 ether, relicId);
     }
 
-    function testWithdraw(uint amount, bool harvest, bool depositETH, bool withdrawETH) public {
-        uint ethInitialBalance = address(this).balance;
-        uint wethInitialBalance = weth.balanceOf(address(this));
+    function testWithdraw(uint256 amount, bool harvest, bool depositETH, bool withdrawETH) public {
+        uint256 ethInitialBalance = address(this).balance;
+        uint256 wethInitialBalance = weth.balanceOf(address(this));
         amount = bound(amount, 10, 1 ether);
 
-        (uint relicId, ) = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
+        (uint256 relicId,) = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
         if (depositETH) {
             assertEq(address(this).balance, ethInitialBalance - amount);
         } else {
@@ -137,7 +117,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
 
         helper.withdraw(amount, relicId, harvest, withdrawETH);
 
-        uint difference;
+        uint256 difference;
         if (depositETH && withdrawETH) {
             difference = ethInitialBalance - address(this).balance;
         } else if (depositETH && !withdrawETH) {
@@ -148,18 +128,18 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
             difference = wethInitialBalance - weth.balanceOf(address(this));
         }
 
-        uint expectedDifference = (depositETH == withdrawETH) ? 0 : amount;
+        uint256 expectedDifference = (depositETH == withdrawETH) ? 0 : amount;
         assertApproxEqAbs(difference, expectedDifference, 10);
     }
 
-    function testWithdrawUSDC(uint amount, bool harvest) public {
+    function testWithdrawUSDC(uint256 amount, bool harvest) public {
         amount = bound(amount, 10, 1e15);
         IERC20 usdc = usdcVault.token();
         assertEq(usdc.balanceOf(address(this)), 0);
         deal(address(usdc), address(this), amount);
         usdc.approve(address(helper), amount);
 
-        (uint relicId, ) = helper.createRelicAndDeposit(1, amount);
+        (uint256 relicId,) = helper.createRelicAndDeposit(1, amount);
         assertEq(usdc.balanceOf(address(this)), 0);
 
         IStrategy strategy = usdcVault.withdrawalQueue(0);
@@ -171,14 +151,14 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         assertApproxEqAbs(usdc.balanceOf(address(this)), amount, 10);
     }
 
-    function testWithdrawStERN(uint amount, bool harvest) public {
+    function testWithdrawStERN(uint256 amount, bool harvest) public {
         amount = bound(amount, 10, sternVault.tvlCap() - sternVault.balance());
         IERC20 ern = sternVault.token();
         assertEq(ern.balanceOf(address(this)), 0);
         deal(address(ern), address(this), amount);
-        ern.approve(address(helper), type(uint).max);
+        ern.approve(address(helper), type(uint256).max);
 
-        (uint relicId, ) = helper.createRelicAndDeposit(2, amount);
+        (uint256 relicId,) = helper.createRelicAndDeposit(2, amount);
         assertEq(ern.balanceOf(address(this)), 0);
 
         IStrategy strategy = sternVault.withdrawalQueue(0);
@@ -191,7 +171,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
     }
 
     function testRevertOnWithdrawUnauthorized(bool harvest, bool isETH) public {
-        (uint relicId, ) = helper.createRelicAndDeposit(0, 1 ether);
+        (uint256 relicId,) = helper.createRelicAndDeposit(0, 1 ether);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.withdraw(1 ether, relicId, harvest, isETH);

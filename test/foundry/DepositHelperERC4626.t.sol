@@ -37,25 +37,19 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
-            1000,
-            address(vault),
-            address(0),
-            linearCurve,
-            "ETH Crypt",
-            nftDescriptor,
-            true
+            1000, address(vault), address(0), linearCurve, "ETH Crypt", nftDescriptor, true
         );
 
         helper = new DepositHelperERC4626(reliquary, address(weth));
 
         weth.deposit{value: 1_000_000 ether}();
-        weth.approve(address(helper), type(uint).max);
+        weth.approve(address(helper), type(uint256).max);
         helper.reliquary().setApprovalForAll(address(helper), true);
     }
 
-    function testCreateNew(uint amount, bool depositETH) public {
+    function testCreateNew(uint256 amount, bool depositETH) public {
         amount = bound(amount, 10, weth.balanceOf(address(this)));
-        uint relicId = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
+        uint256 relicId = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
 
         assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
         assertEq(
@@ -65,34 +59,36 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         );
     }
 
-    function testDepositExisting(uint amountA, uint amountB, bool aIsETH, bool bIsETH) public {
+    function testDepositExisting(uint256 amountA, uint256 amountB, bool aIsETH, bool bIsETH)
+        public
+    {
         amountA = bound(amountA, 10, 500_000 ether);
         amountB = bound(amountB, 10, 1_000_000 ether - amountA);
 
-        uint relicId = helper.createRelicAndDeposit{value: aIsETH ? amountA : 0}(0, amountA);
+        uint256 relicId = helper.createRelicAndDeposit{value: aIsETH ? amountA : 0}(0, amountA);
         helper.deposit{value: bIsETH ? amountB : 0}(amountB, relicId);
 
-        uint relicAmount = reliquary.getPositionForId(relicId).amount;
-        uint expectedAmount = vault.convertToShares(amountA + amountB);
+        uint256 relicAmount = reliquary.getPositionForId(relicId).amount;
+        uint256 expectedAmount = vault.convertToShares(amountA + amountB);
         assertApproxEqAbs(expectedAmount, relicAmount, 1);
     }
 
     function testRevertOnDepositUnauthorized() public {
-        uint relicId = helper.createRelicAndDeposit(0, 1);
+        uint256 relicId = helper.createRelicAndDeposit(0, 1);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.deposit(1, relicId);
     }
 
-    function testWithdraw(uint amount, bool harvest, bool depositETH, bool withdrawETH) public {
-        uint ethInitialBalance = address(this).balance;
-        uint wethInitialBalance = weth.balanceOf(address(this));
+    function testWithdraw(uint256 amount, bool harvest, bool depositETH, bool withdrawETH) public {
+        uint256 ethInitialBalance = address(this).balance;
+        uint256 wethInitialBalance = weth.balanceOf(address(this));
         amount = bound(amount, 10, wethInitialBalance);
 
-        uint relicId = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
+        uint256 relicId = helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
         helper.withdraw(amount, relicId, harvest, withdrawETH);
 
-        uint difference;
+        uint256 difference;
         if (depositETH && withdrawETH) {
             difference = ethInitialBalance - address(this).balance;
         } else if (depositETH && !withdrawETH) {
@@ -103,12 +99,12 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
             difference = wethInitialBalance - weth.balanceOf(address(this));
         }
 
-        uint expectedDifference = (depositETH == withdrawETH) ? 0 : amount;
+        uint256 expectedDifference = (depositETH == withdrawETH) ? 0 : amount;
         assertApproxEqAbs(difference, expectedDifference, 10);
     }
 
     function testRevertOnWithdrawUnauthorized(bool harvest) public {
-        uint relicId = helper.createRelicAndDeposit(0, 1);
+        uint256 relicId = helper.createRelicAndDeposit(0, 1);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
         helper.withdraw(1, relicId, harvest, false);

@@ -8,7 +8,7 @@ script = 'scripts'
 
 solc_version = "0.8.18"
 optimizer = true
-optimizer_runs = 100
+optimizer_runs = 0
 via_ir = false
 verbosity = 1
 ignored_error_codes = [1878]
@@ -31,6 +31,6 @@ ignored_error_codes = [1878, 5574]
 optimizerSteps = ''
 
 [fmt]
-int_types = 'short'
+line_length = 100 # While we allow up to 120, we lint at 100 for readability.
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

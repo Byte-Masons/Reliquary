@@ -60,7 +60,7 @@ ln -s ../../pre-commit .git/hooks/pre-commit
 
 ### Formating
 
-Please use "format on save" with Prettier. This will use the `.prettierrc` config file.
+Please use `forge fmt` before commiting.
 
 ## TODO
 
