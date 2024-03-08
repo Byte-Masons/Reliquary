@@ -2,23 +2,24 @@
 pragma solidity ^0.8.17;
 
 import "./RollingRewarder.sol";
-import "../interfaces/IRewarder.sol";
+import "../interfaces/IParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
-contract ParentRollingRewarder is IRewarder, Ownable {
+contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private childrenRewarders;
 
-    uint256 public immutable poolId;
-    address public immutable reliquary;
+    uint256 public poolId = type(uint256).max;
+    address public reliquary;
 
     // Errors
     error ParentRollingRewarder__ONLY_RELIQUARY_ACCESS();
     error ParentRollingRewarder__ONLY_CHILD_CAN_BE_REMOVED();
+    error ParentRollingRewarder__ALREADY_INITIALIZED();
 
     // Events
     event ChildCreated(address indexed _child, address indexed _token);
@@ -29,29 +30,27 @@ contract ParentRollingRewarder is IRewarder, Ownable {
         _;
     }
 
+    constructor() {}
+
     /**
-     * @dev Contructor called on deployment of this contract.
-     * @param _reliquary Address of Reliquary this rewarder will read state from.
+     * @dev initialize called in Reliquary.addPool or Reliquary.modifyPool()
      * @param _poolId ID of the pool this rewarder will read state from.
      */
-    constructor(address _reliquary, uint256 _poolId) {
+    function initialize(uint256 _poolId) external {
+        if (poolId != type(uint256).max || reliquary != address(0)) {
+            revert ParentRollingRewarder__ALREADY_INITIALIZED();
+        }
         poolId = _poolId;
-        reliquary = _reliquary;
+        reliquary = msg.sender;
     }
 
     /**
      * @notice Deploys a ChildRewarder contract and adds it to the childrenRewarders set.
      * @param _rewardToken Address of token rewards are distributed in.
-     * @param _owner Address to transfer ownership of the ChildRewarder contract to.
      * @return child_ Address of the new ChildRewarder.
      */
-    function createChild(address _rewardToken, address _owner)
-        external
-        onlyOwner
-        returns (address child_)
-    {
+    function createChild(address _rewardToken) external onlyOwner returns (address child_) {
         child_ = address(new RollingRewarder(_rewardToken, reliquary, poolId));
-        Ownable(child_).transferOwnership(_owner);
         childrenRewarders.add(child_);
         emit ChildCreated(child_, address(_rewardToken));
     }
@@ -213,7 +212,7 @@ contract ParentRollingRewarder is IRewarder, Ownable {
         return childrenRewarders.values();
     }
 
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
+    function pendingTokens(uint256 _relicId)
         external
         view
         override
@@ -226,7 +225,7 @@ contract ParentRollingRewarder is IRewarder, Ownable {
         for (uint256 i_ = 0; i_ < length_;) {
             RollingRewarder rewarder_ = RollingRewarder(childrenRewarders.at(i_));
             rewardTokens_[i_] = rewarder_.rewardToken();
-            rewardAmounts_[i_] = rewarder_.pendingToken(_relicId, _rewardAmount);
+            rewardAmounts_[i_] = rewarder_.pendingToken(_relicId);
             unchecked {
                 ++i_;
             }

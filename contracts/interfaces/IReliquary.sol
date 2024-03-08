@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "contracts/interfaces/ICurves.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
@@ -127,8 +127,6 @@ interface IReliquary is IERC721Enumerable {
     function burn(uint256 _tokenId) external;
 
     function pendingReward(uint256 _relicId) external view returns (uint256 pending_);
-
-    function poolLength() external view returns (uint256);
 
     function rewardToken() external view returns (address);
 

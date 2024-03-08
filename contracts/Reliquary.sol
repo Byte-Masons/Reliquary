@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 import "./ReliquaryEvents.sol";
 import "./interfaces/IReliquary.sol";
+import "./interfaces/IParentRollingRewarder.sol";
 import "./interfaces/IRewarder.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -38,7 +39,8 @@ contract Reliquary is
     enum Kind {
         DEPOSIT,
         WITHDRAW,
-        OTHER
+        HARVEST,
+        UPDATE
     }
 
     /// @dev Access control roles.
@@ -132,7 +134,7 @@ contract Reliquary is
     ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_poolToken == rewardToken) revert Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();
 
-        for (uint256 i_; i_ < poolLength();) {
+        for (uint256 i_; i_ < poolInfo.length;) {
             _updatePool(i_);
             unchecked {
                 ++i_;
@@ -169,13 +171,13 @@ contract Reliquary is
             })
         );
 
+        uint256 newPoolId_ = poolInfo.length - 1;
+        if (_rewarder != address(0)) {
+            IParentRollingRewarder(_rewarder).initialize(newPoolId_);
+        }
+
         emit ReliquaryEvents.LogPoolAddition(
-            (poolInfo.length - 1),
-            _allocPoint,
-            _poolToken,
-            _rewarder,
-            _nftDescriptor,
-            _allowPartialWithdrawals
+            newPoolId_, _allocPoint, _poolToken, _rewarder, _nftDescriptor, _allowPartialWithdrawals
         );
     }
 
@@ -198,7 +200,7 @@ contract Reliquary is
     ) external override onlyRole(OPERATOR) {
         if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
 
-        for (uint256 i_; i_ < poolLength();) {
+        for (uint256 i_; i_ < poolInfo.length;) {
             _updatePool(i_);
             unchecked {
                 ++i_;
@@ -213,6 +215,9 @@ contract Reliquary is
 
         if (_overwriteRewarder) {
             pool.rewarder = _rewarder;
+            if (_rewarder != address(0)) {
+                IParentRollingRewarder(_rewarder).initialize(_pid);
+            }
         }
 
         pool.name = _name;
@@ -227,7 +232,7 @@ contract Reliquary is
      * @notice Update reward variables for all pools. Be careful of gas spending!
      */
     function massUpdatePools() external override nonReentrant {
-        for (uint256 i_; i_ < poolLength();) {
+        for (uint256 i_; i_ < poolInfo.length;) {
             _updatePool(i_);
             unchecked {
                 ++i_;
@@ -262,11 +267,11 @@ contract Reliquary is
         if (_amount == 0) revert Reliquary__ZERO_AMOUNT();
         _requireApprovedOrOwner(_relicId);
 
-        (uint256 poolId,) = _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
+        (uint256 poolId_,) = _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
 
-        IERC20(poolInfo[poolId].poolToken).safeTransfer(msg.sender, _amount);
+        IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
-        emit ReliquaryEvents.Withdraw(poolId, _amount, msg.sender, _relicId);
+        emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
     }
 
     /**
@@ -278,7 +283,7 @@ contract Reliquary is
         _requireApprovedOrOwner(_relicId);
 
         (uint256 poolId_, uint256 receivedReward_) =
-            _updatePosition(0, _relicId, Kind.OTHER, _harvestTo);
+            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
 
         emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
     }
@@ -298,7 +303,9 @@ contract Reliquary is
         _requireApprovedOrOwner(_relicId);
 
         (uint256 poolId_, uint256 receivedReward_) =
-            _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
+            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
+
+        _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
@@ -338,7 +345,7 @@ contract Reliquary is
      */
     function updatePosition(uint256 _relicId) external override nonReentrant {
         if (!_exists(_relicId)) revert Reliquary__NON_EXISTENT_RELIC();
-        _updatePosition(0, _relicId, Kind.OTHER, address(0));
+        _updatePosition(0, _relicId, Kind.UPDATE, address(0));
     }
 
     /// @notice Returns a PositionInfo object for the given relicId.
@@ -712,11 +719,6 @@ contract Reliquary is
             + position.rewardCredit - position.rewardDebt;
     }
 
-    /// @notice Returns the number of Reliquary pools.
-    function poolLength() public view override returns (uint256 pools_) {
-        pools_ = poolInfo.length;
-    }
-
     /**
      * @notice Returns the ERC721 tokenURI given by the pool's NFTDescriptor.
      * @dev Can be gas expensive if used in a transaction and the NFTDescriptor is complex.
@@ -741,7 +743,7 @@ contract Reliquary is
 
     /// @dev Internal `_updatePool` function without nonReentrant modifier.
     function _updatePool(uint256 _pid) internal returns (uint256 accRewardPerShare_) {
-        if (_pid >= poolLength()) revert Reliquary__NON_EXISTENT_POOL();
+        if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
         PoolInfo storage pool = poolInfo[_pid];
         uint256 timestamp_ = block.timestamp;
         uint256 lastRewardTime_ = pool.lastRewardTime;
@@ -832,16 +834,16 @@ contract Reliquary is
         );
 
         vars_.harvest = _harvestTo != address(0);
+        address rewarder_ = poolInfo[poolId_].rewarder;
         if (!vars_.harvest && pendingReward_ != 0) {
             position.rewardCredit += pendingReward_;
-        } else if (vars_.harvest) {
+        } else if (vars_.harvest && _kind == Kind.HARVEST) {
             uint256 total = pendingReward_ + position.rewardCredit;
             received_ = _receivedReward(total);
             position.rewardCredit = total - received_;
             if (received_ != 0) {
                 IERC20(rewardToken).safeTransfer(_harvestTo, received_);
             }
-            address rewarder_ = poolInfo[poolId_].rewarder;
             if (rewarder_ != address(0)) {
                 IRewarder(rewarder_).onReward(
                     poolInfo[poolId_].curve,
@@ -856,7 +858,6 @@ contract Reliquary is
         }
 
         if (_kind == Kind.DEPOSIT) {
-            address rewarder_ = poolInfo[poolId_].rewarder;
             if (rewarder_ != address(0)) {
                 IRewarder(rewarder_).onDeposit(
                     poolInfo[poolId_].curve,
@@ -868,7 +869,6 @@ contract Reliquary is
                 );
             }
         } else if (_kind == Kind.WITHDRAW) {
-            address rewarder_ = poolInfo[poolId_].rewarder;
             if (rewarder_ != address(0)) {
                 IRewarder(rewarder_).onWithdraw(
                     poolInfo[poolId_].curve,

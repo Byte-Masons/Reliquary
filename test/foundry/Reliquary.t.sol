@@ -47,10 +47,6 @@ contract ReliquaryTest is ERC721Holder, Test {
         testToken.approve(address(reliquary), type(uint256).max);
     }
 
-    function testPoolLength() public {
-        assertTrue(reliquary.poolLength() == 1);
-    }
-
     function testModifyPool() public {
         vm.expectEmit(true, true, false, true);
         emit ReliquaryEvents.LogPoolModified(0, 100, address(0), nftDescriptor);

@@ -34,7 +34,6 @@ contract RollingRewarder is IRollingRewarder {
 
     // Errors
     error RollingRewarder__NOT_PARENT();
-    error RollingRewarder__NOT_RELIQUARY();
     error RollingRewarder__NOT_OWNER();
     error RollingRewarder__ZERO_INPUT();
 
@@ -51,12 +50,6 @@ contract RollingRewarder is IRollingRewarder {
     /// @dev Limits function calls to address of parent contract `ParentRollingRewarder`
     modifier onlyParent() {
         if (msg.sender != parent) revert RollingRewarder__NOT_PARENT();
-        _;
-    }
-
-    /// @dev Limits function calls to address of Reliquary contract `reliquary`
-    modifier onlyReliquary() {
-        if (msg.sender != reliquary) revert RollingRewarder__NOT_RELIQUARY();
         _;
     }
 
@@ -104,6 +97,7 @@ contract RollingRewarder is IRollingRewarder {
         rewardCredit[_relicId] = 0;
 
         rewardDebt[_relicId] = ((newAmountMultiplied_ * accRewardPerShare) / ACC_REWARD_PRECISION);
+
         if (pending_ > 0) {
             IERC20(rewardToken).safeTransfer(_to, pending_);
             emit LogOnReward(_relicId, pending_, _to);
@@ -266,10 +260,7 @@ contract RollingRewarder is IRollingRewarder {
     }
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
-    function pendingToken(
-        uint256 _relicId,
-        uint256 // _rewardAmount
-    ) public view returns (uint256 amount_) {
+    function pendingToken(uint256 _relicId) public view returns (uint256 amount_) {
         uint256 poolBalance_ = IReliquary(reliquary).getPoolInfo(poolId).totalLpSupplied;
         uint256 lastIssuanceTimestamp_ = lastIssuanceTimestamp; // Last time token was distributed.
         uint256 lastDistributionTime_ = lastDistributionTime; // Timestamp of the final distribution of tokens.
@@ -295,7 +286,7 @@ contract RollingRewarder is IRollingRewarder {
         amount_ = pending_;
     }
 
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
+    function pendingTokens(uint256 _relicId)
         external
         view
         virtual
@@ -306,7 +297,7 @@ contract RollingRewarder is IRollingRewarder {
         rewardTokens_[0] = rewardToken;
 
         rewardAmounts_ = new uint256[](1);
-        rewardAmounts_[0] = pendingToken(_relicId, _rewardAmount);
+        rewardAmounts_[0] = pendingToken(_relicId);
     }
 
     function getRewardAmount(uint256 _seconds) public view returns (uint256) {

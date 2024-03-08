@@ -64,7 +64,7 @@ interface IRewarder {
         uint256 _newToLevel
     ) external;
 
-    function pendingTokens(uint256 _relicId, uint256 _rewardAmount)
+    function pendingTokens(uint256 _relicId)
         external
         view
         returns (address[] memory, uint256[] memory);
