@@ -236,6 +236,8 @@ contract RollingRewarder is IRollingRewarder, SingleAssetRewarder, ChildRewarder
 
                 _totalIssued = _totalIssued + issuance;
             }
+        } else {
+            newAccReward = accRewardPerShare;
         }
 
         PositionInfo memory position = IReliquary(reliquary).getPositionForId(relicId);
