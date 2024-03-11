@@ -7,7 +7,7 @@ import {OwnableCurve} from "contracts/emission_curves/OwnableCurve.sol";
 import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
 import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
-import {ParentRewarderRolling} from "contracts/rewarders/ParentRewarder-Rolling.sol";
+import {ParentRewarderRolling, RollingRewarder} from "contracts/rewarders/ParentRewarder-Rolling.sol";
 
 contract Deploy is Script {
     using stdJson for string;
@@ -15,21 +15,13 @@ contract Deploy is Script {
     struct Pool {
         uint allocPoint;
         bool allowPartialWithdrawals;
+        address[] childRewarderTokens;
+        uint[] childRewarderPeriods;
         uint[] levelMultipliers;
         string name;
         address poolToken;
         uint[] requiredMaturities;
-        int rewarderIndex;
         string tokenType;
-    }
-
-    struct ParentRewarder {
-        uint poolId;
-    }
-
-    struct Rewarder {
-        uint parentIndex;
-        address rewardToken;
     }
 
     bytes32 constant OPERATOR = keccak256("OPERATOR");
@@ -41,7 +33,7 @@ contract Deploy is Script {
     address multisig;
     Reliquary reliquary;
     OwnableCurve emissionCurve;
-    address[] rewarderAddresses;
+    mapping (uint => address) rewarderForPoolId;
     ParentRewarderRolling[] parentRewarders;
     address nftDescriptorNormal;
     address nftDescriptor4626;
@@ -59,13 +51,10 @@ contract Deploy is Script {
         address thenaReceiver = config.readAddress(".thenaReceiver");
         uint emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
-
         vm.startBroadcast();
-
         emissionCurve = new OwnableCurve(emissionRate);
 
         reliquary = new Reliquary(rewardToken, address(emissionCurve), thenaToken, voter, thenaReceiver, name, symbol);
-
 
         reliquary.grantRole(OPERATOR, tx.origin);
         for (uint i = 0; i < pools.length; ++i) {
@@ -73,10 +62,16 @@ contract Deploy is Script {
 
             address nftDescriptor = _deployHelpers(pool.tokenType);
 
+            address rewarder;
+            if (pool.childRewarderTokens.length > 0) {
+                rewarder = address(new ParentRewarderRolling(address(reliquary), i));
+                rewarderForPoolId[i] = rewarder;
+            }
+
             reliquary.addPool(
                 pool.allocPoint,
                 pool.poolToken,
-                address(0),
+                rewarder,
                 pool.requiredMaturities,
                 pool.levelMultipliers,
                 pool.name,
@@ -85,7 +80,7 @@ contract Deploy is Script {
             );
         }
 
-        _deployRewarders();
+        _deployChildRewarders();
 
         if (multisig != address(0)) {
             _renounceRoles();
@@ -94,32 +89,28 @@ contract Deploy is Script {
         vm.stopBroadcast();
     }
 
-    function _deployRewarders() internal {
-        ParentRewarder[] memory parents = abi.decode(config.parseRaw(".parentRewarders"), (ParentRewarder[]));
-        for (uint i; i < parents.length; ++i) {
-            ParentRewarder memory parent = parents[i];
+    function _deployChildRewarders() internal {
+        Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
+        for (uint i; i < pools.length; ++i) {
+            Pool memory pool = pools[i];
+            if (pools[i].childRewarderTokens.length == 0) {
+                continue;
+            }
+            ParentRewarderRolling parent = ParentRewarderRolling(rewarderForPoolId[i]);
 
-            ParentRewarderRolling newParent = new ParentRewarderRolling(
-                address(reliquary), parent.poolId
-            );
+            parent.grantRole(CHILD_SETTER, tx.origin);
+            parent.grantRole(REWARD_SETTER, tx.origin);
+            parentRewarders.push(parent);
 
-            newParent.grantRole(CHILD_SETTER, tx.origin);
-            newParent.grantRole(REWARD_SETTER, tx.origin);
-            parentRewarders.push(newParent);
-            rewarderAddresses.push(address(newParent));
+            require(pool.childRewarderTokens.length == pool.childRewarderPeriods.length, "invalid child rewarder data");
 
-            Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
-            
-            reliquary.modifyPool(0, 100, address(newParent), pools[0].name, address(0), true);
-        }
-
-        Rewarder[] memory rewarders = abi.decode(config.parseRaw(".childRewarders"), (Rewarder[]));
-        for (uint i; i < rewarders.length; ++i) {
-            Rewarder memory rewarder = rewarders[i];
-
-            ParentRewarderRolling parent = parentRewarders[rewarder.parentIndex];
-            address rewarderAddress = parent.createChild(rewarder.rewardToken, tx.origin);
-            rewarderAddresses.push(rewarderAddress);
+            for (uint j; j < pool.childRewarderTokens.length; ++j) {
+                address rewardToken = pool.childRewarderTokens[j];
+                uint period = pool.childRewarderPeriods[j];
+                RollingRewarder child = RollingRewarder(parent.createChild(rewardToken, tx.origin));
+                child.updateDistributionPeriod(period);
+                if (multisig != address(0)) child.transferOwnership(multisig);
+            }
         }
     }
 

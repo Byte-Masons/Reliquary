@@ -22,16 +22,11 @@
 #     `name`: Name of the pool.                                                                                        #
 #     `poolToken`: Address for the token this pool takes for deposits.                                                 #
 #     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
-#     `rewarderIndex`: Index of the rewarder to use for this pool. -1 for no rewarder contract.                        #
+#     `childRewarderTokens`: If set, will determine the rewardTokens for a ParentRewarder, which will be set as the    #
+#         rewarder for this pool.                                                                                      #
+#     `childRewarderPeriods`: Determines `distributionPeriod`s for rewarders above.                                    #
 #     `tokenType`: Type of NFTDescriptor to use for this token. Valid values are "normal", "4626", and "pair". Use     #
 #         "4626" if `poolToken` is an ERC4626 contract, and "pair" if it is a UniswapV2Pair.                           #
-#                                                                                                                      #
-# `rewarders`: May be of any length (or empty). Each member must have each property defined in the correct order shown.#
-#     `parentIndex`: Index of this rewarder's parent. -1 if this rewarder is a parent. Children must have a later      #
-#         index than their parent.                                                                                     #
-#     `rewardMultiplier`: Multiplier relative to `rewardToken` to emit of `rewarderToken` where 100% is                #
-#         1000000000000000000. Very important to account for `rewardToken` and `rewarderToken` decimals when setting.  #
-#     `rewarderToken`: Address of the token this rewarder is emitting.                                                 #
 #                                                                                                                      #
 ########################################################################################################################
 
@@ -45,39 +40,32 @@
     "rewardToken": "0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6",
     "emissionRate": "10000000000",
 
+    "thenaToken": "0x0000000000000000000000000000000000000000",
+    "voter": "0x0000000000000000000000000000000000000000",
+    "thenaReceiver": "0x0000000000000000000000000000000000000000",
+
     "pools": [
         {
             "allocPoint": 100,
             "allowPartialWithdrawals": true,
+            "childRewarderTokens": ["0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6"],
+            "childRewarderPeriods": [84600],
             "levelMultipliers": [100, 120, 150, 200, 300, 400, 500, 750],
             "name": "USDC Optimizer",
             "poolToken": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
             "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000],
-            "rewarderIndex": 0,
             "tokenType": "4626"
         },
         {
             "allocPoint": 50,
             "allowPartialWithdrawals": true,
+            "childRewarderTokens": ["0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6"],
+            "childRewarderPeriods": [84600],
             "levelMultipliers": [100, 120, 150, 200, 300, 400],
             "name": "ETH Optimizer",
             "poolToken": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",
             "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000],
-            "rewarderIndex": -1,
             "tokenType": "4626"
-        }
-    ],
-
-    "rewarders": [
-        {
-            "parentIndex": -1,
-            "rewardMultiplier": 1000000000000000000,
-            "rewarderToken": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75"
-        },
-        {
-            "parentIndex": 0,
-            "rewardMultiplier": 50000000000000,
-            "rewarderToken": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
         }
     ]
 }
