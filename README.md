@@ -2,7 +2,7 @@
 
 ![Reliquary](header.png "Reliquary")
 
-> Designed and written by [Justin Bebis](https://twitter.com/0xBebis_) and Zokunei, with help from [Goober](https://twitter.com/0xGoober) and the rest of the [Byte Masons](https://twitter.com/ByteMasons) crew.
+> Designed and written by [Justin Bebis](https://twitter.com/0xBebis_), Zokunei and [Beirao](https://twitter.com/0xBeirao), with help from [Goober](https://twitter.com/0xGoober) and the rest of the [Byte Masons](https://twitter.com/ByteMasons) crew.
 
 ---
 

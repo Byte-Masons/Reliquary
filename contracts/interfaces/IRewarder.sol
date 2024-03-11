@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.23;
 
 import "../interfaces/ICurves.sol";
 
@@ -7,8 +7,15 @@ interface IRewarder {
     function onReward(
         ICurves _curve,
         uint256 _relicId,
-        uint256 _rewardAmount,
         address _to,
+        uint256 _amount,
+        uint256 _oldLevel,
+        uint256 _newLevel
+    ) external;
+
+    function onUpdate(
+        ICurves _curve,
+        uint256 _relicId,
         uint256 _amount,
         uint256 _oldLevel,
         uint256 _newLevel

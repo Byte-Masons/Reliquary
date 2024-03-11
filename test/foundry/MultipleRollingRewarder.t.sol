@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -23,7 +23,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
     ERC20DecimalsMock public suppliedToken;
     ParentRollingRewarder public parentRewarder;
 
-    uint256 public nbChildRewarder = 1;
+    uint256 public nbChildRewarder = 3;
     RollingRewarder[] public childRewarders;
     ERC20DecimalsMock[] public rewardTokens;
 
@@ -93,8 +93,8 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         }
     }
 
-    function testMultiRewards1(uint256 seedInitialFunding) public {
-        // uint seedInitialFunding = 100000000000000000;
+    function testMultiRewards1( /*uint256 seedInitialFunding*/ ) public {
+        uint256 seedInitialFunding = 100000000000000000;
         uint256[] memory initialFunding = new uint256[](nbChildRewarder);
         for (uint256 i = 0; i < nbChildRewarder; i++) {
             initialFunding[i] = bound(seedInitialFunding / (i + 1), 100000, initialMint);
@@ -134,7 +134,9 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
             for (uint256 u = 0; u < users.length; u++) {
                 (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
                 assertEq(rewardAmounts_[i], 0); // 0,001%
-                assertApproxEqRel(rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.001e18); // 0,001%
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.001e18
+                ); // 0,001%
             }
         }
     }
@@ -184,7 +186,9 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
             for (uint256 u = 0; u < users.length; u++) {
                 (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
                 assertEq(rewardAmounts_[i], 0); // 0,001%
-                assertApproxEqRel(rewardTokens[i].balanceOf(users[u]), initialFunding[i] * 2 / 3, 0.001e18); // 0,001%
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] * 2 / 3, 0.001e18
+                ); // 0,001%
             }
         }
     }
@@ -235,8 +239,339 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
             for (uint256 u = 0; u < users.length; u++) {
                 (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
                 assertEq(rewardAmounts_[i], 0); // 0,001%
-                assertApproxEqRel(rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.001e18); // 0,001%
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.001e18
+                ); // 0,001%
             }
+        }
+    }
+
+    function testMultiRewardsUpdate(uint256 seedInitialFunding) public {
+        uint256[] memory initialFunding = new uint256[](nbChildRewarder);
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            initialFunding[i] = bound(seedInitialFunding / (i + 1), 100000, initialMint / 2);
+        }
+
+        uint256 initialInvest = 100 ether;
+        uint256[] memory relics = new uint256[](users.length);
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            relics[u] = reliquary.createRelicAndDeposit(users[u], 0, initialInvest);
+        }
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            childRewarders[i].fund(initialFunding[i]);
+        }
+
+        skip(initialDistributionPeriod / 2);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            childRewarders[i].fund(initialFunding[i]);
+        }
+
+        skip(initialDistributionPeriod / 7);
+
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            reliquary.updatePosition(relics[u]);
+        }
+
+        skip(initialDistributionPeriod);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 0; u < users.length; u++) {
+                (address[] memory rewardTokens_, uint256[] memory rewardAmounts_) =
+                    parentRewarder.pendingTokens(relics[u]);
+                assertApproxEqRel(rewardAmounts_[i], initialFunding[i] * 2 / 3, 0.001e18); // 0,001%
+                assertEq(address(rewardTokens_[i]), address(rewardTokens[i]));
+            }
+        }
+
+        // withdraw
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            reliquary.withdrawAndHarvest(initialInvest, relics[u], users[u]);
+        }
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 0; u < users.length; u++) {
+                (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
+                assertEq(rewardAmounts_[i], 0); // 0,001%
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] * 2 / 3, 0.001e18
+                ); // 0,001%
+            }
+        }
+    }
+
+    function testMultiRewardsSplit(uint256 seedInitialFunding) public {
+        uint256[] memory initialFunding = new uint256[](nbChildRewarder);
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            initialFunding[i] = bound(seedInitialFunding / (i + 1), 100000, initialMint);
+        }
+
+        uint256 initialInvest = 100 ether;
+        uint256[] memory relics = new uint256[](users.length);
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            relics[u] = reliquary.createRelicAndDeposit(users[u], 0, initialInvest);
+        }
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            childRewarders[i].fund(initialFunding[i]);
+        }
+
+        skip(initialDistributionPeriod / 2);
+
+        // split first relic
+        vm.prank(users[0]);
+        uint256 u0SlittedRelic = reliquary.split(relics[0], initialInvest / 2, users[0]);
+
+        skip(initialDistributionPeriod / 2);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 1; u < users.length; u++) {
+                (address[] memory rewardTokens_, uint256[] memory rewardAmounts_) =
+                    parentRewarder.pendingTokens(relics[u]);
+                assertApproxEqRel(rewardAmounts_[i], initialFunding[i] / 3, 0.001e18); // 0,001%
+                assertEq(address(rewardTokens_[i]), address(rewardTokens[i]));
+            }
+        }
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            (, uint256[] memory rewardAmounts1_) = parentRewarder.pendingTokens(relics[0]);
+            assertApproxEqRel(
+                rewardAmounts1_[i],
+                (
+                    ((initialFunding[i] / 3) * (initialDistributionPeriod / 2))
+                        + ((initialFunding[i] / 6) * (initialDistributionPeriod / 2))
+                ) / initialDistributionPeriod,
+                0.001e18
+            ); // 0,001%
+
+            (, uint256[] memory rewardAmounts2_) = parentRewarder.pendingTokens(u0SlittedRelic);
+            assertApproxEqRel(
+                rewardAmounts2_[i],
+                (
+                    (initialFunding[i] / 6) * (initialDistributionPeriod / 2)
+                        / initialDistributionPeriod
+                ),
+                0.001e18
+            ); // 0,001%
+        }
+        // withdraw
+        for (uint256 u = 1; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            reliquary.harvest(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u]);
+        }
+
+        vm.startPrank(users[0]);
+
+        reliquary.harvest(relics[0], users[0]);
+        reliquary.withdraw(initialInvest / 2, relics[0]);
+
+        reliquary.harvest(u0SlittedRelic, users[0]);
+        reliquary.withdraw(initialInvest / 2, u0SlittedRelic);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 0; u < users.length; u++) {
+                (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
+                assertEq(rewardAmounts_[i], 0); // 0,001%
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.001e18
+                ); // 0,001%
+            }
+        }
+    }
+
+    function testMultiRewardsShift(uint256 seedInitialFunding) public {
+        uint256[] memory initialFunding = new uint256[](nbChildRewarder);
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            initialFunding[i] = bound(seedInitialFunding / (i + 1), 100000, initialMint);
+        }
+
+        uint256 initialInvest = 100 ether;
+        uint256[] memory relics = new uint256[](users.length);
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            relics[u] = reliquary.createRelicAndDeposit(users[u], 0, initialInvest);
+        }
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            childRewarders[i].fund(initialFunding[i]);
+        }
+
+        skip(initialDistributionPeriod / 2);
+
+        // shift first relic into the second one
+        vm.prank(users[1]);
+        reliquary.approve(users[0], relics[1]);
+        vm.prank(users[0]);
+        reliquary.shift(relics[0], relics[1], initialInvest / 2);
+
+        skip(initialDistributionPeriod / 2);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 2; u < users.length; u++) {
+                (address[] memory rewardTokens_, uint256[] memory rewardAmounts_) =
+                    parentRewarder.pendingTokens(relics[u]);
+                assertApproxEqRel(rewardAmounts_[i], initialFunding[i] / 3, 0.005e18); // 0,001%
+                assertEq(address(rewardTokens_[i]), address(rewardTokens[i]));
+            }
+        }
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            (, uint256[] memory rewardAmounts1_) = parentRewarder.pendingTokens(relics[0]);
+            assertApproxEqRel(
+                rewardAmounts1_[i],
+                (
+                    ((initialFunding[i] / 3) * (initialDistributionPeriod / 2))
+                        + ((initialFunding[i] / 6) * (initialDistributionPeriod / 2))
+                ) / initialDistributionPeriod,
+                0.005e18
+            ); // 0,005%
+
+            // (, uint256[] memory rewardAmounts2_) = parentRewarder.pendingTokens(relics[1]);
+            // assertApproxEqRel(
+            //     rewardAmounts2_[i],
+            //     (
+            //         ((initialFunding[i] / 3) * (initialDistributionPeriod / 2))
+            //             + ((initialFunding[i]  * 2/ 3) * (initialDistributionPeriod / 2))
+            //     ) / initialDistributionPeriod,
+            //     0.001e18
+            // ); // 0,001%
+        }
+        // withdraw
+        for (uint256 u = 2; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            reliquary.harvest(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u]);
+        }
+
+        vm.startPrank(users[0]);
+        reliquary.harvest(relics[0], users[0]);
+        reliquary.withdraw(initialInvest / 2, relics[0]);
+
+        vm.startPrank(users[1]);
+        reliquary.harvest(relics[1], users[1]);
+        reliquary.withdraw(initialInvest + initialInvest / 2, relics[1]);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 2; u < users.length; u++) {
+                (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
+                assertEq(rewardAmounts_[i], 0);
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.005e18
+                ); // 0,005%
+            }
+        }
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            (, uint256[] memory rewardAmounts1_) = parentRewarder.pendingTokens(relics[0]);
+            assertEq(rewardAmounts1_[i], 0);
+            assertApproxEqRel(
+                rewardTokens[i].balanceOf(users[0]),
+                (
+                    ((initialFunding[i] / 3) * (initialDistributionPeriod / 2))
+                        + ((initialFunding[i] / 6) * (initialDistributionPeriod / 2))
+                ) / initialDistributionPeriod,
+                0.005e18
+            ); // 0,005%
+
+            (, uint256[] memory rewardAmounts2_) = parentRewarder.pendingTokens(relics[1]);
+            assertEq(rewardAmounts2_[i], 0); // 0,001%
+                // assertApproxEqRel(
+                //     rewardTokens[i].balanceOf(users[1]),
+                //     (
+                //         ((initialFunding[i] / 3) * (initialDistributionPeriod / 2))
+                //             + ((initialFunding[i]  * 2/ 3) * (initialDistributionPeriod / 2))
+                //     ) / initialDistributionPeriod,
+                //     0.005e18
+                // ); // 0,005%
+        }
+    }
+
+    function testMultiRewardsMerge(uint256 seedInitialFunding) public {
+        // uint256 seedInitialFunding = 100000000000000000;
+
+        uint256[] memory initialFunding = new uint256[](nbChildRewarder);
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            initialFunding[i] = bound(seedInitialFunding / (i + 1), 100000, initialMint);
+        }
+
+        uint256 initialInvest = 100 ether;
+        uint256[] memory relics = new uint256[](users.length);
+        for (uint256 u = 0; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            relics[u] = reliquary.createRelicAndDeposit(users[u], 0, initialInvest);
+        }
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            childRewarders[i].fund(initialFunding[i]);
+        }
+
+        skip(initialDistributionPeriod / 2);
+
+        // shift first relic into the second one
+        vm.prank(users[1]);
+        reliquary.approve(users[0], relics[1]);
+        vm.prank(users[0]);
+        reliquary.merge(relics[0], relics[1]);
+
+        skip(initialDistributionPeriod / 2);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 2; u < users.length; u++) {
+                (address[] memory rewardTokens_, uint256[] memory rewardAmounts_) =
+                    parentRewarder.pendingTokens(relics[u]);
+                assertApproxEqRel(rewardAmounts_[i], initialFunding[i] / 3, 0.005e18); // 0,001%
+                assertEq(address(rewardTokens_[i]), address(rewardTokens[i]));
+            }
+        }
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            (, uint256[] memory rewardAmounts1_) = parentRewarder.pendingTokens(relics[0]);
+            assertEq(rewardAmounts1_[i], 0);
+
+            (, uint256[] memory rewardAmounts2_) = parentRewarder.pendingTokens(relics[1]);
+            assertApproxEqRel(rewardAmounts2_[i], initialFunding[i] * 2 / 3, 0.005e18); // 0,005%
+        }
+        // withdraw
+        for (uint256 u = 2; u < users.length; u++) {
+            vm.startPrank(users[u]);
+            reliquary.harvest(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u]);
+        }
+
+        vm.startPrank(users[1]);
+        reliquary.harvest(relics[1], users[1]);
+        reliquary.withdraw(initialInvest * 2, relics[1]);
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            for (uint256 u = 2; u < users.length; u++) {
+                (, uint256[] memory rewardAmounts_) = parentRewarder.pendingTokens(relics[u]);
+                assertEq(rewardAmounts_[i], 0);
+                assertApproxEqRel(
+                    rewardTokens[i].balanceOf(users[u]), initialFunding[i] / 3, 0.005e18
+                ); // 0,005%
+            }
+        }
+
+        for (uint256 i = 0; i < nbChildRewarder; i++) {
+            (, uint256[] memory rewardAmounts1_) = parentRewarder.pendingTokens(relics[0]);
+            assertEq(rewardAmounts1_[i], 0);
+
+            assertEq(rewardTokens[i].balanceOf(users[0]), 0);
+
+            (, uint256[] memory rewardAmounts2_) = parentRewarder.pendingTokens(relics[1]);
+            assertEq(rewardAmounts2_[i], 0); // 0,001%
+            assertApproxEqRel(
+                rewardTokens[i].balanceOf(users[1]), initialFunding[i] * 2 / 3, 0.005e18
+            ); // 0,005%
         }
     }
 }

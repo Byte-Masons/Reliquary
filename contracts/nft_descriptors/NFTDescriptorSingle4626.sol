@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity 0.8.23;
 
 import "./NFTDescriptor.sol";
 import "openzeppelin-contracts/contracts/interfaces/IERC4626.sol";

@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.23;
 
 import "contracts/interfaces/ICurves.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+
+/// @dev Level of precision rewards are calculated to.
+uint256 constant ACC_REWARD_PRECISION = 1e41;
+/// @dev Max supply allowed for checks purpose.
+uint256 constant MAX_SUPPLY_ALLOWED = 100e9 ether;
+
+/// @dev Indicates whether tokens are being added to, or removed from, a pool.
+enum Kind {
+    DEPOSIT,
+    WITHDRAW,
+    HARVEST,
+    UPDATE
+}
 
 /**
  * @notice Info for each Reliquary position.
@@ -46,19 +59,25 @@ struct PoolInfo {
     address poolToken;
 }
 
-/**
- * @notice Object representing pending rewards and related data for a position.
- * `relicId` The NFT ID of the given position.
- * `poolId` ID of the pool to which this position belongs.
- * `pendingReward` pending reward amount for a given position.
- */
-struct PendingReward {
-    uint256 relicId;
-    uint256 poolId;
-    uint256 pendingReward;
-}
-
 interface IReliquary is IERC721Enumerable {
+    // Errors
+    error Reliquary__NON_EXISTENT_RELIC();
+    error Reliquary__BURNING_PRINCIPAL();
+    error Reliquary__BURNING_REWARDS();
+    error Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();
+    error Reliquary__TOKEN_NOT_COMPATIBLE();
+    error Reliquary__ZERO_TOTAL_ALLOC_POINT();
+    error Reliquary__NON_EXISTENT_POOL();
+    error Reliquary__ZERO_INPUT();
+    error Reliquary__NOT_OWNER();
+    error Reliquary__DUPLICATE_RELIC_IDS();
+    error Reliquary__RELICS_NOT_OF_SAME_POOL();
+    error Reliquary__MERGING_EMPTY_RELICS();
+    error Reliquary__NOT_APPROVED_OR_OWNER();
+    error Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
+    error Reliquary__MULTIPLIER_AT_MATURITY_ZERO_SHOULD_BE_GT_ZERO();
+    error Reliquary__REWARD_PRECISION_ISSUE();
+
     function setEmissionRate(uint256 _emissionRate) external;
 
     function addPool(
@@ -96,19 +115,11 @@ interface IReliquary is IERC721Enumerable {
 
     function updatePosition(uint256 _relicId) external;
 
+    function poolLength() external view returns (uint256 pools_);
+
     function getPositionForId(uint256 _pid) external view returns (PositionInfo memory);
 
     function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory);
-
-    function pendingRewardsOfOwner(address _owner)
-        external
-        view
-        returns (PendingReward[] memory pendingRewards_);
-
-    function relicPositionsOfOwner(address _owner)
-        external
-        view
-        returns (uint256[] memory relicIds_, PositionInfo[] memory positionInfos_);
 
     function isApprovedOrOwner(address, uint256) external view returns (bool);
 

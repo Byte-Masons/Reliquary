@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.23;
 
 library ReliquaryEvents {
     event CreateRelic(uint256 indexed pid, address indexed to, uint256 indexed relicId);
@@ -22,11 +22,7 @@ library ReliquaryEvents {
     event LogPoolModified(
         uint256 indexed pid, uint256 allocPoint, address indexed rewarder, address nftDescriptor
     );
-    event LogUpdatePool(
-        uint256 indexed pid, uint256 lastRewardTime, uint256 lpSupply, uint256 accRewardPerShare
-    );
     event LogSetEmissionRate(uint256 indexed emissionRate);
-    event LevelChanged(uint256 indexed relicId, uint256 newLevel);
     event Split(uint256 indexed fromId, uint256 indexed toId, uint256 amount);
     event Shift(uint256 indexed fromId, uint256 indexed toId, uint256 amount);
     event Merge(uint256 indexed fromId, uint256 indexed toId, uint256 amount);

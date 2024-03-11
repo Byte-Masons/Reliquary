@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity 0.8.23;
 
 import "./RollingRewarder.sol";
 import "../interfaces/IParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
+// todo remove Ownable and use the Reliquary admin
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
 contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
@@ -66,11 +67,25 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         emit ChildRemoved(_childRewarder);
     }
 
-    /// Call onReward function of each child.
+    function onUpdate(
+        ICurves _curve,
+        uint256 _relicId,
+        uint256 _amount,
+        uint256 _oldLevel,
+        uint256 _newLevel
+    ) external override onlyReliquary {
+        uint256 length_ = childrenRewarders.length();
+
+        for (uint256 i_; i_ < length_; ++i_) {
+            IRewarder(childrenRewarders.at(i_)).onUpdate(
+                _curve, _relicId, _amount, _oldLevel, _newLevel
+            );
+        }
+    }
+
     function onReward(
         ICurves _curve,
         uint256 _relicId,
-        uint256 _rewardAmount,
         address _to,
         uint256 _oldAmount,
         uint256 _oldLevel,
@@ -78,13 +93,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onReward(
-                _curve, _relicId, _rewardAmount, _to, _oldAmount, _oldLevel, _newLevel
+                _curve, _relicId, _to, _oldAmount, _oldLevel, _newLevel
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -98,13 +110,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onDeposit(
                 _curve, _relicId, _depositAmount, _oldAmount, _oldLevel, _newLevel
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -118,13 +127,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onWithdraw(
                 _curve, _relicId, _withdrawAmount, _oldAmount, _oldLevel, _newLevel
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -138,13 +144,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onSplit(
                 _curve, _fromId, _newId, _amount, _fromAmount, _level
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -161,7 +164,7 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onShift(
                 _curve,
                 _fromId,
@@ -173,9 +176,6 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
                 _oldToLevel,
                 _newToLevel
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -191,13 +191,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
     ) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
-        for (uint256 i_; i_ < length_;) {
+        for (uint256 i_; i_ < length_; ++i_) {
             IRewarder(childrenRewarders.at(i_)).onMerge(
                 _curve, _fromId, _toId, _fromAmount, _toAmount, _fromLevel, _oldToLevel, _newToLevel
             );
-            unchecked {
-                ++i_;
-            }
         }
     }
 
@@ -222,13 +219,10 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         rewardTokens_ = new address[](length_);
         rewardAmounts_ = new uint256[](length_);
 
-        for (uint256 i_ = 0; i_ < length_;) {
+        for (uint256 i_ = 0; i_ < length_; ++i_) {
             RollingRewarder rewarder_ = RollingRewarder(childrenRewarders.at(i_));
             rewardTokens_[i_] = rewarder_.rewardToken();
             rewardAmounts_[i_] = rewarder_.pendingToken(_relicId);
-            unchecked {
-                ++i_;
-            }
         }
     }
 }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "contracts/Reliquary.sol";
+import "contracts/interfaces/IReliquary.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
@@ -54,7 +55,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnModifyInvalidPool() public {
-        vm.expectRevert(Reliquary.Reliquary__NON_EXISTENT_POOL.selector);
+        vm.expectRevert(IReliquary.Reliquary__NON_EXISTENT_POOL.selector);
         reliquary.modifyPool(1, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
 
@@ -84,14 +85,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         ); // max 0,0001%
     }
 
-    function testMassUpdatePools() public {
-        skip(1);
-        uint256[] memory pools = new uint256[](1);
-        pools[0] = 0;
-        vm.expectEmit(true, false, false, true);
-        emit ReliquaryEvents.LogUpdatePool(0, block.timestamp, 0, 0);
-        reliquary.massUpdatePools();
-    }
+    // function testMassUpdatePools() public {
+    //     skip(1);
+    //     uint256[] memory pools = new uint256[](1);
+    //     pools[0] = 0;
+    //     vm.expectEmit(true, false, false, true);
+    //     emit ReliquaryEvents.LogUpdatePool(0, block.timestamp, 0, 0);
+    //     reliquary.massUpdatePools();
+    // }
 
     function testCreateRelicAndDeposit(uint256 amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
@@ -111,13 +112,13 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnDepositInvalidPool(uint256 pool) public {
         pool = bound(pool, 1, type(uint256).max);
-        vm.expectRevert(Reliquary.Reliquary__NON_EXISTENT_POOL.selector);
+        vm.expectRevert(IReliquary.Reliquary__NON_EXISTENT_POOL.selector);
         reliquary.createRelicAndDeposit(address(this), pool, 1);
     }
 
     function testRevertOnDepositUnauthorized() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
+        vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.deposit(1, relicId);
     }
@@ -132,7 +133,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnWithdrawUnauthorized() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
+        vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.withdraw(1, relicId);
     }
@@ -161,7 +162,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnHarvestUnauthorized() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
+        vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.harvest(relicId, address(this));
     }
@@ -176,7 +177,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testRevertOnEmergencyWithdrawNotOwner() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
-        vm.expectRevert(Reliquary.Reliquary__NOT_OWNER.selector);
+        vm.expectRevert(IReliquary.Reliquary__NOT_OWNER.selector);
         vm.prank(address(1));
         reliquary.emergencyWithdraw(relicId);
     }
@@ -284,7 +285,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testBurn() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
-        vm.expectRevert(Reliquary.Reliquary__BURNING_PRINCIPAL.selector);
+        vm.expectRevert(IReliquary.Reliquary__BURNING_PRINCIPAL.selector);
         reliquary.burn(relicId);
 
         reliquary.withdrawAndHarvest(1 ether, relicId, address(this));

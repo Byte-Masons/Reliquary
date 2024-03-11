@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity 0.8.23;
 
 import "contracts/Reliquary.sol";
 import "contracts/interfaces/IReliquary.sol";
@@ -370,7 +370,7 @@ contract ReliquaryProperties {
         uint relicIdTo = abi.decode(data, (uint));
         isInit[relicIdTo] = true;
         relicIds.push(relicIdTo);
-
+        
         assert(reliquary.getPositionForId(relicIdFrom).amount == amountFromBefore - amount);
         assert(reliquary.getPositionForId(relicIdTo).amount == amount);
     }
@@ -517,9 +517,6 @@ contract ReliquaryProperties {
 
         // only works for constant emission rate
         uint maxEmission = (block.timestamp - startTimestamp) * reliquary.emissionRate();
-
-        emit LogUint(totalReward);
-        emit LogUint(maxEmission);
 
         assert(totalReward <= maxEmission);
     }
