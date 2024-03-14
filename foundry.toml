@@ -19,7 +19,7 @@ rpc_endpoints = { fantom = "https://rpcapi-tracing.fantom.network", optimism = "
 #initial_balance = '0xffffffffffffffffffffffff'
 
 ffi = false
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read", path = "./"}, { access = "read-write", path = "./scripts/add_pool/"}]
 #invariant_fail_on_revert = true
 
 # Do not use in production

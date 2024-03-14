@@ -18,13 +18,13 @@
 #         total number of allocation points for all pools.                                                             #
 #     `allowPartialWithdrawals`: hether users can withdraw less than their entire position. A value of false will also #
 #         disable shift and split functionality. This is useful for adding pools with decreasing levelMultipliers.     #
+#     `childRewarderTokens`: If set, will determine the rewardTokens for a ParentRewarder, which will be set as the    #
+#         rewarder for this pool.                                                                                      #
+#     `childRewarderPeriods`: Determines `distributionPeriod`s for rewarders above.                                    #
 #     `levelMultipliers`: Multiplier applied to size of positions in each maturity level when calculating rewards.     #
 #     `name`: Name of the pool.                                                                                        #
 #     `poolToken`: Address for the token this pool takes for deposits.                                                 #
 #     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
-#     `childRewarderTokens`: If set, will determine the rewardTokens for a ParentRewarder, which will be set as the    #
-#         rewarder for this pool.                                                                                      #
-#     `childRewarderPeriods`: Determines `distributionPeriod`s for rewarders above.                                    #
 #     `tokenType`: Type of NFTDescriptor to use for this token. Valid values are "normal", "4626", and "pair". Use     #
 #         "4626" if `poolToken` is an ERC4626 contract, and "pair" if it is a UniswapV2Pair.                           #
 #                                                                                                                      #

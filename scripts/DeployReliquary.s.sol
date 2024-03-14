@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import {Reliquary} from "contracts/Reliquary.sol";
 import {OwnableCurve} from "contracts/emission_curves/OwnableCurve.sol";
 import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
+import {DepositHelperReaperVault} from "contracts/helpers/DepositHelperReaperVault.sol";
 import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import {ParentRewarderRolling, RollingRewarder} from "contracts/rewarders/ParentRewarder-Rolling.sol";
@@ -39,6 +40,7 @@ contract Deploy is Script {
     address nftDescriptor4626;
     address nftDescriptorPair;
     address depositHelper4626;
+    address depositHelperReaperVault;
 
     function run() external {
         config = vm.readFile("scripts/deploy_conf.json");
@@ -134,6 +136,14 @@ contract Deploy is Script {
                 nftDescriptorPair = address(new NFTDescriptorPair(address(reliquary)));
             }
             nftDescriptor = nftDescriptorPair;
+        } else if (typeHash == keccak256("reaper-vault")) {
+            if (nftDescriptorNormal == address(0)) {
+                nftDescriptorNormal = address(new NFTDescriptor(address(reliquary)));
+            }
+            nftDescriptor = nftDescriptorPair;
+            if (depositHelperReaperVault == address(0)) {
+                depositHelperReaperVault = address(new DepositHelperReaperVault(reliquary, config.readAddress(".weth")));
+            }
         } else {
             revert(string.concat("invalid token type ", poolTokenType));
         }
