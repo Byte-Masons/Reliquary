@@ -8,11 +8,11 @@ import "./interfaces/INFTDescriptor.sol";
 import "./libraries/ReliquaryLogic.sol";
 import "./libraries/ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 
 /**
  * @title Reliquary
@@ -28,8 +28,8 @@ import "openzeppelin-contracts/contracts/utils/math/Math.sol";
  * trade their Relics without withdrawing liquidity or affecting the position's maturity.
  */
 contract Reliquary is
+    Multicall,
     IReliquary,
-    ERC721Burnable,
     ERC721Enumerable,
     AccessControlEnumerable,
     ReentrancyGuard
@@ -100,7 +100,7 @@ contract Reliquary is
         string memory _name,
         address _nftDescriptor,
         bool _allowPartialWithdrawals
-    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // ----------------- Intensive curve compatibility checks.
         {
             if (_poolToken == rewardToken) revert Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();
@@ -129,7 +129,7 @@ contract Reliquary is
             if (totalAlloc_ == 0) revert Reliquary__ZERO_TOTAL_ALLOC_POINT();
             totalAllocPoint = totalAlloc_;
 
-            //! _curve must be strictly increasing.
+            //! if _curve is not strictly increasing, allowPartialWithdrawals must be set to false.
             //! We can't check this rule since curve are defined in [0, +infinity].
         }
         // -----------------
@@ -177,7 +177,7 @@ contract Reliquary is
         string calldata _name,
         address _nftDescriptor,
         bool _overwriteRewarder
-    ) external override onlyRole(OPERATOR) {
+    ) external onlyRole(OPERATOR) {
         if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
 
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
@@ -208,7 +208,7 @@ contract Reliquary is
     /**
      * @notice Update reward variables for all pools. Be careful of gas spending!
      */
-    function massUpdatePools() external override nonReentrant {
+    function massUpdatePools() external nonReentrant {
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
     }
 
@@ -216,7 +216,7 @@ contract Reliquary is
      * @notice Update reward variables of the given pool.
      * @param _pid The index of the pool. See poolInfo.
      */
-    function updatePool(uint256 _pid) external override nonReentrant {
+    function updatePool(uint256 _pid) external nonReentrant {
         ReliquaryLogic._updatePool(poolInfo[_pid], emissionRate, totalAllocPoint);
     }
 
@@ -224,9 +224,9 @@ contract Reliquary is
      * @notice Update position without performing a deposit/withdraw/harvest.
      * @param _relicId The NFT ID of the position being updated.
      */
-    function updatePosition(uint256 _relicId) external override nonReentrant {
+    function updatePosition(uint256 _relicId) external nonReentrant {
         if (!_exists(_relicId)) revert Reliquary__NON_EXISTENT_RELIC();
-        _updatePosition(0, _relicId, Kind.UPDATE, address(0));
+        _update(_relicId);
     }
 
     /**
@@ -234,7 +234,7 @@ contract Reliquary is
      * @param _amount Token amount to deposit.
      * @param _relicId NFT ID of the position being deposited to.
      */
-    function deposit(uint256 _amount, uint256 _relicId) external override nonReentrant {
+    function deposit(uint256 _amount, uint256 _relicId) external nonReentrant {
         _requireApprovedOrOwner(_relicId);
         _deposit(_amount, _relicId);
     }
@@ -244,15 +244,9 @@ contract Reliquary is
      * @param _amount token amount to withdraw.
      * @param _relicId NFT ID of the position being withdrawn.
      */
-    function withdraw(uint256 _amount, uint256 _relicId) external override nonReentrant {
-        if (_amount == 0) revert Reliquary__ZERO_INPUT();
+    function withdraw(uint256 _amount, uint256 _relicId) external nonReentrant {
         _requireApprovedOrOwner(_relicId);
-
-        (uint256 poolId_,) = _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
-
-        IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
-
-        emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
+        _withdraw(_amount, _relicId);
     }
 
     /**
@@ -260,14 +254,9 @@ contract Reliquary is
      * @param _relicId NFT ID of the position being harvested.
      * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
-    function harvest(uint256 _relicId, address _harvestTo) external override nonReentrant {
+    function harvest(uint256 _relicId, address _harvestTo) external nonReentrant {
         _requireApprovedOrOwner(_relicId);
-        if (_harvestTo == address(0)) revert Reliquary__ZERO_INPUT();
-
-        (uint256 poolId_, uint256 receivedReward_) =
-            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
-
-        emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        _harvest(_harvestTo, _relicId);
     }
 
     /**
@@ -278,29 +267,18 @@ contract Reliquary is
      */
     function withdrawAndHarvest(uint256 _amount, uint256 _relicId, address _harvestTo)
         external
-        override
         nonReentrant
     {
         _requireApprovedOrOwner(_relicId);
-        if (_amount == 0) revert Reliquary__ZERO_INPUT();
-        if (_harvestTo == address(0)) revert Reliquary__ZERO_INPUT();
-
-        (uint256 poolId_, uint256 receivedReward_) =
-            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
-
-        _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
-
-        IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
-
-        emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
-        emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        _harvest(_harvestTo, _relicId);
+        _withdraw(_amount, _relicId);
     }
 
     /**
      * @notice Withdraw without caring about rewards. EMERGENCY ONLY.
      * @param _relicId NFT ID of the position to emergency withdraw from and burn.
      */
-    function emergencyWithdraw(uint256 _relicId) external override nonReentrant {
+    function emergencyWithdraw(uint256 _relicId) external nonReentrant {
         address to_ = ownerOf(_relicId);
         if (to_ != msg.sender) revert Reliquary__NOT_OWNER();
 
@@ -331,8 +309,6 @@ contract Reliquary is
      */
     function createRelicAndDeposit(address _to, uint256 _pid, uint256 _amount)
         public
-        virtual
-        override
         nonReentrant
         returns (uint256 id_)
     {
@@ -344,12 +320,13 @@ contract Reliquary is
     }
 
     /// @notice Burns the Relic with ID `_relicId`. Cannot be called if there is any principal or rewards in the Relic.
-    function burn(uint256 _relicId) public virtual override(IReliquary, ERC721Burnable) {
+    function burn(uint256 _relicId) public {
+        _requireApprovedOrOwner(_relicId);
         PositionInfo storage position = positionForId[_relicId];
-        address rewarder_ = poolInfo[position.poolId].rewarder;
-
         if (position.amount != 0) revert Reliquary__BURNING_PRINCIPAL();
         if (pendingReward(_relicId) != 0) revert Reliquary__BURNING_REWARDS();
+
+        address rewarder_ = poolInfo[position.poolId].rewarder;
 
         if (rewarder_ != address(0)) {
             (, uint256[] memory rewardAmounts_) =
@@ -360,7 +337,7 @@ contract Reliquary is
             }
         }
 
-        super.burn(_relicId);
+        _burn(_relicId);
     }
 
     /**
@@ -372,8 +349,6 @@ contract Reliquary is
      */
     function split(uint256 _fromId, uint256 _amount, address _to)
         public
-        virtual
-        override
         nonReentrant
         returns (uint256 newId_)
     {
@@ -439,12 +414,7 @@ contract Reliquary is
      * @param _toId The NFT ID of the Relic being transferred to.
      * @param _amount The amount being transferred.
      */
-    function shift(uint256 _fromId, uint256 _toId, uint256 _amount)
-        public
-        virtual
-        override
-        nonReentrant
-    {
+    function shift(uint256 _fromId, uint256 _toId, uint256 _amount) public nonReentrant {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
         if (_fromId == _toId) revert Reliquary__DUPLICATE_RELIC_IDS();
         _requireApprovedOrOwner(_fromId);
@@ -518,7 +488,7 @@ contract Reliquary is
             );
         }
 
-        ReliquaryLogic._shiftLevelBalances(
+        ReliquaryLogic._updateTotalLpSuppliedShiftMerge(
             pool,
             vars_.fromLevel,
             vars_.oldToLevel,
@@ -537,7 +507,7 @@ contract Reliquary is
      * @param _fromId The NFT ID of the Relic to transfer from.
      * @param _toId The NFT ID of the Relic being transferred to.
      */
-    function merge(uint256 _fromId, uint256 _toId) public virtual override nonReentrant {
+    function merge(uint256 _fromId, uint256 _toId) public nonReentrant {
         if (_fromId == _toId) revert Reliquary__DUPLICATE_RELIC_IDS();
         _requireApprovedOrOwner(_fromId);
         _requireApprovedOrOwner(_toId);
@@ -607,7 +577,7 @@ contract Reliquary is
             );
         }
 
-        ReliquaryLogic._shiftLevelBalances(
+        ReliquaryLogic._updateTotalLpSuppliedShiftMerge(
             pool, fromLevel_, oldToLevel_, newToLevel_, fromAmount_, toAmount_, newToAmount_
         );
 
@@ -616,7 +586,11 @@ contract Reliquary is
 
     // -------------- internals --------------
 
-    /// @dev Internal deposit function that assumes `relicId` is valid.
+    /**
+     * @dev Internal deposit function that assumes `relicId` is valid.
+     * @param _amount Amount to deposit.
+     * @param _relicId The NFT ID of the position on which the deposit is to be made.
+     */
     function _deposit(uint256 _amount, uint256 _relicId) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
@@ -627,11 +601,43 @@ contract Reliquary is
         emit ReliquaryEvents.Deposit(poolId_, _amount, ownerOf(_relicId), _relicId);
     }
 
-    struct LocalVariables_updateRelic {
-        uint256 oldAmount;
-        uint256 newAmount;
-        uint256 oldLevel;
-        uint256 newLevel;
+    /**
+     * @dev Internal withdraw function that assumes `relicId` is valid.
+     * @param _amount Amount to withdraw.
+     * @param _relicId The NFT ID of the position on which the withdraw is to be made.
+     */
+    function _withdraw(uint256 _amount, uint256 _relicId) internal {
+        if (_amount == 0) revert Reliquary__ZERO_INPUT();
+
+        (uint256 poolId_,) = _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
+
+        IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
+
+        emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
+    }
+
+    /**
+     * @dev Internal update function that assumes `relicId` is valid.
+     * @param _relicId The NFT ID of the position on which the withdraw is to be made.
+     */
+    function _update(uint256 _relicId) internal {
+        (uint256 poolId_,) = _updatePosition(0, _relicId, Kind.UPDATE, address(0));
+
+        emit ReliquaryEvents.Update(poolId_, _relicId);
+    }
+
+    /**
+     * @dev Internal harvest function that assumes `relicId` is valid.
+     * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
+     * @param _relicId The NFT ID of the position on which the harvest is to be made.
+     */
+    function _harvest(address _harvestTo, uint256 _relicId) internal {
+        if (_harvestTo == address(0)) revert Reliquary__ZERO_INPUT();
+
+        (uint256 poolId_, uint256 receivedReward_) =
+            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
+
+        emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
     }
 
     /**
@@ -644,38 +650,22 @@ contract Reliquary is
      * @return received_ Amount of reward token dispensed to `_harvestTo` on harvest.
      */
     function _updatePosition(uint256 _amount, uint256 _relicId, Kind _kind, address _harvestTo)
-        internal
+        private
         returns (uint256 poolId_, uint256 received_)
     {
-        LocalVariables_updateRelic memory vars_;
         PositionInfo storage position = positionForId[_relicId];
         poolId_ = position.poolId;
-        PoolInfo storage pool = poolInfo[poolId_];
 
-        uint256 accRewardPerShare_ = ReliquaryLogic._updatePool(pool, emissionRate, totalAllocPoint);
-
-        (received_, vars_.oldAmount, vars_.newAmount, vars_.oldLevel, vars_.newLevel) =
-        ReliquaryLogic._updateRelic(
-            position, pool, _kind, _amount, _harvestTo, accRewardPerShare_, rewardToken
-        );
-
-        address rewarder_ = pool.rewarder;
-        if (rewarder_ != address(0)) {
-            ReliquaryLogic._updateRewarder(
-                IRewarder(rewarder_),
-                pool.curve,
-                _kind,
-                _relicId,
-                _amount,
-                _harvestTo,
-                vars_.oldAmount,
-                vars_.oldLevel,
-                vars_.newLevel
-            );
-        }
-
-        ReliquaryLogic._updateTotalLpSupplied(
-            pool, _kind, _amount, vars_.oldAmount, vars_.newAmount, vars_.oldLevel, vars_.newLevel
+        received_ = ReliquaryLogic._updateRelic(
+            position,
+            poolInfo[poolId_],
+            _kind,
+            _relicId,
+            _amount,
+            _harvestTo,
+            emissionRate,
+            totalAllocPoint,
+            rewardToken
         );
     }
     // -------------- views --------------
@@ -684,15 +674,19 @@ contract Reliquary is
     function getPositionForId(uint256 _relicId)
         external
         view
-        override
         returns (PositionInfo memory position_)
     {
         position_ = positionForId[_relicId];
     }
 
     /// @notice Returns a PoolInfo object for pool ID `pid`.
-    function getPoolInfo(uint256 _pid) public view override returns (PoolInfo memory pool_) {
+    function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory pool_) {
         pool_ = poolInfo[_pid];
+    }
+
+    /// @notice Returns the number of Reliquary pools.
+    function poolLength() external view returns (uint256 pools_) {
+        pools_ = poolInfo.length;
     }
 
     /**
@@ -700,7 +694,7 @@ contract Reliquary is
      * @param _relicId ID of the position.
      * @return pending_ reward amount for a given position owner.
      */
-    function pendingReward(uint256 _relicId) public view override returns (uint256 pending_) {
+    function pendingReward(uint256 _relicId) public view returns (uint256 pending_) {
         PositionInfo storage position = positionForId[_relicId];
         uint256 poolId_ = position.poolId;
         PoolInfo storage pool = poolInfo[poolId_];
@@ -720,17 +714,12 @@ contract Reliquary is
             + position.rewardCredit - position.rewardDebt;
     }
 
-    /// @notice Returns the number of Reliquary pools.
-    function poolLength() external view override returns (uint256 pools_) {
-        pools_ = poolInfo.length;
-    }
-
     /**
      * @notice Returns the ERC721 tokenURI given by the pool's NFTDescriptor.
      * @dev Can be gas expensive if used in a transaction and the NFTDescriptor is complex.
      * @param _relicId The NFT ID of the Relic to get the tokenURI for.
      */
-    function tokenURI(uint256 _relicId) public view override(ERC721) returns (string memory) {
+    function tokenURI(uint256 _relicId) public view override returns (string memory) {
         if (!_exists(_relicId)) revert Reliquary__NON_EXISTENT_RELIC();
         return INFTDescriptor(poolInfo[positionForId[_relicId].poolId].nftDescriptor)
             .constructTokenURI(_relicId);
@@ -740,8 +729,7 @@ contract Reliquary is
     function supportsInterface(bytes4 _interfaceId)
         public
         view
-        virtual
-        override(IERC165, AccessControlEnumerable, ERC721, ERC721Enumerable)
+        override(IERC165, AccessControlEnumerable, ERC721Enumerable)
         returns (bool)
     {
         return _interfaceId == type(IReliquary).interfaceId || super.supportsInterface(_interfaceId);
@@ -761,7 +749,7 @@ contract Reliquary is
      * @notice Require the sender is either the owner of the Relic or approved to transfer it.
      * @param _relicId The NFT ID of the Relic.
      */
-    function _requireApprovedOrOwner(uint256 _relicId) internal view {
+    function _requireApprovedOrOwner(uint256 _relicId) private view {
         if (!_isApprovedOrOwner(msg.sender, _relicId)) revert Reliquary__NOT_APPROVED_OR_OWNER();
     }
 
@@ -769,13 +757,5 @@ contract Reliquary is
     function _mint(address _to) private returns (uint256 id_) {
         id_ = ++idNonce;
         _safeMint(_to, id_);
-    }
-
-    /// @dev Ensure the behavior of ERC721Enumerable _beforeTokenTransfer is preserved.
-    function _beforeTokenTransfer(address _from, address _to, uint256 _tokenId, uint256 _batchSize)
-        internal
-        override(ERC721, ERC721Enumerable)
-    {
-        ERC721Enumerable._beforeTokenTransfer(_from, _to, _tokenId, _batchSize);
     }
 }

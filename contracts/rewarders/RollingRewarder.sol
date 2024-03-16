@@ -65,6 +65,8 @@ contract RollingRewarder is IRollingRewarder {
         _updateDistributionPeriod(7 days);
     }
 
+    // -------------- Admin --------------
+
     function fund(uint256 _amount) external onlyOwner {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         totalRewardsSent += _amount;
@@ -73,6 +75,27 @@ contract RollingRewarder is IRollingRewarder {
 
     function updateDistributionPeriod(uint256 _newDistributionPeriod) external onlyOwner {
         _updateDistributionPeriod(_newDistributionPeriod);
+    }
+
+    // -------------- Hooks --------------
+
+    function onUpdate(
+        ICurves _curve,
+        uint256 _relicId,
+        uint256 _amount,
+        uint256 _oldLevel,
+        uint256 _newLevel
+    ) external virtual onlyParent {
+        uint256 oldAmountMultiplied_ = _amount * _curve.getFunction(_oldLevel);
+        uint256 newAmountMultiplied_ = _amount * _curve.getFunction(_newLevel);
+
+        _issueTokens();
+
+        rewardCredit[_relicId] += Math.mulDiv(
+            oldAmountMultiplied_, accRewardPerShare, ACC_REWARD_PRECISION
+        ) - rewardDebt[_relicId];
+        rewardDebt[_relicId] =
+            Math.mulDiv(newAmountMultiplied_, accRewardPerShare, ACC_REWARD_PRECISION);
     }
 
     function onReward(
@@ -102,25 +125,6 @@ contract RollingRewarder is IRollingRewarder {
             IERC20(rewardToken).safeTransfer(_to, pending_);
             emit LogOnReward(_relicId, pending_, _to);
         }
-    }
-
-    function onUpdate(
-        ICurves _curve,
-        uint256 _relicId,
-        uint256 _amount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) external virtual onlyParent {
-        uint256 oldAmountMultiplied_ = _amount * _curve.getFunction(_oldLevel);
-        uint256 newAmountMultiplied_ = _amount * _curve.getFunction(_newLevel);
-
-        _issueTokens();
-
-        rewardCredit[_relicId] += Math.mulDiv(
-            oldAmountMultiplied_, accRewardPerShare, ACC_REWARD_PRECISION
-        ) - rewardDebt[_relicId];
-        rewardDebt[_relicId] =
-            Math.mulDiv(newAmountMultiplied_, accRewardPerShare, ACC_REWARD_PRECISION);
     }
 
     function onDeposit(
@@ -244,6 +248,8 @@ contract RollingRewarder is IRollingRewarder {
             Math.mulDiv(newToAmountMultiplied_, accRewardPerShare, ACC_REWARD_PRECISION);
     }
 
+    // -------------- Internals --------------
+
     function _updateDistributionPeriod(uint256 _newDistributionPeriod) internal {
         distributionPeriod = _newDistributionPeriod;
         emit UpdateDistributionPeriod(_newDistributionPeriod);
@@ -283,6 +289,8 @@ contract RollingRewarder is IRollingRewarder {
         }
         lastIssuanceTimestamp = block.timestamp;
     }
+
+    // -------------- View --------------
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
     function pendingToken(uint256 _relicId) public view returns (uint256 amount_) {

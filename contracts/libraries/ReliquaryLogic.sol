@@ -8,107 +8,118 @@ import "./ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
+struct LocalVariables_updateRelic {
+    uint256 received;
+    uint256 oldAmount;
+    uint256 newAmount;
+    uint256 oldLevel;
+    uint256 newLevel;
+}
+
 library ReliquaryLogic {
     using SafeERC20 for IERC20;
 
+    // -------------- Internal --------------
+    
+    /**
+     * @dev Update the position of a relic in a pool.
+     * This function updates the position of a relic based on the provided kind (deposit, withdraw, harvest, or update),
+     * calculates the reward credit and debt, and updates the total liquidity provider (LP) supplied for the pool.
+     * @param position The PositionInfo structure representing the position of the relic to be updated.
+     * @param pool The PoolInfo structure representing the pool containing the relic.
+     * @param _kind The kind of update to be performed (deposit, withdraw, harvest, or update).
+     * @param _relicId The ID of the relic.
+     * @param _amount The amount of the relic to be deposited, withdrawn, or harvested.
+     * @param _harvestTo The address to receive the harvested rewards.
+     * @param _emissionRate The current emission rate.
+     * @param _totalAllocPoint The total allocation points.
+     * @param _rewardToken The address of the reward token.
+     * @return The amount of rewards harvested.
+     */
     function _updateRelic(
         PositionInfo storage position,
         PoolInfo storage pool,
         Kind _kind,
-        uint256 _amount,
-        address _harvestTo,
-        uint256 _accRewardPerShare,
-        address _rewardToken
-    )
-        internal
-        returns (
-            uint256 received_,
-            uint256 oldAmount_,
-            uint256 newAmount_,
-            uint256 oldLevel_,
-            uint256 newLevel_
-        )
-    {
-        oldAmount_ = position.amount;
-
-        if (_kind == Kind.DEPOSIT) {
-            _updateEntry(position, _amount);
-            newAmount_ = oldAmount_ + _amount;
-            position.amount = newAmount_;
-        } else if (_kind == Kind.WITHDRAW) {
-            if (_amount != oldAmount_ && !pool.allowPartialWithdrawals) {
-                revert IReliquary.Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
-            }
-            newAmount_ = oldAmount_ - _amount;
-            position.amount = newAmount_;
-        } else {
-            /* Kind.HARVEST or Kind.UPDATE */
-            newAmount_ = oldAmount_;
-        }
-
-        oldLevel_ = position.level;
-        newLevel_ = _updateLevel(position, oldLevel_);
-
-        position.rewardCredit += Math.mulDiv(
-            oldAmount_, pool.curve.getFunction(oldLevel_) * _accRewardPerShare, ACC_REWARD_PRECISION
-        ) - position.rewardDebt;
-        position.rewardDebt = Math.mulDiv(
-            newAmount_, pool.curve.getFunction(newLevel_) * _accRewardPerShare, ACC_REWARD_PRECISION
-        );
-
-        if (_kind == Kind.HARVEST) {
-            received_ = _receivedReward(_rewardToken, position.rewardCredit);
-            position.rewardCredit -= received_;
-            if (received_ != 0) {
-                IERC20(_rewardToken).safeTransfer(_harvestTo, received_);
-            }
-        }
-    }
-
-    function _updateRewarder(
-        IRewarder _rewarder,
-        ICurves _curve,
-        Kind _kind,
         uint256 _relicId,
         uint256 _amount,
         address _harvestTo,
-        uint256 _oldAmount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) internal {
+        uint256 _emissionRate,
+        uint256 _totalAllocPoint,
+        address _rewardToken
+    ) internal returns (uint256) {
+        uint256 accRewardPerShare_ = _updatePool(pool, _emissionRate, _totalAllocPoint);
+
+        LocalVariables_updateRelic memory vars_;
+        vars_.oldAmount = position.amount;
+
         if (_kind == Kind.DEPOSIT) {
-            _rewarder.onDeposit(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
+            _updateEntry(position, _amount);
+            vars_.newAmount = vars_.oldAmount + _amount;
+            position.amount = vars_.newAmount;
         } else if (_kind == Kind.WITHDRAW) {
-            _rewarder.onWithdraw(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
-        } else if (_kind == Kind.HARVEST) {
-            _rewarder.onReward(_curve, _relicId, _harvestTo, _oldAmount, _oldLevel, _newLevel);
-        } /* Kind.UPDATE */ else {
-            _rewarder.onUpdate(_curve, _relicId, _oldAmount, _oldLevel, _newLevel);
+            if (_amount != vars_.oldAmount && !pool.allowPartialWithdrawals) {
+                revert IReliquary.Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
+            }
+            vars_.newAmount = vars_.oldAmount - _amount;
+            position.amount = vars_.newAmount;
+        } else {
+            /* Kind.HARVEST or Kind.UPDATE */
+            vars_.newAmount = vars_.oldAmount;
         }
+
+        vars_.oldLevel = position.level;
+        vars_.newLevel = _updateLevel(position, vars_.oldLevel);
+
+        position.rewardCredit += Math.mulDiv(
+            vars_.oldAmount,
+            pool.curve.getFunction(vars_.oldLevel) * accRewardPerShare_,
+            ACC_REWARD_PRECISION
+        ) - position.rewardDebt;
+        position.rewardDebt = Math.mulDiv(
+            vars_.newAmount,
+            pool.curve.getFunction(vars_.newLevel) * accRewardPerShare_,
+            ACC_REWARD_PRECISION
+        );
+
+        if (_kind == Kind.HARVEST) {
+            vars_.received = _receivedReward(_rewardToken, position.rewardCredit);
+            position.rewardCredit -= vars_.received;
+            if (vars_.received != 0) {
+                IERC20(_rewardToken).safeTransfer(_harvestTo, vars_.received);
+            }
+        }
+
+        address rewarder_ = pool.rewarder;
+        if (rewarder_ != address(0)) {
+            _updateRewarder(
+                IRewarder(rewarder_),
+                pool.curve,
+                _kind,
+                _relicId,
+                _amount,
+                _harvestTo,
+                vars_.oldAmount,
+                vars_.oldLevel,
+                vars_.newLevel
+            );
+        }
+
+        _updateTotalLpSuppliedUpdateRelic(
+            pool, _kind, _amount, vars_.oldAmount, vars_.newAmount, vars_.oldLevel, vars_.newLevel
+        );
+
+        return vars_.received;
     }
 
-    function _updateTotalLpSupplied(
-        PoolInfo storage pool,
-        Kind _kind,
-        uint256 _amount,
-        uint256 _oldAmount,
-        uint256 _newAmount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) internal {
-        ICurves curve_ = pool.curve;
-
-        if (_oldLevel != _newLevel) {
-            pool.totalLpSupplied -= _oldAmount * curve_.getFunction(_oldLevel);
-            pool.totalLpSupplied += _newAmount * curve_.getFunction(_newLevel);
-        } else if (_kind == Kind.DEPOSIT) {
-            pool.totalLpSupplied += _amount * curve_.getFunction(_oldLevel);
-        } else if (_kind == Kind.WITHDRAW) {
-            pool.totalLpSupplied -= _amount * curve_.getFunction(_oldLevel);
-        }
-    }
-
-    /// @dev Internal `_updatePool` function without nonReentrant modifier.
+    /**
+     * @dev Update the accumulated reward per share for a given pool.
+     * This function calculates the amount of rewards that have been distributed since the last reward update,
+     * and adds it to the accumulated reward per share.
+     * @param pool The PoolInfo structure representing the pool to be updated.
+     * @param _emissionRate The current emission rate.
+     * @param _totalAllocPoint The total allocation points.
+     * @return accRewardPerShare_ The updated accumulated reward per share.
+     */
     function _updatePool(PoolInfo storage pool, uint256 _emissionRate, uint256 _totalAllocPoint)
         internal
         returns (uint256 accRewardPerShare_)
@@ -132,7 +143,14 @@ library ReliquaryLogic {
         }
     }
 
-    /// @notice Update reward variables for all pools. Be careful of gas spending.
+    /**
+     * @dev Update reward variables for all pools in the `poolInfo` array.
+     * This function iterates through the array and calls the `_updatePool` function for each pool.
+     * Be mindful of gas costs when calling this function, as the gas cost increases with the number of pools.
+     * @param poolInfo An array of PoolInfo structures representing the pools to be updated.
+     * @param _emissionRate The current emission rate.
+     * @param _totalAllocPoint The total allocation points of all pools.
+     */
     function _massUpdatePools(
         PoolInfo[] storage poolInfo,
         uint256 _emissionRate,
@@ -144,16 +162,16 @@ library ReliquaryLogic {
     }
 
     /**
-     * @notice Handle updating balances for each affected tranche when shifting and merging.
-     * @param pool Pool `To` update.
-     * @param _fromLevel `From` level.
-     * @param _oldToLevel Old `To` level.
-     * @param _newToLevel New `To level.
+     * @dev Updates the total LP for each affected level when shifting or merging.
+     * @param pool The pool for which the update is being made.
+     * @param _fromLevel The level from which the transfer is happening.
+     * @param _oldToLevel The old 'To' level.
+     * @param _newToLevel The new 'To' level.
      * @param _amount The amount being transferred.
-     * @param _toAmount Old `To` amount.
-     * @param _newToAmount Old `To` amount plus `_amount`.
+     * @param _toAmount The old 'To' amount.
+     * @param _newToAmount The new 'To' amount, which is the sum of the old 'To' amount and the transferred amount.
      */
-    function _shiftLevelBalances(
+    function _updateTotalLpSuppliedShiftMerge(
         PoolInfo storage pool,
         uint256 _fromLevel,
         uint256 _oldToLevel,
@@ -162,38 +180,21 @@ library ReliquaryLogic {
         uint256 _toAmount,
         uint256 _newToAmount
     ) internal {
+        ICurves curve_ = pool.curve;
+
         if (_fromLevel != _newToLevel) {
-            pool.totalLpSupplied -= _amount * pool.curve.getFunction(_fromLevel);
+            pool.totalLpSupplied -= _amount * curve_.getFunction(_fromLevel);
         }
         if (_oldToLevel != _newToLevel) {
-            pool.totalLpSupplied -= _toAmount * pool.curve.getFunction(_oldToLevel);
+            pool.totalLpSupplied -= _toAmount * curve_.getFunction(_oldToLevel);
         }
 
         if (_fromLevel != _newToLevel && _oldToLevel != _newToLevel) {
-            pool.totalLpSupplied += _newToAmount * pool.curve.getFunction(_newToLevel);
+            pool.totalLpSupplied += _newToAmount * curve_.getFunction(_newToLevel);
         } else if (_fromLevel != _newToLevel) {
-            pool.totalLpSupplied += _amount * pool.curve.getFunction(_newToLevel);
+            pool.totalLpSupplied += _amount * curve_.getFunction(_newToLevel);
         } else if (_oldToLevel != _newToLevel) {
-            pool.totalLpSupplied += _toAmount * pool.curve.getFunction(_newToLevel);
-        }
-    }
-
-    /**
-     * @notice Used in `_updateEntry` to find weights without any underflows or zero division problems.
-     * @param _addedValue New value being added.
-     * @param _oldValue Current amount of x.
-     */
-    function _findWeight(uint256 _addedValue, uint256 _oldValue)
-        internal
-        pure
-        returns (uint256 weightNew_)
-    {
-        if (_oldValue < _addedValue) {
-            weightNew_ = 1e12 - (_oldValue * 1e12) / (_addedValue + _oldValue);
-        } else if (_addedValue < _oldValue) {
-            weightNew_ = (_addedValue * 1e12) / (_addedValue + _oldValue);
-        } else {
-            weightNew_ = 5e11;
+            pool.totalLpSupplied += _toAmount * curve_.getFunction(_newToLevel);
         }
     }
 
@@ -213,18 +214,68 @@ library ReliquaryLogic {
         }
     }
 
+    // -------------- Private --------------
+
+    function _updateRewarder(
+        IRewarder _rewarder,
+        ICurves _curve,
+        Kind _kind,
+        uint256 _relicId,
+        uint256 _amount,
+        address _harvestTo,
+        uint256 _oldAmount,
+        uint256 _oldLevel,
+        uint256 _newLevel
+    ) private {
+        if (_kind == Kind.DEPOSIT) {
+            _rewarder.onDeposit(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
+        } else if (_kind == Kind.WITHDRAW) {
+            _rewarder.onWithdraw(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
+        } else if (_kind == Kind.HARVEST) {
+            _rewarder.onReward(_curve, _relicId, _harvestTo, _oldAmount, _oldLevel, _newLevel);
+        } /* Kind.UPDATE */ else {
+            _rewarder.onUpdate(_curve, _relicId, _oldAmount, _oldLevel, _newLevel);
+        }
+    }
+
+    function _updateTotalLpSuppliedUpdateRelic(
+        PoolInfo storage pool,
+        Kind _kind,
+        uint256 _amount,
+        uint256 _oldAmount,
+        uint256 _newAmount,
+        uint256 _oldLevel,
+        uint256 _newLevel
+    ) private {
+        ICurves curve_ = pool.curve;
+
+        if (_oldLevel != _newLevel) {
+            pool.totalLpSupplied -= _oldAmount * curve_.getFunction(_oldLevel);
+            pool.totalLpSupplied += _newAmount * curve_.getFunction(_newLevel);
+        } else if (_kind == Kind.DEPOSIT) {
+            pool.totalLpSupplied += _amount * curve_.getFunction(_oldLevel);
+        } else if (_kind == Kind.WITHDRAW) {
+            pool.totalLpSupplied -= _amount * curve_.getFunction(_oldLevel);
+        }
+    }
+
     /**
-     * @notice Calculate how much the owner will actually receive on harvest, given available reward tokens.
-     * @param _pendingReward Amount of reward token owed.
-     * @return received_ The minimum between amount owed and amount available.
+     * @notice Used in `_updateEntry` to find weights without any underflows or zero division problems.
+     * @param _addedValue New value being added.
+     * @param _oldValue Current amount of x.
      */
-    function _receivedReward(address _rewardToken, uint256 _pendingReward)
-        internal
-        view
-        returns (uint256 received_)
+    function _findWeight(uint256 _addedValue, uint256 _oldValue)
+        private
+        pure
+        returns (uint256 weightNew_)
     {
-        uint256 available_ = IERC20(_rewardToken).balanceOf(address(this));
-        received_ = (available_ > _pendingReward) ? _pendingReward : available_;
+        if (_oldValue < _addedValue) {
+            weightNew_ = 1e12 - (_oldValue * 1e12) / (_addedValue + _oldValue);
+        } else if (_addedValue < _oldValue) {
+            weightNew_ = (_addedValue * 1e12) / (_addedValue + _oldValue);
+        } else {
+            weightNew_ = 5e11;
+        }
     }
 
     /**
@@ -232,15 +283,28 @@ library ReliquaryLogic {
      * @param position The position being updated.
      * @param _amount The amount of the deposit / withdrawal.
      */
-    function _updateEntry(PositionInfo storage position, uint256 _amount) internal {
+    function _updateEntry(PositionInfo storage position, uint256 _amount) private {
         uint256 amountBefore_ = position.amount;
         if (amountBefore_ == 0) {
             position.entry = block.timestamp;
         } else {
             uint256 entryBefore_ = position.entry;
             uint256 maturity_ = block.timestamp - entryBefore_;
-            position.entry = entryBefore_
-                + (maturity_ * _findWeight(_amount, amountBefore_)) / 1e12;
+            position.entry = entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / 1e12;
         }
+    }
+
+    /**
+     * @notice Calculate how much the owner will actually receive on harvest, given available reward tokens.
+     * @param _pendingReward Amount of reward token owed.
+     * @return received_ The minimum between amount owed and amount available.
+     */
+    function _receivedReward(address _rewardToken, uint256 _pendingReward)
+        private
+        view
+        returns (uint256 received_)
+    {
+        uint256 available_ = IERC20(_rewardToken).balanceOf(address(this));
+        received_ = (available_ > _pendingReward) ? _pendingReward : available_;
     }
 }

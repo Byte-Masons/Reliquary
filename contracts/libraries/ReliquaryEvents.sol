@@ -7,10 +7,12 @@ library ReliquaryEvents {
     event Withdraw(
         uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId
     );
+    event Harvest(uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
+    event Update(uint256 indexed pid, uint256 indexed relicId);
+
     event EmergencyWithdraw(
         uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId
     );
-    event Harvest(uint256 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
     event LogPoolAddition(
         uint256 indexed pid,
         uint256 allocPoint,

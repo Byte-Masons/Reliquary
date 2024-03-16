@@ -8,7 +8,7 @@ script = 'scripts'
 
 solc_version = "0.8.23"
 optimizer = true
-optimizer_runs = 300
+optimizer_runs = 250
 via_ir = false
 verbosity = 1
 
@@ -26,6 +26,6 @@ fs_permissions = [{ access = "read", path = "./"}]
 optimizerSteps = ''
 
 [fmt]
-line_length = 100 # While we allow up to 120, we lint at 100 for readability.
+line_length = 100
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

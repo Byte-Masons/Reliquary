@@ -289,7 +289,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         reliquary.burn(relicId);
 
         reliquary.withdrawAndHarvest(1 ether, relicId, address(this));
-        vm.expectRevert(bytes("ERC721: caller is not token owner or approved"));
+        vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.burn(relicId);
         assertEq(reliquary.balanceOf(address(this)), 1);

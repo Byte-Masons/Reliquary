@@ -6,7 +6,6 @@ import "../interfaces/IParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
-// todo remove Ownable and use the Reliquary admin
 /// @title Extension to the SingleAssetRewarder contract that allows managing multiple reward tokens via access control
 /// and enumerable children contracts.
 contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
@@ -45,6 +44,8 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         reliquary = msg.sender;
     }
 
+    // -------------- Admin --------------
+
     /**
      * @notice Deploys a ChildRewarder contract and adds it to the childrenRewarders set.
      * @param _rewardToken Address of token rewards are distributed in.
@@ -66,6 +67,8 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         }
         emit ChildRemoved(_childRewarder);
     }
+
+    // -------------- Hooks --------------
 
     function onUpdate(
         ICurves _curve,
@@ -197,6 +200,8 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
             );
         }
     }
+
+    // -------------- View --------------
 
     /**
      * @dev WARNING: This operation will copy the entire childrenRewarders storage to memory, which can be quite
