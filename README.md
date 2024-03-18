@@ -36,7 +36,7 @@ ln -s ../../pre-commit .git/hooks/pre-commit
 ### Variables
 
 -   storage: `x`
--   memory/calldata: `x_`
+-   memory/stack: `x_`
 -   function params: `_x`
 -   contracts/events/structs: `MyContract`
 -   errors: `MyContract__ERROR_DESCRIPTION`

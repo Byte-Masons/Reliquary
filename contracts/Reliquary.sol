@@ -448,8 +448,7 @@ contract Reliquary is
         vars_.oldToLevel = positionForId[_toId].level;
         vars_.newToLevel = ReliquaryLogic._updateLevel(toPosition, vars_.oldToLevel);
 
-        vars_.accRewardPerShare =
-            ReliquaryLogic._updatePool(poolInfo[vars_.poolId], emissionRate, totalAllocPoint);
+        vars_.accRewardPerShare = ReliquaryLogic._updatePool(pool, emissionRate, totalAllocPoint);
         vars_.fromMultiplier = vars_.accRewardPerShare * pool.curve.getFunction(vars_.fromLevel);
         vars_.pendingFrom = Math.mulDiv(
             vars_.fromAmount, vars_.fromMultiplier, ACC_REWARD_PRECISION
@@ -588,6 +587,7 @@ contract Reliquary is
 
     /**
      * @dev Internal deposit function that assumes `relicId` is valid.
+     * User needs to ERC20.approve() this contract by `_amount` before using _deposit().
      * @param _amount Amount to deposit.
      * @param _relicId The NFT ID of the position on which the deposit is to be made.
      */

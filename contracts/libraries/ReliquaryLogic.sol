@@ -20,7 +20,7 @@ library ReliquaryLogic {
     using SafeERC20 for IERC20;
 
     // -------------- Internal --------------
-    
+
     /**
      * @dev Update the position of a relic in a pool.
      * This function updates the position of a relic based on the provided kind (deposit, withdraw, harvest, or update),
