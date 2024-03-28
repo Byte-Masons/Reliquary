@@ -5,6 +5,8 @@ import "contracts/interfaces/ICurves.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
 /// @dev Level of precision rewards are calculated to.
+uint256 constant WEIGHT_PRECISION = 1e18;
+/// @dev Level of precision rewards are calculated to.
 uint256 constant ACC_REWARD_PRECISION = 1e41;
 /// @dev Max supply allowed for checks purpose.
 uint256 constant MAX_SUPPLY_ALLOWED = 100e9 ether;
@@ -37,7 +39,7 @@ struct PositionInfo {
 
 /**
  * @notice Info of each Reliquary pool.
- * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / 1e12).
+ * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
  * `totalLpSupplied` Total number of LPs in the pool. Represents the sum of all levelInfo.balance * levelInfo.multipliers.
  * `curve` Contract that define the function: f(maturity) = multiplier.

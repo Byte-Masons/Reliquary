@@ -76,7 +76,7 @@ contract Reliquary is
      * @notice Sets a new EmissionRate for overall rewardToken emissions. Can only be called with the proper role.
      * @param _emissionRate The contract address for the EmissionRate, which will return the base emission rate.
      */
-    function setEmissionRate(uint256 _emissionRate) external override onlyRole(EMISSION_RATE) {
+    function setEmissionRate(uint256 _emissionRate) external onlyRole(EMISSION_RATE) {
         emissionRate = _emissionRate;
         emit ReliquaryEvents.LogSetEmissionRate(_emissionRate);
     }
@@ -129,7 +129,7 @@ contract Reliquary is
             if (totalAlloc_ == 0) revert Reliquary__ZERO_TOTAL_ALLOC_POINT();
             totalAllocPoint = totalAlloc_;
 
-            //! if _curve is not strictly increasing, allowPartialWithdrawals must be set to false.
+            //! if _curve is not increasing, allowPartialWithdrawals must be set to false.
             //! We can't check this rule since curve are defined in [0, +infinity].
         }
         // -----------------

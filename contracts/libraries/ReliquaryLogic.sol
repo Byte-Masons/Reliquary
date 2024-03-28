@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.23;
 
 import "../interfaces/IReliquary.sol";
@@ -270,11 +269,11 @@ library ReliquaryLogic {
         returns (uint256 weightNew_)
     {
         if (_oldValue < _addedValue) {
-            weightNew_ = 1e12 - (_oldValue * 1e12) / (_addedValue + _oldValue);
+            weightNew_ = WEIGHT_PRECISION - (_oldValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
         } else if (_addedValue < _oldValue) {
-            weightNew_ = (_addedValue * 1e12) / (_addedValue + _oldValue);
+            weightNew_ = (_addedValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
         } else {
-            weightNew_ = 5e11;
+            weightNew_ = WEIGHT_PRECISION / 2;
         }
     }
 
@@ -290,7 +289,7 @@ library ReliquaryLogic {
         } else {
             uint256 entryBefore_ = position.entry;
             uint256 maturity_ = block.timestamp - entryBefore_;
-            position.entry = entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / 1e12;
+            position.entry = entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION;
         }
     }
 
