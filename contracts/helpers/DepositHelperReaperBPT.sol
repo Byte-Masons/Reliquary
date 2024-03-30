@@ -52,7 +52,7 @@ contract DepositHelperReaperBPT is Ownable {
     IReZap public immutable reZap;
     IWeth public immutable weth;
 
-    constructor(IReliquary _reliquary, IReZap _reZap) {
+    constructor(IReliquary _reliquary, IReZap _reZap) Ownable(msg.sender) {
         reliquary = _reliquary;
         reZap = _reZap;
         weth = IWeth(_reZap.WETH());

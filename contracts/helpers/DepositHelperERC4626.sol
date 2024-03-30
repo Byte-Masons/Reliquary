@@ -21,7 +21,7 @@ contract DepositHelperERC4626 is Ownable {
     IReliquary public immutable reliquary;
     IWeth public immutable weth;
 
-    constructor(IReliquary _reliquary, address _weth) {
+    constructor(IReliquary _reliquary, address _weth) Ownable(msg.sender) {
         reliquary = _reliquary;
         weth = IWeth(_weth);
     }

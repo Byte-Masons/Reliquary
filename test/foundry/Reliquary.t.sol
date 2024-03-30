@@ -9,7 +9,7 @@ import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
+import "./mocks/ERC20Mock.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
     using Strings for address;
@@ -18,8 +18,8 @@ contract ReliquaryTest is ERC721Holder, Test {
     Reliquary reliquary;
     LinearCurve linearCurve;
     LinearPlateauCurve linearPlateauCurve;
-    ERC20DecimalsMock oath;
-    ERC20DecimalsMock testToken;
+    ERC20Mock oath;
+    ERC20Mock testToken;
     address nftDescriptor;
     uint256 emissionRate = 1e17;
 
@@ -29,14 +29,14 @@ contract ReliquaryTest is ERC721Holder, Test {
     uint256 plateau = 10 days;
 
     function setUp() public {
-        oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
+        oath = new ERC20Mock(18);
         reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
         linearCurve = new LinearCurve(slope, minMultiplier);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
-        testToken = new ERC20DecimalsMock("Test Token", "TT", 6);
+        testToken = new ERC20Mock(6);
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
@@ -60,16 +60,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnModifyPoolUnauthorized() public {
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    address(1).toHexString(),
-                    " is missing role ",
-                    uint256(keccak256("OPERATOR")).toHexString()
-                )
-            )
-        );
+        vm.expectRevert();
         vm.prank(address(1));
         reliquary.modifyPool(0, 100, address(0), "USDC Pool", nftDescriptor, true);
     }
@@ -326,12 +317,12 @@ contract ReliquaryTest is ERC721Holder, Test {
     // }
 
     // function testParentRewarder() public {
-    //     ERC20DecimalsMock parentToken = new ERC20DecimalsMock("Parent Token", "PT", 18);
+    //     ERC20Mock parentToken = new ERC20Mock("Parent Token", "PT", 18);
     //     ParentRewarder parent = new ParentRewarder(5e17, address(parentToken), address(reliquary));
     //     parentToken.mint(address(parent), 1_000_000 ether);
     //     parent.grantRole(keccak256("CHILD_SETTER"), address(this));
 
-    //     ERC20DecimalsMock childToken = new ERC20DecimalsMock("Child Token", "CT", 6);
+    //     ERC20Mock childToken = new ERC20Mock("Child Token", "CT", 6);
     //     address child = parent.createChild(address(childToken), 2e6, address(this));
     //     childToken.mint(child, 1_000_000 ether);
 

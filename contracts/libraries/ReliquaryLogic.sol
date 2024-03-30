@@ -269,7 +269,8 @@ library ReliquaryLogic {
         returns (uint256 weightNew_)
     {
         if (_oldValue < _addedValue) {
-            weightNew_ = WEIGHT_PRECISION - (_oldValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
+            weightNew_ =
+                WEIGHT_PRECISION - (_oldValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
         } else if (_addedValue < _oldValue) {
             weightNew_ = (_addedValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
         } else {
@@ -289,7 +290,8 @@ library ReliquaryLogic {
         } else {
             uint256 entryBefore_ = position.entry;
             uint256 maturity_ = block.timestamp - entryBefore_;
-            position.entry = entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION;
+            position.entry =
+                entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION;
         }
     }
 

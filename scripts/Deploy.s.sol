@@ -14,9 +14,9 @@ contract Deploy is Script {
     using stdJson for string;
 
     struct Pool {
-        uint allocPoint;
+        uint256 allocPoint;
         bool allowPartialWithdrawals;
-        uint curveIndex;
+        uint256 curveIndex;
         string curveType;
         string name;
         address poolToken;
@@ -24,23 +24,23 @@ contract Deploy is Script {
     }
 
     struct ParentRewarderParams {
-        uint poolId;
+        uint256 poolId;
     }
 
     struct ChildRewarderParams {
-        uint parentIndex;
+        uint256 parentIndex;
         address rewarderToken;
     }
 
     struct LinearCurveParams {
-        uint minMultiplier;
-        uint slope;
+        uint256 minMultiplier;
+        uint256 slope;
     }
 
     struct LinearPlateauCurveParams {
-        uint minMultiplier;
-        uint plateauLevel;
-        uint slope;
+        uint256 minMultiplier;
+        uint256 plateauLevel;
+        uint256 slope;
     }
 
     bytes32 constant OPERATOR = keccak256("OPERATOR");
@@ -49,9 +49,9 @@ contract Deploy is Script {
     string config;
     address multisig;
     Reliquary reliquary;
-    uint poolCount;
+    uint256 poolCount;
     address rewardToken;
-    mapping(uint => ParentRollingRewarder) parentForPoolId;
+    mapping(uint256 => ParentRollingRewarder) parentForPoolId;
     LinearCurve[] linearCurves;
     LinearPlateauCurve[] linearPlateauCurves;
     address nftDescriptorNormal;
@@ -65,7 +65,7 @@ contract Deploy is Script {
         string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
         rewardToken = config.readAddress(".rewardToken");
-        uint emissionRate = config.readUint(".emissionRate");
+        uint256 emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
         poolCount = pools.length;
 
@@ -78,7 +78,7 @@ contract Deploy is Script {
         _deployRewarders();
 
         reliquary.grantRole(OPERATOR, tx.origin);
-        for (uint i = 0; i < pools.length; ++i) {
+        for (uint256 i = 0; i < pools.length; ++i) {
             Pool memory pool = pools[i];
 
             ICurves curve;
@@ -112,9 +112,11 @@ contract Deploy is Script {
     }
 
     function _deployRewarders() internal {
-        ParentRewarderParams[] memory parentParams = abi.decode(config.parseRaw(".parentRewarders"), (ParentRewarderParams[]));
-        ParentRollingRewarder[] memory parentRewarders = new ParentRollingRewarder[](parentParams.length);
-        for (uint i; i < parentParams.length; ++i) {
+        ParentRewarderParams[] memory parentParams =
+            abi.decode(config.parseRaw(".parentRewarders"), (ParentRewarderParams[]));
+        ParentRollingRewarder[] memory parentRewarders =
+            new ParentRollingRewarder[](parentParams.length);
+        for (uint256 i; i < parentParams.length; ++i) {
             ParentRewarderParams memory params = parentParams[i];
 
             ParentRollingRewarder newParent = new ParentRollingRewarder();
@@ -123,8 +125,9 @@ contract Deploy is Script {
             parentForPoolId[params.poolId] = newParent;
         }
 
-        ChildRewarderParams[] memory children = abi.decode(config.parseRaw(".childRewarders"), (ChildRewarderParams[]));
-        for (uint i; i < children.length; ++i) {
+        ChildRewarderParams[] memory children =
+            abi.decode(config.parseRaw(".childRewarders"), (ChildRewarderParams[]));
+        for (uint256 i; i < children.length; ++i) {
             ChildRewarderParams memory child = children[i];
             ParentRollingRewarder parent = ParentRollingRewarder(parentRewarders[child.parentIndex]);
             parent.createChild(child.rewarderToken);
@@ -134,16 +137,18 @@ contract Deploy is Script {
     function _deployCurves() internal {
         LinearCurveParams[] memory linearCurveParams =
             abi.decode(config.parseRaw(".linearCurves"), (LinearCurveParams[]));
-        for (uint i; i < linearCurveParams.length; ++i) {
+        for (uint256 i; i < linearCurveParams.length; ++i) {
             LinearCurveParams memory params = linearCurveParams[i];
             linearCurves.push(new LinearCurve(params.slope, params.minMultiplier));
         }
 
         LinearPlateauCurveParams[] memory linearPlateauCurveParams =
             abi.decode(config.parseRaw(".linearPlateauCurves"), (LinearPlateauCurveParams[]));
-        for (uint i; i < linearPlateauCurveParams.length; ++i) {
+        for (uint256 i; i < linearPlateauCurveParams.length; ++i) {
             LinearPlateauCurveParams memory params = linearPlateauCurveParams[i];
-            linearPlateauCurves.push(new LinearPlateauCurve(params.slope, params.minMultiplier, params.plateauLevel));
+            linearPlateauCurves.push(
+                new LinearPlateauCurve(params.slope, params.minMultiplier, params.plateauLevel)
+            );
         }
     }
 
@@ -160,7 +165,8 @@ contract Deploy is Script {
             }
             nftDescriptor = nftDescriptor4626;
             if (depositHelper4626 == address(0)) {
-                depositHelper4626 = address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
+                depositHelper4626 =
+                    address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
             }
         } else if (typeHash == keccak256("pair")) {
             if (nftDescriptorPair == address(0)) {
@@ -180,7 +186,7 @@ contract Deploy is Script {
         reliquary.renounceRole(OPERATOR, tx.origin);
         reliquary.renounceRole(defaultAdminRole, tx.origin);
         if (multisig != address(0)) {
-            for (uint i; i < poolCount; ++i) {
+            for (uint256 i; i < poolCount; ++i) {
                 if (address(parentForPoolId[i]) != address(0)) {
                     parentForPoolId[i].transferOwnership(multisig);
                 }

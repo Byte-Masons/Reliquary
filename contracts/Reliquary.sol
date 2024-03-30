@@ -8,9 +8,9 @@ import "./interfaces/INFTDescriptor.sol";
 import "./libraries/ReliquaryLogic.sol";
 import "./libraries/ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
-import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-contracts/contracts/access/extensions/AccessControlEnumerable.sol";
+import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "openzeppelin-contracts/contracts/utils/Multicall.sol";
 
@@ -27,13 +27,7 @@ import "openzeppelin-contracts/contracts/utils/Multicall.sol";
  * increased composability without affecting accounting logic too much, and users can
  * trade their Relics without withdrawing liquidity or affecting the position's maturity.
  */
-contract Reliquary is
-    Multicall,
-    IReliquary,
-    ERC721Enumerable,
-    AccessControlEnumerable,
-    ReentrancyGuard
-{
+contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @dev Access control roles.
@@ -225,7 +219,7 @@ contract Reliquary is
      * @param _relicId The NFT ID of the position being updated.
      */
     function updatePosition(uint256 _relicId) external nonReentrant {
-        if (!_exists(_relicId)) revert Reliquary__NON_EXISTENT_RELIC();
+        _requireOwned(_relicId);
         _update(_relicId);
     }
 
@@ -720,7 +714,7 @@ contract Reliquary is
      * @param _relicId The NFT ID of the Relic to get the tokenURI for.
      */
     function tokenURI(uint256 _relicId) public view override returns (string memory) {
-        if (!_exists(_relicId)) revert Reliquary__NON_EXISTENT_RELIC();
+        _requireOwned(_relicId);
         return INFTDescriptor(poolInfo[positionForId[_relicId].poolId].nftDescriptor)
             .constructTokenURI(_relicId);
     }
@@ -729,7 +723,7 @@ contract Reliquary is
     function supportsInterface(bytes4 _interfaceId)
         public
         view
-        override(IERC165, AccessControlEnumerable, ERC721Enumerable)
+        override(IERC165, AccessControlEnumerable, ERC721)
         returns (bool)
     {
         return _interfaceId == type(IReliquary).interfaceId || super.supportsInterface(_interfaceId);
@@ -742,7 +736,7 @@ contract Reliquary is
         override
         returns (bool)
     {
-        return _isApprovedOrOwner(_spender, _relicId);
+        return _isAuthorized(_ownerOf(_relicId), _spender, _relicId);
     }
 
     /**
@@ -750,7 +744,9 @@ contract Reliquary is
      * @param _relicId The NFT ID of the Relic.
      */
     function _requireApprovedOrOwner(uint256 _relicId) private view {
-        if (!_isApprovedOrOwner(msg.sender, _relicId)) revert Reliquary__NOT_APPROVED_OR_OWNER();
+        if (!_isAuthorized(_ownerOf(_relicId), msg.sender, _relicId)) {
+            revert Reliquary__NOT_APPROVED_OR_OWNER();
+        }
     }
 
     /// @dev Increments the ID nonce and mints a new Relic to `to`.

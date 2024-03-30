@@ -10,7 +10,7 @@ import "contracts/curves/LinearPlateauCurve.sol";
 import "contracts/rewarders/RollingRewarder.sol";
 import "contracts/rewarders/ParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "openzeppelin-contracts/contracts/mocks/ERC20DecimalsMock.sol";
+import "./mocks/ERC20Mock.sol";
 
 contract MultipleRollingRewarder is ERC721Holder, Test {
     using Strings for address;
@@ -19,13 +19,13 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
     Reliquary public reliquary;
     LinearCurve public linearCurve;
     LinearPlateauCurve public linearPlateauCurve;
-    ERC20DecimalsMock public oath;
-    ERC20DecimalsMock public suppliedToken;
+    ERC20Mock public oath;
+    ERC20Mock public suppliedToken;
     ParentRollingRewarder public parentRewarder;
 
     uint256 public nbChildRewarder = 3;
     RollingRewarder[] public childRewarders;
-    ERC20DecimalsMock[] public rewardTokens;
+    ERC20Mock[] public rewardTokens;
 
     address public nftDescriptor;
 
@@ -46,7 +46,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
     address[] public users = [alice, bob, carlos];
 
     function setUp() public {
-        oath = new ERC20DecimalsMock("Oath Token", "OATH", 18);
+        oath = new ERC20Mock(18);
 
         reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
@@ -54,7 +54,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
 
         oath.mint(address(reliquary), initialMint);
 
-        suppliedToken = new ERC20DecimalsMock("Test Token", "TT", 6);
+        suppliedToken = new ERC20Mock(6);
 
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
@@ -73,13 +73,13 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         );
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
-            address rewardTokenTemp = address(new ERC20DecimalsMock("RT1", "RT1", 18));
+            address rewardTokenTemp = address(new ERC20Mock(18));
             address rewarderTemp = parentRewarder.createChild(rewardTokenTemp);
-            rewardTokens.push(ERC20DecimalsMock(rewardTokenTemp));
+            rewardTokens.push(ERC20Mock(rewardTokenTemp));
             childRewarders.push(RollingRewarder(rewarderTemp));
-            ERC20DecimalsMock(rewardTokenTemp).mint(address(this), initialMint);
-            ERC20DecimalsMock(rewardTokenTemp).approve(address(reliquary), type(uint256).max);
-            ERC20DecimalsMock(rewardTokenTemp).approve(address(rewarderTemp), type(uint256).max);
+            ERC20Mock(rewardTokenTemp).mint(address(this), initialMint);
+            ERC20Mock(rewardTokenTemp).approve(address(reliquary), type(uint256).max);
+            ERC20Mock(rewardTokenTemp).approve(address(rewarderTemp), type(uint256).max);
         }
 
         suppliedToken.mint(address(this), initialMint);

@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "contracts/interfaces/ICurves.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 /// @dev Level of precision rewards are calculated to.
 uint256 constant WEIGHT_PRECISION = 1e18;
@@ -61,9 +61,8 @@ struct PoolInfo {
     address poolToken;
 }
 
-interface IReliquary is IERC721Enumerable {
+interface IReliquary is IERC721 {
     // Errors
-    error Reliquary__NON_EXISTENT_RELIC();
     error Reliquary__BURNING_PRINCIPAL();
     error Reliquary__BURNING_REWARDS();
     error Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();

@@ -30,7 +30,7 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         _;
     }
 
-    constructor() {}
+    constructor() Ownable(msg.sender) {}
 
     /**
      * @dev initialize called in Reliquary.addPool or Reliquary.modifyPool()
