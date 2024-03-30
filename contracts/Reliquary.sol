@@ -330,7 +330,6 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
                 if (rewardAmounts_[i] != 0) revert Reliquary__BURNING_REWARDS();
             }
         }
-
         _burn(_relicId);
     }
 
@@ -694,8 +693,8 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         PoolInfo storage pool = poolInfo[poolId_];
         uint256 accRewardPerShare_ = pool.accRewardPerShare;
         uint256 lpSupply_ = pool.totalLpSupplied;
-
         uint256 secondsSinceReward_ = block.timestamp - pool.lastRewardTime;
+
         if (secondsSinceReward_ != 0 && lpSupply_ != 0) {
             uint256 reward_ =
                 (secondsSinceReward_ * emissionRate * pool.allocPoint) / totalAllocPoint;
@@ -723,7 +722,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
     function supportsInterface(bytes4 _interfaceId)
         public
         view
-        override(IERC165, AccessControlEnumerable, ERC721)
+        override(IERC165, ERC721, AccessControlEnumerable)
         returns (bool)
     {
         return _interfaceId == type(IReliquary).interfaceId || super.supportsInterface(_interfaceId);
@@ -751,7 +750,9 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
     /// @dev Increments the ID nonce and mints a new Relic to `to`.
     function _mint(address _to) private returns (uint256 id_) {
-        id_ = ++idNonce;
+        unchecked {
+            id_ = ++idNonce;
+        }
         _safeMint(_to, id_);
     }
 }

@@ -32,8 +32,8 @@ struct PositionInfo {
     uint256 amount;
     uint256 rewardDebt;
     uint256 rewardCredit;
-    uint256 entry; // position owner's relative entry into the pool.
     uint256 poolId; // ensures that a single Relic is only used for one pool.
+    uint256 entry; // position owner's relative entry into the pool.
     uint256 level;
 }
 
@@ -49,12 +49,12 @@ struct PositionInfo {
  *     A value of false will also disable shift and split functionality.
  */
 struct PoolInfo {
+    ICurves curve;
+    string name;
     uint256 accRewardPerShare;
     uint256 lastRewardTime;
     uint256 totalLpSupplied;
-    ICurves curve;
     uint256 allocPoint;
-    string name;
     bool allowPartialWithdrawals;
     address nftDescriptor;
     address rewarder;

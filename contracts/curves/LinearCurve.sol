@@ -4,8 +4,8 @@ pragma solidity 0.8.23;
 import "contracts/interfaces/ICurves.sol";
 
 contract LinearCurve is ICurves {
-    uint256 public slope;
-    uint256 public minMultiplier; // getFunction(0) = minMultiplier
+    uint256 public immutable slope;
+    uint256 public immutable minMultiplier; // getFunction(0) = minMultiplier
 
     error LinearFunction__MIN_MULTIPLIER_MUST_GREATER_THAN_ZERO();
 
