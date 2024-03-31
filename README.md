@@ -65,4 +65,4 @@ Please use `forge fmt` before commiting.
 ## TODO
 
 -   NFT Desccriptor needs to be ajusted to curve
--   Deployment script needs to be ajusted to curve
+-   Tests PolynomialCurves

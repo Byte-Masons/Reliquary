@@ -9,6 +9,7 @@ import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "contracts/curves/PolynomialPlateauCurve.sol";
 import "./mocks/ERC20Mock.sol";
 
 contract ReliquaryTest is ERC721Holder, Test {
@@ -18,6 +19,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     Reliquary reliquary;
     LinearCurve linearCurve;
     LinearPlateauCurve linearPlateauCurve;
+    PolynomialPlateauCurve polynomialPlateauCurve;
     ERC20Mock oath;
     ERC20Mock testToken;
     address nftDescriptor;
@@ -27,12 +29,19 @@ contract ReliquaryTest is ERC721Holder, Test {
     uint256 slope = 100; // Increase of multiplier every second
     uint256 minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
     uint256 plateau = 10 days;
+    int256[] public coeff = [int256(100e18), int256(1e18), int256(5e15), int256(-1e13), int256(5e9)];
 
     function setUp() public {
+        int256[] memory coeffDynamic = new int256[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            coeffDynamic[i] = coeff[i];
+        }
+
         oath = new ERC20Mock(18);
         reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
         linearCurve = new LinearCurve(slope, minMultiplier);
+        polynomialPlateauCurve = new PolynomialPlateauCurve(coeffDynamic, 850);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
@@ -46,6 +55,10 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint256).max);
+    }
+
+    function testPolynomialCurve() public {
+        console.log(polynomialPlateauCurve.getFunction(8500));
     }
 
     function testModifyPool() public {

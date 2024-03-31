@@ -9,6 +9,7 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/ICurves.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
+import "contracts/curves/PolynomialPlateauCurve.sol";
 
 // The only unfuzzed method is reliquary.setEmissionRate()
 contract User {
@@ -43,7 +44,9 @@ contract ReliquaryProperties {
     // Linear function config (to config)
     uint256 public slope = 1; // Increase of multiplier every second
     uint256 public minMultiplier = 365 days * 100; // Arbitrary (but should be coherent with slope)
-    uint256 plateau = 10 days;
+    uint256 public plateauLinear = 10 days;
+    uint256 public plateauPoly = 850;
+    int256[] public coeff = [int256(100e18), int256(1e18), int256(5e15), int256(-1e13), int256(5e9)];
 
     uint public emissionRate = 1e18;
     uint public initialMint = 100 ether;
@@ -65,6 +68,7 @@ contract ReliquaryProperties {
     NFTDescriptor public nftDescriptor;
     LinearCurve linearCurve;
     LinearPlateauCurve linearPlateauCurve;
+    PolynomialPlateauCurve polynomialPlateauCurve;
 
     event LogUint(uint256 a);
 
@@ -80,11 +84,17 @@ contract ReliquaryProperties {
         reliquary = new Reliquary(address(rewardToken), emissionRate, "Relic", "NFT");
         nftDescriptor = new NFTDescriptor(address(reliquary));
 
+        int256[] memory coeffDynamic = new int256[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            coeffDynamic[i] = coeff[i];
+        }
         linearCurve = new LinearCurve(slope, minMultiplier);
-        linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
+        linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateauLinear);
+        polynomialPlateauCurve = new PolynomialPlateauCurve(coeffDynamic, plateauPoly);
 
         curves.push(linearCurve);
         curves.push(linearPlateauCurve);
+        curves.push(polynomialPlateauCurve);
 
         rewardToken.mint(address(reliquary), 100 ether); // provide rewards to reliquary contract
 
@@ -98,7 +108,7 @@ contract ReliquaryProperties {
                 100,
                 address(token),
                 address(0),
-                linearCurve,
+                polynomialPlateauCurve,
                 "reaper",
                 address(nftDescriptor),
                 true
