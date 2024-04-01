@@ -24,12 +24,8 @@ contract PolynomialPlateauCurve is ICurves {
 
         int256 result_ = coefficients[0];
         for (uint256 i = 1; i < coefficients.length; i++) {
-            result_ += mul(coefficients[i], _maturity ** i);
+            result_ += coefficients[i] * int256(_maturity ** i);
         }
         return uint256(result_) / WAD;
-    }
-
-    function mul(int256 a, uint256 b) private pure returns (int256) {
-        return a * int256(b);
     }
 }
