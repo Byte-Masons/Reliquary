@@ -20,6 +20,7 @@ enum Kind {
 
 /**
  * @notice Info for each Reliquary position.
+ * @dev 3 storage slots
  * `rewardDebt` Amount of reward token accumalated before the position's entry or last harvest.
  * `rewardCredit` Amount of reward token owed to the user on next harvest.
  * `amount` LP token amount the position owner has provided.
@@ -31,13 +32,14 @@ struct PositionInfo {
     uint256 rewardDebt;
     uint256 rewardCredit;
     uint128 amount;
-    uint256 entry;
-    uint256 level;
+    uint40 entry;
+    uint40 level;
     uint8 poolId;
 }
 
 /**
  * @notice Info of each Reliquary pool.
+ * @dev 7 storage slots
  * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
  * `totalLpSupplied` Total number of LPs in the pool.
@@ -51,13 +53,13 @@ struct PoolInfo {
     string name;
     uint256 accRewardPerShare;
     uint256 totalLpSupplied;
-    uint256 lastRewardTime;
-    uint256 allocPoint;
-    bool allowPartialWithdrawals;
-    ICurves curve;
     address nftDescriptor;
     address rewarder;
     address poolToken;
+    uint40 lastRewardTime;
+    bool allowPartialWithdrawals;
+    uint96 allocPoint;
+    ICurves curve;
 }
 
 interface IReliquary is IERC721 {

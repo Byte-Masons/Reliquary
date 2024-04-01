@@ -28,7 +28,7 @@ import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
  * increased composability without affecting accounting logic too much, and users can
  * trade their Relics without withdrawing liquidity or affecting the position's maturity.
  */
-contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, ReentrancyGuard {
+contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -135,8 +135,8 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
         poolInfo.push(
             PoolInfo({
-                allocPoint: _allocPoint,
-                lastRewardTime: block.timestamp,
+                allocPoint: _allocPoint.toUint96(),
+                lastRewardTime: uint40(block.timestamp),
                 totalLpSupplied: 0,
                 curve: _curve,
                 accRewardPerShare: 0,
@@ -180,10 +180,10 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
 
         PoolInfo storage pool = poolInfo[_poolId];
-        uint256 totalAlloc_ = totalAllocPoint + _allocPoint - pool.allocPoint;
+        uint256 totalAlloc_ = totalAllocPoint + _allocPoint - uint256(pool.allocPoint);
         if (totalAlloc_ == 0) revert Reliquary__ZERO_TOTAL_ALLOC_POINT();
         totalAllocPoint = totalAlloc_;
-        pool.allocPoint = _allocPoint;
+        pool.allocPoint = _allocPoint.toUint96();
 
         if (_overwriteRewarder) {
             pool.rewarder = _rewarder;
@@ -276,7 +276,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
         ReliquaryLogic._updatePool(pool, emissionRate, totalAllocPoint);
 
-        pool.totalLpSupplied -= amount_ * pool.curve.getFunction(position.level);
+        pool.totalLpSupplied -= amount_ * pool.curve.getFunction(uint256(position.level));
 
         _burn(_relicId);
         delete positionForId[_relicId];
@@ -354,8 +354,8 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         PositionInfo storage newPosition = positionForId[newId_];
         newPosition.amount = _amount.toUint128();
         newPosition.entry = fromPosition.entry;
-        uint256 level_ = fromPosition.level;
-        newPosition.level = level_;
+        uint256 level_ = uint256(fromPosition.level);
+        newPosition.level = uint40(level_);
         newPosition.poolId = poolId_;
 
         uint256 multiplier_ = ReliquaryLogic._updatePool(
@@ -418,9 +418,12 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
         vars_.fromAmount = uint256(fromPosition.amount);
         vars_.toAmount = uint256(toPosition.amount);
-        toPosition.entry = (
-            vars_.fromAmount * fromPosition.entry + vars_.toAmount * toPosition.entry
-        ) / (vars_.fromAmount + vars_.toAmount);
+        toPosition.entry = uint40(
+            (
+                vars_.fromAmount * uint256(fromPosition.entry)
+                    + vars_.toAmount * uint256(toPosition.entry)
+            ) / (vars_.fromAmount + vars_.toAmount)
+        ); // unsafe cast ok
 
         vars_.newFromAmount = vars_.fromAmount - _amount;
         fromPosition.amount = vars_.newFromAmount.toUint128();
@@ -507,13 +510,15 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         uint256 toAmount_ = uint256(toPosition.amount);
         uint256 newToAmount_ = toAmount_ + fromAmount_;
         if (newToAmount_ == 0) revert Reliquary__MERGING_EMPTY_RELICS();
-        toPosition.entry =
-            (fromAmount_ * fromPosition.entry + toAmount_ * toPosition.entry) / newToAmount_;
+        toPosition.entry = uint40(
+            (fromAmount_ * uint256(fromPosition.entry) + toAmount_ * uint256(toPosition.entry))
+                / newToAmount_
+        ); // unsafe cast ok
 
         toPosition.amount = newToAmount_.toUint128();
 
-        uint256 fromLevel_ = positionForId[_fromId].level;
-        uint256 oldToLevel_ = positionForId[_toId].level;
+        uint256 fromLevel_ = uint256(positionForId[_fromId].level);
+        uint256 oldToLevel_ = uint256(positionForId[_toId].level);
         uint256 newToLevel_ = ReliquaryLogic._updateLevel(toPosition, oldToLevel_);
 
         {
@@ -684,11 +689,11 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         PoolInfo storage pool = poolInfo[poolId_];
         uint256 accRewardPerShare_ = pool.accRewardPerShare;
         uint256 lpSupply_ = pool.totalLpSupplied;
-        uint256 secondsSinceReward_ = block.timestamp - pool.lastRewardTime;
+        uint256 secondsSinceReward_ = block.timestamp - uint256(pool.lastRewardTime);
 
         if (secondsSinceReward_ != 0 && lpSupply_ != 0) {
             uint256 reward_ =
-                (secondsSinceReward_ * emissionRate * pool.allocPoint) / totalAllocPoint;
+                (secondsSinceReward_ * emissionRate * uint256(pool.allocPoint)) / totalAllocPoint;
             accRewardPerShare_ += Math.mulDiv(reward_, ACC_REWARD_PRECISION, lpSupply_);
         }
 

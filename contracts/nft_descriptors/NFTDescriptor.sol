@@ -137,7 +137,7 @@ contract NFTDescriptor is INFTDescriptor {
             " day",
             (maturity == 1) ? "" : "s",
             '"}, {"trait_type": "Level", "value": ',
-            (position.level + 1).toString(),
+            uint256(position.level + 1).toString(),
             "}"
         );
     }

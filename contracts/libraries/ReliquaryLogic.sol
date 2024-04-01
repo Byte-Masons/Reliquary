@@ -68,7 +68,7 @@ library ReliquaryLogic {
             vars_.newAmount = vars_.oldAmount;
         }
 
-        vars_.oldLevel = position.level;
+        vars_.oldLevel = uint256(position.level);
         vars_.newLevel = _updateLevel(position, vars_.oldLevel);
 
         position.rewardCredit += Math.mulDiv(
@@ -126,7 +126,7 @@ library ReliquaryLogic {
         returns (uint256 accRewardPerShare_)
     {
         uint256 timestamp_ = block.timestamp;
-        uint256 lastRewardTime_ = pool.lastRewardTime;
+        uint256 lastRewardTime_ = uint256(pool.lastRewardTime);
         uint256 secondsSinceReward_ = timestamp_ - lastRewardTime_;
 
         accRewardPerShare_ = pool.accRewardPerShare;
@@ -134,13 +134,13 @@ library ReliquaryLogic {
             uint256 lpSupply_ = pool.totalLpSupplied;
 
             if (lpSupply_ != 0) {
-                uint256 reward_ =
-                    (secondsSinceReward_ * _emissionRate * pool.allocPoint) / _totalAllocPoint;
+                uint256 reward_ = (secondsSinceReward_ * _emissionRate * uint256(pool.allocPoint))
+                    / _totalAllocPoint;
                 accRewardPerShare_ += Math.mulDiv(reward_, ACC_REWARD_PRECISION, lpSupply_);
                 pool.accRewardPerShare = accRewardPerShare_;
             }
 
-            pool.lastRewardTime = timestamp_;
+            pool.lastRewardTime = uint40(timestamp_);
         }
     }
 
@@ -209,9 +209,9 @@ library ReliquaryLogic {
         internal
         returns (uint256 newLevel_)
     {
-        newLevel_ = block.timestamp - position.entry;
+        newLevel_ = block.timestamp - uint256(position.entry);
         if (_oldLevel != newLevel_) {
-            position.level = newLevel_;
+            position.level = uint40(newLevel_);
         }
     }
 
@@ -290,12 +290,13 @@ library ReliquaryLogic {
     function _updateEntry(PositionInfo storage position, uint256 _amount) private {
         uint256 amountBefore_ = uint256(position.amount);
         if (amountBefore_ == 0) {
-            position.entry = block.timestamp;
+            position.entry = uint40(block.timestamp);
         } else {
-            uint256 entryBefore_ = position.entry;
+            uint256 entryBefore_ = uint256(position.entry);
             uint256 maturity_ = block.timestamp - entryBefore_;
-            position.entry =
-                entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION;
+            position.entry = uint40(
+                entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION
+            ); // unsafe cast ok
         }
     }
 
