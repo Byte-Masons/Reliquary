@@ -52,12 +52,12 @@ contract ReliquaryProperties {
     uint public initialMint = 100 ether;
     uint public immutable startTimestamp;
 
-    uint public totalNbPools;
+    uint8 public totalNbPools;
     uint public totalNbUsers;
     mapping(uint => bool) public isInit;
 
     uint[] public relicIds;
-    uint[] public poolIds;
+    uint8[] public poolIds;
     User[] public users;
     ICurves[] public curves;
     ERC20Mock[] public tokenPoolIds;
@@ -99,7 +99,7 @@ contract ReliquaryProperties {
         rewardToken.mint(address(reliquary), 100 ether); // provide rewards to reliquary contract
 
         /// setup token pool
-        for (uint i = 0; i < totalNbPools; i++) {
+        for (uint8 i = 0; i < totalNbPools; i++) {
             ERC20Mock token = new ERC20Mock("Pool Token", "PT");
             tokenPoolIds.push(token);
 
@@ -125,7 +125,7 @@ contract ReliquaryProperties {
         for (uint i = 0; i < totalNbUsers; i++) {
             User user = new User();
             users.push(user);
-            for (uint j = 0; j < tokenPoolIds.length; j++) {
+            for (uint8 j = 0; j < tokenPoolIds.length; j++) {
                 tokenPoolIds[j].mint(address(user), initialMint);
                 user.approveERC20(tokenPoolIds[j], address(reliquary));
             }
@@ -145,7 +145,7 @@ contract ReliquaryProperties {
     ) public {
         uint maxSize = 10;
         require(allocPoint > 0);
-        uint startPoolIdsLen = poolIds.length;
+        uint8 startPoolIdsLen = uint8(poolIds.length);
         ERC20Mock token = new ERC20Mock("Pool Token", "PT");
         tokenPoolIds.push(token);
         ICurves curve = curves[randCurves % curves.length];
@@ -166,7 +166,7 @@ contract ReliquaryProperties {
         // mint new token and setup allowance for users
         for (uint i = 0; i < totalNbUsers; i++) {
             User user = users[i];
-            for (uint j = startPoolIdsLen; j < tokenPoolIds.length; j++) {
+            for (uint8 j = startPoolIdsLen; j < tokenPoolIds.length; j++) {
                 tokenPoolIds[j].mint(address(user), initialMint);
                 user.approveERC20(tokenPoolIds[j], address(reliquary));
             }
@@ -174,7 +174,7 @@ contract ReliquaryProperties {
     }
 
     /// random modify pool
-    function randModifyPools(uint randPoolId, uint allocPoint) public {
+    function randModifyPools(uint8 randPoolId, uint allocPoint) public {
         reliquary.modifyPool(
             randPoolId % totalNbPools,
             allocPoint % 10000 ether, // to avoid overflow on totalAllocPoint [0, 10000e18]
@@ -186,10 +186,10 @@ contract ReliquaryProperties {
     }
 
     /// random user create relic and deposit
-    function randCreateRelicAndDeposit(uint randUser, uint randPool, uint randAmt) public {
+    function randCreateRelicAndDeposit(uint randUser, uint8 randPool, uint randAmt) public {
         User user = users[randUser % users.length];
         uint amount = (randAmt % initialMint) / 100 + 1; // with seqLen: 100 we should not have supply issues
-        uint poolId = randPool % totalNbPools;
+        uint8 poolId = randPool % totalNbPools;
         ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
         uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
         uint balanceUserBefore = poolToken.balanceOf(address(user));
@@ -277,7 +277,7 @@ contract ReliquaryProperties {
             uint amountToWithdraw = randAmt % (amount + 1);
             require(amountToWithdraw > 0);
 
-            uint poolId = reliquary.getPositionForId(relicId).poolId;
+            uint8 poolId = reliquary.getPositionForId(relicId).poolId;
             ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
 
             uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
@@ -313,7 +313,7 @@ contract ReliquaryProperties {
         if (amount > 0) {
             uint amountToWithdraw = randAmt % (amount + 1);
 
-            uint poolId = reliquary.getPositionForId(relicId).poolId;
+            uint8 poolId = reliquary.getPositionForId(relicId).poolId;
             ERC20 poolToken = ERC20(reliquary.getPoolInfo(poolId).poolToken);
 
             uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
@@ -464,7 +464,7 @@ contract ReliquaryProperties {
     }
 
     /// update a pool randomly
-    function randUpdatePools(uint rand) public {
+    function randUpdatePools(uint8 rand) public {
         reliquary.updatePool(rand % totalNbPools);
     }
 
@@ -515,7 +515,7 @@ contract ReliquaryProperties {
         }
 
         // this works if there are no pools with twice the same token
-        for (uint pid; pid < totalNbPools; pid++) {
+        for (uint8 pid; pid < totalNbPools; pid++) {
             uint totalBalance = ERC20(reliquary.getPoolInfo(pid).poolToken).balanceOf(
                 address(reliquary)
             );
@@ -527,7 +527,7 @@ contract ReliquaryProperties {
     /// @custom:invariant - The sum of all `allocPoint` should be equal to `totalAllocpoint`.
     function poolallocPointIntegrity() public view {
         uint sum;
-        for (uint i = 0; i < poolIds.length; i++) {
+        for (uint8 i = 0; i < poolIds.length; i++) {
             sum += reliquary.getPoolInfo(i).allocPoint;
         }
         assert(sum == reliquary.totalAllocPoint());

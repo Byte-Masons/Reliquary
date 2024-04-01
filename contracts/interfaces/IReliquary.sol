@@ -31,9 +31,9 @@ struct PositionInfo {
     uint256 amount;
     uint256 rewardDebt;
     uint256 rewardCredit;
-    uint256 poolId; // ensures that a single Relic is only used for one pool.
     uint256 entry; // position owner's relative entry into the pool.
     uint256 level;
+    uint8 poolId; // ensures that a single Relic is only used for one pool.
 }
 
 /**
@@ -91,7 +91,7 @@ interface IReliquary is IERC721 {
     ) external;
 
     function modifyPool(
-        uint256 _pid,
+        uint8 _poolId,
         uint256 _allocPoint,
         address _rewarder,
         string calldata _name,
@@ -101,7 +101,7 @@ interface IReliquary is IERC721 {
 
     function massUpdatePools() external;
 
-    function updatePool(uint256 _pid) external;
+    function updatePool(uint8 _poolId) external;
 
     function deposit(uint256 _amount, uint256 _relicId, address _harvestTo) external;
 
@@ -113,13 +113,13 @@ interface IReliquary is IERC721 {
 
     function poolLength() external view returns (uint256 pools_);
 
-    function getPositionForId(uint256 _pid) external view returns (PositionInfo memory);
+    function getPositionForId(uint256 _posId) external view returns (PositionInfo memory);
 
-    function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory);
+    function getPoolInfo(uint8 _poolId) external view returns (PoolInfo memory);
 
     function isApprovedOrOwner(address, uint256) external view returns (bool);
 
-    function createRelicAndDeposit(address _to, uint256 _pid, uint256 _amount)
+    function createRelicAndDeposit(address _to, uint8 _poolId, uint256 _amount)
         external
         returns (uint256 _id_);
 

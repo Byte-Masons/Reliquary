@@ -51,7 +51,7 @@ contract DepositHelperReaperVault is Ownable {
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
-    function createRelicAndDeposit(uint256 _pid, uint256 _amount)
+    function createRelicAndDeposit(uint8 _pid, uint256 _amount)
         external
         payable
         returns (uint256 relicId_, uint256 shares_)
@@ -95,7 +95,7 @@ contract DepositHelperReaperVault is Ownable {
         }
     }
 
-    function _prepareDeposit(uint256 _pid, uint256 _amount) internal returns (uint256 shares_) {
+    function _prepareDeposit(uint8 _pid, uint256 _amount) internal returns (uint256 shares_) {
         IReaperVault vault_ = IReaperVault(reliquary.getPoolInfo(_pid).poolToken);
         IERC20 token_ = vault_.token();
 

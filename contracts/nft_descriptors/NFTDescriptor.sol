@@ -125,7 +125,7 @@ contract NFTDescriptor is INFTDescriptor {
     ) internal pure returns (string memory attributes) {
         attributes = string.concat(
             '{"trait_type": "Pool ID", "value": ',
-            position.poolId.toString(),
+            uint256(position.poolId).toString(),
             '}, {"trait_type": "Amount Deposited", "value": "',
             amount,
             '"}, {"trait_type": "Pending ',

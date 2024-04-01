@@ -13,7 +13,7 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
 
     EnumerableSet.AddressSet private childrenRewarders;
 
-    uint256 public poolId = type(uint256).max;
+    uint8 public poolId = type(uint8).max;
     address public reliquary;
 
     // Errors
@@ -36,8 +36,8 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
      * @dev initialize called in Reliquary.addPool or Reliquary.modifyPool()
      * @param _poolId ID of the pool this rewarder will read state from.
      */
-    function initialize(uint256 _poolId) external {
-        if (poolId != type(uint256).max || reliquary != address(0)) {
+    function initialize(uint8 _poolId) external {
+        if (poolId != type(uint8).max || reliquary != address(0)) {
             revert ParentRollingRewarder__ALREADY_INITIALIZED();
         }
         poolId = _poolId;

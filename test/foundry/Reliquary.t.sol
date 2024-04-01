@@ -114,8 +114,8 @@ contract ReliquaryTest is ERC721Holder, Test {
         assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
     }
 
-    function testRevertOnDepositInvalidPool(uint256 pool) public {
-        pool = bound(pool, 1, type(uint256).max);
+    function testRevertOnDepositInvalidPool(uint8 pool) public {
+        pool = uint8(bound(pool, 1, type(uint8).max));
         vm.expectRevert(IReliquary.Reliquary__NON_EXISTENT_POOL.selector);
         reliquary.createRelicAndDeposit(address(this), pool, 1);
     }

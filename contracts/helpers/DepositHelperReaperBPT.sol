@@ -72,7 +72,7 @@ contract DepositHelperReaperBPT is Ownable {
         reliquary.deposit(shares_, _relicId, _harvest ? msg.sender : address(0));
     }
 
-    function createRelicAndDeposit(IReZap.Step[] calldata _steps, uint256 _pid, uint256 _amount)
+    function createRelicAndDeposit(IReZap.Step[] calldata _steps, uint8 _pid, uint256 _amount)
         external
         payable
         returns (uint256 relicId_, uint256 shares_)
@@ -123,7 +123,7 @@ contract DepositHelperReaperBPT is Ownable {
         }
     }
 
-    function _prepareDeposit(IReZap.Step[] calldata _steps, uint256 _pid, uint256 _amount)
+    function _prepareDeposit(IReZap.Step[] calldata _steps, uint8 _pid, uint256 _amount)
         internal
         returns (uint256 shares_)
     {

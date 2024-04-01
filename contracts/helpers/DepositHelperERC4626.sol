@@ -37,7 +37,7 @@ contract DepositHelperERC4626 is Ownable {
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
-    function createRelicAndDeposit(uint256 _pid, uint256 _amount)
+    function createRelicAndDeposit(uint8 _pid, uint256 _amount)
         external
         payable
         returns (uint256 relicId_)
@@ -83,7 +83,7 @@ contract DepositHelperERC4626 is Ownable {
         }
     }
 
-    function _prepareDeposit(uint256 _pid, uint256 _amount) internal returns (uint256 shares_) {
+    function _prepareDeposit(uint8 _pid, uint256 _amount) internal returns (uint256 shares_) {
         IERC4626 vault_ = IERC4626(reliquary.getPoolInfo(_pid).poolToken);
         IERC20 token_ = IERC20(vault_.asset());
         if (msg.value != 0) {

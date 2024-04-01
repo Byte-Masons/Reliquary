@@ -145,7 +145,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
             })
         );
 
-        uint256 newPoolId_ = poolInfo.length - 1;
+        uint8 newPoolId_ = uint8(poolInfo.length) - 1;
         if (_rewarder != address(0)) {
             IParentRollingRewarder(_rewarder).initialize(newPoolId_);
         }
@@ -157,7 +157,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
     /**
      * @notice Modify the given pool's properties. Can only be called by an operator.
-     * @param _pid The index of the pool. See poolInfo.
+     * @param _poolId The index of the pool. See poolInfo.
      * @param _allocPoint New AP of the pool.
      * @param _rewarder Address of the rewarder delegate.
      * @param _name Name of pool to be displayed in NFT image.
@@ -165,18 +165,18 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      * @param _overwriteRewarder True if _rewarder should be set. Otherwise `rewarder` is ignored.
      */
     function modifyPool(
-        uint256 _pid,
+        uint8 _poolId,
         uint256 _allocPoint,
         address _rewarder,
         string calldata _name,
         address _nftDescriptor,
         bool _overwriteRewarder
     ) external onlyRole(OPERATOR) {
-        if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
+        if (_poolId >= uint8(poolInfo.length)) revert Reliquary__NON_EXISTENT_POOL();
 
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
 
-        PoolInfo storage pool = poolInfo[_pid];
+        PoolInfo storage pool = poolInfo[_poolId];
         uint256 totalAlloc_ = totalAllocPoint + _allocPoint - pool.allocPoint;
         if (totalAlloc_ == 0) revert Reliquary__ZERO_TOTAL_ALLOC_POINT();
         totalAllocPoint = totalAlloc_;
@@ -185,7 +185,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         if (_overwriteRewarder) {
             pool.rewarder = _rewarder;
             if (_rewarder != address(0)) {
-                IParentRollingRewarder(_rewarder).initialize(_pid);
+                IParentRollingRewarder(_rewarder).initialize(_poolId);
             }
         }
 
@@ -193,7 +193,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         pool.nftDescriptor = _nftDescriptor;
 
         emit ReliquaryEvents.LogPoolModified(
-            _pid, _allocPoint, _overwriteRewarder ? _rewarder : pool.rewarder, _nftDescriptor
+            _poolId, _allocPoint, _overwriteRewarder ? _rewarder : pool.rewarder, _nftDescriptor
         );
     }
 
@@ -208,10 +208,10 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
     /**
      * @notice Update reward variables of the given pool.
-     * @param _pid The index of the pool. See poolInfo.
+     * @param _poolId The index of the pool. See poolInfo.
      */
-    function updatePool(uint256 _pid) external nonReentrant {
-        ReliquaryLogic._updatePool(poolInfo[_pid], emissionRate, totalAllocPoint);
+    function updatePool(uint8 _poolId) external nonReentrant {
+        ReliquaryLogic._updatePool(poolInfo[_poolId], emissionRate, totalAllocPoint);
     }
 
     /**
@@ -267,7 +267,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         PositionInfo storage position = positionForId[_relicId];
 
         uint256 amount_ = position.amount;
-        uint256 poolId_ = position.poolId;
+        uint8 poolId_ = position.poolId;
 
         PoolInfo storage pool = poolInfo[poolId_];
 
@@ -286,19 +286,19 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
     /**
      * @notice Create a new Relic NFT and deposit into this position.
      * @param _to Address to mint the Relic to.
-     * @param _pid The index of the pool. See poolInfo.
+     * @param _poolId The index of the pool. See poolInfo.
      * @param _amount Token amount to deposit.
      */
-    function createRelicAndDeposit(address _to, uint256 _pid, uint256 _amount)
+    function createRelicAndDeposit(address _to, uint8 _poolId, uint256 _amount)
         public
         nonReentrant
         returns (uint256 id_)
     {
-        if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
+        if (_poolId >= uint8(poolInfo.length)) revert Reliquary__NON_EXISTENT_POOL();
         id_ = _mint(_to);
-        positionForId[id_].poolId = _pid;
+        positionForId[id_].poolId = _poolId;
         _deposit(_amount, id_, address(0));
-        emit ReliquaryEvents.CreateRelic(_pid, _to, id_);
+        emit ReliquaryEvents.CreateRelic(_poolId, _to, id_);
     }
 
     /// @notice Burns the Relic with ID `_relicId`. Cannot be called if there is any principal or rewards in the Relic.
@@ -337,7 +337,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         _requireApprovedOrOwner(_fromId);
 
         PositionInfo storage fromPosition = positionForId[_fromId];
-        uint256 poolId_ = fromPosition.poolId;
+        uint8 poolId_ = fromPosition.poolId;
         PoolInfo storage pool = poolInfo[poolId_];
         if (!pool.allowPartialWithdrawals) {
             revert Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
@@ -376,7 +376,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
 
     struct LocalVariables_shift {
         uint256 fromAmount;
-        uint256 poolId;
+        uint8 poolId;
         uint256 toAmount;
         uint256 newFromAmount;
         uint256 newToAmount;
@@ -495,7 +495,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         PositionInfo storage fromPosition = positionForId[_fromId];
         uint256 fromAmount_ = fromPosition.amount;
 
-        uint256 poolId_ = fromPosition.poolId;
+        uint8 poolId_ = fromPosition.poolId;
         PositionInfo storage toPosition = positionForId[_toId];
         if (poolId_ != toPosition.poolId) revert Reliquary__RELICS_NOT_OF_SAME_POOL();
 
@@ -575,7 +575,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
     function _deposit(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint256 poolId_, uint256 receivedReward_) =
+        (uint8 poolId_, uint256 receivedReward_) =
             _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransferFrom(msg.sender, address(this), _amount);
@@ -594,7 +594,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
     function _withdraw(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint256 poolId_, uint256 receivedReward_) =
+        (uint8 poolId_, uint256 receivedReward_) =
             _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
@@ -611,7 +611,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      * @param _relicId The NFT ID of the position on which the withdraw is to be made.
      */
     function _update(uint256 _relicId, address _harvestTo) internal {
-        (uint256 poolId_, uint256 receivedReward_) =
+        (uint8 poolId_, uint256 receivedReward_) =
             _updatePosition(0, _relicId, Kind.UPDATE, _harvestTo);
 
         if (_harvestTo != address(0)) {
@@ -632,7 +632,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      */
     function _updatePosition(uint256 _amount, uint256 _relicId, Kind _kind, address _harvestTo)
         private
-        returns (uint256 poolId_, uint256 received_)
+        returns (uint8 poolId_, uint256 received_)
     {
         PositionInfo storage position = positionForId[_relicId];
         poolId_ = position.poolId;
@@ -660,9 +660,9 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         position_ = positionForId[_relicId];
     }
 
-    /// @notice Returns a PoolInfo object for pool ID `pid`.
-    function getPoolInfo(uint256 _pid) external view returns (PoolInfo memory pool_) {
-        pool_ = poolInfo[_pid];
+    /// @notice Returns a PoolInfo object for pool ID `_poolId`.
+    function getPoolInfo(uint8 _poolId) external view returns (PoolInfo memory pool_) {
+        pool_ = poolInfo[_poolId];
     }
 
     /// @notice Returns the number of Reliquary pools.
@@ -677,7 +677,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      */
     function pendingReward(uint256 _relicId) public view returns (uint256 pending_) {
         PositionInfo storage position = positionForId[_relicId];
-        uint256 poolId_ = position.poolId;
+        uint8 poolId_ = position.poolId;
         PoolInfo storage pool = poolInfo[poolId_];
         uint256 accRewardPerShare_ = pool.accRewardPerShare;
         uint256 lpSupply_ = pool.totalLpSupplied;

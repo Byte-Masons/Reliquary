@@ -20,7 +20,7 @@ contract RollingRewarder is IRollingRewarder {
     address public immutable parent;
     address public immutable reliquary;
     address public immutable rewardToken;
-    uint256 public immutable poolId;
+    uint8 public immutable poolId;
 
     uint256 public lastDistributionTime;
     uint256 public distributionPeriod;
@@ -60,7 +60,7 @@ contract RollingRewarder is IRollingRewarder {
      * @param _rewardToken Address of token rewards are distributed in.
      * @param _reliquary Address of Reliquary this rewarder will read state from.
      */
-    constructor(address _rewardToken, address _reliquary, uint256 _poolId) {
+    constructor(address _rewardToken, address _reliquary, uint8 _poolId) {
         poolId = _poolId;
         parent = msg.sender;
         rewardToken = _rewardToken;
