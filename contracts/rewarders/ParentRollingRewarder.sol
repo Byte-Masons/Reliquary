@@ -86,20 +86,11 @@ contract ParentRollingRewarder is IParentRollingRewarder, Ownable {
         }
     }
 
-    function onReward(
-        ICurves _curve,
-        uint256 _relicId,
-        address _to,
-        uint256 _oldAmount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) external override onlyReliquary {
+    function onReward(uint256 _relicId, address _to) external override onlyReliquary {
         uint256 length_ = childrenRewarders.length();
 
         for (uint256 i_; i_ < length_; ++i_) {
-            IRewarder(childrenRewarders.at(i_)).onReward(
-                _curve, _relicId, _to, _oldAmount, _oldLevel, _newLevel
-            );
+            IRewarder(childrenRewarders.at(i_)).onReward(_relicId, _to);
         }
     }
 

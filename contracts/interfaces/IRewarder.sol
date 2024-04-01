@@ -4,14 +4,7 @@ pragma solidity 0.8.23;
 import "../interfaces/ICurves.sol";
 
 interface IRewarder {
-    function onReward(
-        ICurves _curve,
-        uint256 _relicId,
-        address _to,
-        uint256 _amount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) external;
+    function onReward(uint256 _relicId, address _to) external;
 
     function onUpdate(
         ICurves _curve,

@@ -103,14 +103,7 @@ contract RollingRewarder is IRollingRewarder {
     }
 
     /// @dev Must always be called after `onUpdate`, `onDeposit` or `onWithdraw`.
-    function onReward(
-        ICurves _curve,
-        uint256 _relicId,
-        address _to,
-        uint256 _amount,
-        uint256 _oldLevel,
-        uint256 _newLevel
-    ) external virtual onlyParent {
+    function onReward(uint256 _relicId, address _to) external virtual onlyParent {
         uint256 pending_ = rewardCredit[_relicId];
         rewardCredit[_relicId] = 0;
 
@@ -307,7 +300,7 @@ contract RollingRewarder is IRollingRewarder {
         }
 
         PositionInfo memory position_ = IReliquary(reliquary).getPositionForId(_relicId);
-        uint256 amountMultiplied_ = position_.amount
+        uint256 amountMultiplied_ = uint256(position_.amount)
             * IReliquary(reliquary).getPoolInfo(poolId).curve.getFunction(position_.level);
 
         uint256 pending_ = Math.mulDiv(amountMultiplied_, newAccReward_, ACC_REWARD_PRECISION)

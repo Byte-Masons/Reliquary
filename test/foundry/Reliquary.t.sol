@@ -57,7 +57,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         testToken.approve(address(reliquary), type(uint256).max);
     }
 
-    function testPolynomialCurve() public {
+    function testPolynomialCurve() public view {
         console.log(polynomialPlateauCurve.getFunction(8500));
     }
 

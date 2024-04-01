@@ -6,6 +6,7 @@ import "../interfaces/IRewarder.sol";
 import "./ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 
 struct LocalVariables_updateRelic {
     uint256 received;
@@ -17,6 +18,7 @@ struct LocalVariables_updateRelic {
 
 library ReliquaryLogic {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     // -------------- Internal --------------
 
@@ -49,18 +51,18 @@ library ReliquaryLogic {
         uint256 accRewardPerShare_ = _updatePool(pool, _emissionRate, _totalAllocPoint);
 
         LocalVariables_updateRelic memory vars_;
-        vars_.oldAmount = position.amount;
+        vars_.oldAmount = uint256(position.amount);
 
         if (_kind == Kind.DEPOSIT) {
             _updateEntry(position, _amount);
             vars_.newAmount = vars_.oldAmount + _amount;
-            position.amount = vars_.newAmount;
+            position.amount = vars_.newAmount.toUint128();
         } else if (_kind == Kind.WITHDRAW) {
             if (_amount != vars_.oldAmount && !pool.allowPartialWithdrawals) {
                 revert IReliquary.Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
             }
             vars_.newAmount = vars_.oldAmount - _amount;
-            position.amount = vars_.newAmount;
+            position.amount = vars_.newAmount.toUint128();
         } else {
             /* Kind.HARVEST or Kind.UPDATE */
             vars_.newAmount = vars_.oldAmount;
@@ -235,7 +237,7 @@ library ReliquaryLogic {
         }
 
         if (_harvestTo != address(0)) {
-            _rewarder.onReward(_curve, _relicId, _harvestTo, _oldAmount, _oldLevel, _newLevel);
+            _rewarder.onReward(_relicId, _harvestTo);
         }
     }
 
@@ -286,7 +288,7 @@ library ReliquaryLogic {
      * @param _amount The amount of the deposit / withdrawal.
      */
     function _updateEntry(PositionInfo storage position, uint256 _amount) private {
-        uint256 amountBefore_ = position.amount;
+        uint256 amountBefore_ = uint256(position.amount);
         if (amountBefore_ == 0) {
             position.entry = block.timestamp;
         } else {

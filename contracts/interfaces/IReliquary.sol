@@ -20,27 +20,27 @@ enum Kind {
 
 /**
  * @notice Info for each Reliquary position.
- * `amount` LP token amount the position owner has provided.
  * `rewardDebt` Amount of reward token accumalated before the position's entry or last harvest.
  * `rewardCredit` Amount of reward token owed to the user on next harvest.
- * `entry` Used to determine the maturity of the position.
+ * `amount` LP token amount the position owner has provided.
+ * `entry` Used to determine the maturity of the position, position owner's relative entry into the pool.
+ * `level` Index of this position's level within the pool's array of levels, ensures that a single Relic is only used for one pool.
  * `poolId` ID of the pool to which this position belongs.
- * `level` Index of this position's level within the pool's array of levels.
  */
 struct PositionInfo {
-    uint256 amount;
     uint256 rewardDebt;
     uint256 rewardCredit;
-    uint256 entry; // position owner's relative entry into the pool.
+    uint128 amount;
+    uint256 entry;
     uint256 level;
-    uint8 poolId; // ensures that a single Relic is only used for one pool.
+    uint8 poolId;
 }
 
 /**
  * @notice Info of each Reliquary pool.
  * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
  * `lastRewardTime` Last timestamp the accumulated reward was updated.
- * `totalLpSupplied` Total number of LPs in the pool. Represents the sum of all levelInfo.balance * levelInfo.multipliers.
+ * `totalLpSupplied` Total number of LPs in the pool.
  * `curve` Contract that define the function: f(maturity) = multiplier.
  * `allocPoint` Pool's individual allocation - ratio of the total allocation.
  * `name` Name of pool to be displayed in NFT image.
@@ -48,13 +48,13 @@ struct PositionInfo {
  *     A value of false will also disable shift and split functionality.
  */
 struct PoolInfo {
-    ICurves curve;
     string name;
     uint256 accRewardPerShare;
-    uint256 lastRewardTime;
     uint256 totalLpSupplied;
+    uint256 lastRewardTime;
     uint256 allocPoint;
     bool allowPartialWithdrawals;
+    ICurves curve;
     address nftDescriptor;
     address rewarder;
     address poolToken;

@@ -4,9 +4,7 @@ pragma solidity 0.8.23;
 library ReliquaryEvents {
     event CreateRelic(uint8 indexed pid, address indexed to, uint256 indexed relicId);
     event Deposit(uint8 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
-    event Withdraw(
-        uint8 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId
-    );
+    event Withdraw(uint8 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
     event Harvest(uint8 indexed pid, uint256 amount, address indexed to, uint256 indexed relicId);
     event Update(uint8 indexed pid, uint256 indexed relicId);
 
