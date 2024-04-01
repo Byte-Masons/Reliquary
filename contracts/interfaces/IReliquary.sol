@@ -40,13 +40,16 @@ struct PositionInfo {
 /**
  * @notice Info of each Reliquary pool.
  * @dev 7 storage slots
- * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
- * `lastRewardTime` Last timestamp the accumulated reward was updated.
- * `totalLpSupplied` Total number of LPs in the pool.
- * `curve` Contract that define the function: f(maturity) = multiplier.
- * `allocPoint` Pool's individual allocation - ratio of the total allocation.
  * `name` Name of pool to be displayed in NFT image.
+ * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
+ * `totalLpSupplied` Total number of LPs in the pool.
+ * `nftDescriptor` The nft descriptor address.
+ * `rewarder` The nft rewarder address.
+ * `poolToken` ERC20 token supplied.
+ * `lastRewardTime` Last timestamp the accumulated reward was updated.
  * `allowPartialWithdrawals` Whether users can withdraw less than their entire position.
+ * `allocPoint` Pool's individual allocation - ratio of the total allocation.
+ * `curve` Contract that define the function: f(maturity) = multiplier.
  *     A value of false will also disable shift and split functionality.
  */
 struct PoolInfo {
