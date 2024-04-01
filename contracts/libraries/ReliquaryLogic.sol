@@ -80,7 +80,7 @@ library ReliquaryLogic {
             ACC_REWARD_PRECISION
         );
 
-        if (_kind == Kind.HARVEST) {
+        if (_harvestTo != address(0)) {
             vars_.received = _receivedReward(_rewardToken, position.rewardCredit);
             position.rewardCredit -= vars_.received;
             if (vars_.received != 0) {
@@ -230,10 +230,12 @@ library ReliquaryLogic {
             _rewarder.onDeposit(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
         } else if (_kind == Kind.WITHDRAW) {
             _rewarder.onWithdraw(_curve, _relicId, _amount, _oldAmount, _oldLevel, _newLevel);
-        } else if (_kind == Kind.HARVEST) {
-            _rewarder.onReward(_curve, _relicId, _harvestTo, _oldAmount, _oldLevel, _newLevel);
         } /* Kind.UPDATE */ else {
             _rewarder.onUpdate(_curve, _relicId, _oldAmount, _oldLevel, _newLevel);
+        }
+
+        if (_harvestTo != address(0)) {
+            _rewarder.onReward(_curve, _relicId, _harvestTo, _oldAmount, _oldLevel, _newLevel);
         }
     }
 

@@ -60,15 +60,16 @@ contract DepositHelperReaperBPT is Ownable {
 
     receive() external payable {}
 
-    function deposit(IReZap.Step[] calldata _steps, uint256 _amount, uint256 _relicId)
-        external
-        payable
-        returns (uint256 shares_)
-    {
+    function deposit(
+        IReZap.Step[] calldata _steps,
+        uint256 _amount,
+        uint256 _relicId,
+        bool _harvest
+    ) external payable returns (uint256 shares_) {
         _requireApprovedOrOwner(_relicId);
 
         shares_ = _prepareDeposit(_steps, reliquary.getPositionForId(_relicId).poolId, _amount);
-        reliquary.deposit(shares_, _relicId);
+        reliquary.deposit(shares_, _relicId, _harvest ? msg.sender : address(0));
     }
 
     function createRelicAndDeposit(IReZap.Step[] calldata _steps, uint256 _pid, uint256 _amount)
@@ -207,11 +208,7 @@ contract DepositHelperReaperBPT is Ownable {
         uint256 _relicId,
         bool _harvest
     ) internal {
-        if (_harvest) {
-            reliquary.withdrawAndHarvest(_shares, _relicId, msg.sender);
-        } else {
-            reliquary.withdraw(_shares, _relicId);
-        }
+        reliquary.withdraw(_shares, _relicId, _harvest ? msg.sender : address(0));
 
         if (_vault.allowance(address(this), address(reZap)) == 0) {
             _vault.approve(address(reZap), type(uint256).max);

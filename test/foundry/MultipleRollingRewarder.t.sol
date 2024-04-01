@@ -126,8 +126,8 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 0; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.harvest(relics[u], users[u]);
-            reliquary.withdraw(initialInvest, relics[u]);
+            reliquary.update(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], address(0));
         }
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
@@ -179,7 +179,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 0; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.withdrawAndHarvest(initialInvest, relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], users[u]);
         }
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
@@ -231,8 +231,8 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 0; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.withdraw(initialInvest, relics[u]);
-            reliquary.harvest(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], address(0));
+            reliquary.update(relics[u], users[u]);
         }
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
@@ -274,7 +274,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
 
         for (uint256 u = 0; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.updatePosition(relics[u]);
+            reliquary.update(relics[u], address(0));
         }
 
         skip(initialDistributionPeriod);
@@ -291,7 +291,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 0; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.withdrawAndHarvest(initialInvest, relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], users[u]);
         }
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
@@ -364,17 +364,17 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 1; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.harvest(relics[u], users[u]);
-            reliquary.withdraw(initialInvest, relics[u]);
+            reliquary.update(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], address(0));
         }
 
         vm.startPrank(users[0]);
 
-        reliquary.harvest(relics[0], users[0]);
-        reliquary.withdraw(initialInvest / 2, relics[0]);
+        reliquary.update(relics[0], users[0]);
+        reliquary.withdraw(initialInvest / 2, relics[0], address(0));
 
-        reliquary.harvest(u0SlittedRelic, users[0]);
-        reliquary.withdraw(initialInvest / 2, u0SlittedRelic);
+        reliquary.update(u0SlittedRelic, users[0]);
+        reliquary.withdraw(initialInvest / 2, u0SlittedRelic, address(0));
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
             for (uint256 u = 0; u < users.length; u++) {
@@ -448,17 +448,17 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 2; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.harvest(relics[u], users[u]);
-            reliquary.withdraw(initialInvest, relics[u]);
+            reliquary.update(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], address(0));
         }
 
         vm.startPrank(users[0]);
-        reliquary.harvest(relics[0], users[0]);
-        reliquary.withdraw(initialInvest / 2, relics[0]);
+        reliquary.update(relics[0], users[0]);
+        reliquary.withdraw(initialInvest / 2, relics[0], address(0));
 
         vm.startPrank(users[1]);
-        reliquary.harvest(relics[1], users[1]);
-        reliquary.withdraw(initialInvest + initialInvest / 2, relics[1]);
+        reliquary.update(relics[1], users[1]);
+        reliquary.withdraw(initialInvest + initialInvest / 2, relics[1], address(0));
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
             for (uint256 u = 2; u < users.length; u++) {
@@ -543,13 +543,13 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         // withdraw
         for (uint256 u = 2; u < users.length; u++) {
             vm.startPrank(users[u]);
-            reliquary.harvest(relics[u], users[u]);
-            reliquary.withdraw(initialInvest, relics[u]);
+            reliquary.update(relics[u], users[u]);
+            reliquary.withdraw(initialInvest, relics[u], address(0));
         }
 
         vm.startPrank(users[1]);
-        reliquary.harvest(relics[1], users[1]);
-        reliquary.withdraw(initialInvest * 2, relics[1]);
+        reliquary.update(relics[1], users[1]);
+        reliquary.withdraw(initialInvest * 2, relics[1], address(0));
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
             for (uint256 u = 2; u < users.length; u++) {

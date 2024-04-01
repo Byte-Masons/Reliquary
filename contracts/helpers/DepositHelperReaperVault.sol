@@ -40,14 +40,14 @@ contract DepositHelperReaperVault is Ownable {
     receive() external payable {}
 
     /// @notice Deposit `_amount` of ERC20 tokens (or native ether for a supported pool) into existing Relic `_relicId`.
-    function deposit(uint256 _amount, uint256 _relicId)
+    function deposit(uint256 _amount, uint256 _relicId, bool _harvest)
         external
         payable
         returns (uint256 shares_)
     {
         _requireApprovedOrOwner(_relicId);
         shares_ = _prepareDeposit(reliquary.getPositionForId(_relicId).poolId, _amount);
-        reliquary.deposit(shares_, _relicId);
+        reliquary.deposit(shares_, _relicId, _harvest ? msg.sender : address(0));
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
@@ -141,11 +141,7 @@ contract DepositHelperReaperVault is Ownable {
             }
         }
 
-        if (_harvest) {
-            reliquary.withdrawAndHarvest(shares_, _relicId, msg.sender);
-        } else {
-            reliquary.withdraw(shares_, _relicId);
-        }
+        reliquary.withdraw(shares_, _relicId, _harvest ? msg.sender : address(0));
 
         IERC20 token_ = vault_.token();
         uint256 initialBalance_ = token_.balanceOf(address(this));

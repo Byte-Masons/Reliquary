@@ -85,7 +85,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
 
         (uint256 relicId, uint256 sharesA) =
             helper.createRelicAndDeposit{value: aIsETH ? amountA : 0}(0, amountA);
-        uint256 sharesB = helper.deposit{value: bIsETH ? amountB : 0}(amountB, relicId);
+        uint256 sharesB = helper.deposit{value: bIsETH ? amountB : 0}(amountB, relicId, false);
 
         assertEq(weth.balanceOf(address(helper)), 0);
         uint256 relicAmount = reliquary.getPositionForId(relicId).amount;
@@ -96,7 +96,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         (uint256 relicId,) = helper.createRelicAndDeposit(0, 1 ether);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
-        helper.deposit(1 ether, relicId);
+        helper.deposit(1 ether, relicId, true);
     }
 
     function testWithdraw(uint256 amount, bool harvest, bool depositETH, bool withdrawETH) public {

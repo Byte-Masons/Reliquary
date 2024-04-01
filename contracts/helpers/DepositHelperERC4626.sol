@@ -29,11 +29,11 @@ contract DepositHelperERC4626 is Ownable {
     receive() external payable {}
 
     /// @notice Deposit `_amount` of ERC20 tokens (or native ether for a supported pool) into existing Relic `_relicId`.
-    function deposit(uint256 _amount, uint256 _relicId) external payable {
+    function deposit(uint256 _amount, uint256 _relicId, bool _harvest) external payable {
         _requireApprovedOrOwner(_relicId);
 
         uint256 shares_ = _prepareDeposit(reliquary.getPositionForId(_relicId).poolId, _amount);
-        reliquary.deposit(shares_, _relicId);
+        reliquary.deposit(shares_, _relicId, _harvest ? msg.sender : address(0));
     }
 
     /// @notice Send `_amount` of ERC20 tokens (or native ether for a supported pool) and create a new Relic in pool `_pid`.
@@ -122,11 +122,7 @@ contract DepositHelperERC4626 is Ownable {
         bool _harvest,
         bool _giveEther
     ) internal {
-        if (_harvest) {
-            reliquary.withdrawAndHarvest(_amount, _relicId, msg.sender);
-        } else {
-            reliquary.withdraw(_amount, _relicId);
-        }
+        reliquary.withdraw(_amount, _relicId, _harvest ? msg.sender : address(0));
 
         if (_giveEther) {
             require(_vault.asset() == address(weth), "not an ether vault");

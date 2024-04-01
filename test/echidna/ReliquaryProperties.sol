@@ -230,7 +230,33 @@ contract ReliquaryProperties {
         if (isInit[relicId]) {
             (bool success, ) = user.proxy(
                 address(reliquary),
-                abi.encodeWithSelector(reliquary.deposit.selector, amount, relicId)
+                abi.encodeWithSelector(reliquary.deposit.selector, amount, relicId, address(0))
+            );
+            assert(success);
+        }
+
+        // reliquary balance must have increased by amount
+        assert(poolToken.balanceOf(address(reliquary)) == balanceReliquaryBefore + amount);
+        // user balance must have decreased by amount
+        assert(poolToken.balanceOf(address(user)) == balanceUserBefore - amount);
+    }
+
+    /// random user deposit + harvest
+    function randDepositAndHarvest(uint randRelic, uint randAmt) public {
+        uint relicId = relicIds[randRelic % relicIds.length];
+        User user = User(reliquary.ownerOf(relicId));
+        uint amount = (randAmt % initialMint) / 100 + 1; // with seqLen: 100 we should not have supply issues
+        ERC20 poolToken = ERC20(
+            reliquary.getPoolInfo(reliquary.getPositionForId(relicId).poolId).poolToken
+        );
+        uint balanceReliquaryBefore = poolToken.balanceOf(address(reliquary));
+        uint balanceUserBefore = poolToken.balanceOf(address(user));
+
+        // if the user already has a relic, use deposit()
+        if (isInit[relicId]) {
+            (bool success, ) = user.proxy(
+                address(reliquary),
+                abi.encodeWithSelector(reliquary.deposit.selector, amount, relicId, address(user))
             );
             assert(success);
         }
@@ -263,7 +289,8 @@ contract ReliquaryProperties {
                 abi.encodeWithSelector(
                     reliquary.withdraw.selector,
                     amountToWithdraw, // withdraw more than amount deposited ]0, amount]
-                    relicId
+                    relicId,
+                    address(0)
                 )
             );
             assert(success);
@@ -296,7 +323,7 @@ contract ReliquaryProperties {
             (bool success, ) = user.proxy(
                 address(reliquary),
                 abi.encodeWithSelector(
-                    reliquary.withdrawAndHarvest.selector,
+                    reliquary.withdraw.selector,
                     amountToWithdraw, // withdraw more than amount deposited ]0, amount]
                     relicId,
                     address(user)
@@ -352,7 +379,7 @@ contract ReliquaryProperties {
 
         (bool success, ) = User(owner).proxy(
             address(reliquary),
-            abi.encodeWithSelector(reliquary.harvest.selector, idToHasvest, owner)
+            abi.encodeWithSelector(reliquary.update.selector, idToHasvest, owner)
         );
         require(success);
 
@@ -433,7 +460,7 @@ contract ReliquaryProperties {
 
     /// update a position randomly
     function randUpdatePosition(uint rand) public {
-        reliquary.updatePosition(rand % relicIds.length);
+        reliquary.update(rand % relicIds.length, address(0));
     }
 
     /// update a pool randomly
@@ -469,7 +496,8 @@ contract ReliquaryProperties {
             abi.encodeWithSelector(
                 reliquary.withdraw.selector,
                 randAmt, // withdraw more than amount deposited ]amount, uint256.max]
-                relicId
+                relicId,
+                address(0)
             )
         );
         assert(!success);

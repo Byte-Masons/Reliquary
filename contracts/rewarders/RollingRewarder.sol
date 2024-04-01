@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+// TODO remove
+import "forge-std/console.sol";
+
 import "../interfaces/IRollingRewarder.sol";
 import "../interfaces/IRewarder.sol";
 import "../interfaces/IReliquary.sol";
@@ -99,6 +102,7 @@ contract RollingRewarder is IRollingRewarder {
             Math.mulDiv(newAmountMultiplied_, accRewardPerShare_, ACC_REWARD_PRECISION);
     }
 
+    /// @dev Must always be called after `onUpdate`, `onDeposit` or `onWithdraw`.
     function onReward(
         ICurves _curve,
         uint256 _relicId,
@@ -107,21 +111,8 @@ contract RollingRewarder is IRollingRewarder {
         uint256 _oldLevel,
         uint256 _newLevel
     ) external virtual onlyParent {
-        uint256 oldAmountMultiplied_ = _amount * _curve.getFunction(_oldLevel);
-        uint256 newAmountMultiplied_ = _amount * _curve.getFunction(_newLevel);
-
-        _issueTokens();
-
-        uint256 accRewardPerShare_ = accRewardPerShare;
-        uint256 pending_ = Math.mulDiv(
-            oldAmountMultiplied_, accRewardPerShare_, ACC_REWARD_PRECISION
-        ) - rewardDebt[_relicId];
-        pending_ += rewardCredit[_relicId];
-
+        uint256 pending_ = rewardCredit[_relicId];
         rewardCredit[_relicId] = 0;
-
-        rewardDebt[_relicId] =
-            Math.mulDiv(newAmountMultiplied_, accRewardPerShare_, ACC_REWARD_PRECISION);
 
         if (pending_ > 0) {
             IERC20(rewardToken).safeTransfer(_to, pending_);

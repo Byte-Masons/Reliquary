@@ -93,7 +93,8 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         (uint256 relicId, uint256 sharesA) =
             helper.createRelicAndDeposit{value: aIsFTM ? amountA : 0}(stepsA, 0, amountA);
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, amountB);
-        uint256 sharesB = helper.deposit{value: bIsFTM ? amountB : 0}(stepsB, amountB, relicId);
+        uint256 sharesB =
+            helper.deposit{value: bIsFTM ? amountB : 0}(stepsB, amountB, relicId, true);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
         uint256 relicAmount = reliquary.getPositionForId(relicId).amount;
@@ -106,7 +107,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         IReZap.Step[] memory stepsB = reZap.findStepsIn(address(wftm), bpt, 1 ether);
         vm.expectRevert(bytes("not approved or owner"));
         vm.prank(address(1));
-        helper.deposit(stepsB, 1 ether, relicId);
+        helper.deposit(stepsB, 1 ether, relicId, false);
     }
 
     function testWithdraw(uint256 amount, bool harvest, bool depositFTM, bool withdrawFTM) public {

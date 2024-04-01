@@ -83,7 +83,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
-        reliquary.updatePosition(relicId);
+        reliquary.update(relicId, address(0));
         assertApproxEqAbs(
             reliquary.pendingReward(relicId), time * emissionRate, (time * emissionRate) / 100000
         ); // max 0,0001%
@@ -110,7 +110,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         amountB = bound(amountB, 1, type(uint256).max / 2);
         vm.assume(amountA + amountB <= testToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amountA);
-        reliquary.deposit(amountB, relicId);
+        reliquary.deposit(amountB, relicId, address(0));
         assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
     }
 
@@ -124,7 +124,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
         vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
-        reliquary.deposit(1, relicId);
+        reliquary.deposit(1, relicId, address(0));
     }
 
     function testWithdraw(uint256 amount) public {
@@ -132,14 +132,14 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.Withdraw(0, amount, address(this), relicId);
-        reliquary.withdraw(amount, relicId);
+        reliquary.withdraw(amount, relicId, address(0));
     }
 
     function testRevertOnWithdrawUnauthorized() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
         vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
-        reliquary.withdraw(1, relicId);
+        reliquary.withdraw(1, relicId, address(0));
     }
 
     function testHarvest() public {
@@ -149,16 +149,16 @@ contract ReliquaryTest is ERC721Holder, Test {
         testToken.approve(address(reliquary), type(uint256).max);
         uint256 relicIdA = reliquary.createRelicAndDeposit(address(1), 0, 1 ether);
         skip(180 days);
-        reliquary.withdraw(0.75 ether, relicIdA);
-        reliquary.deposit(1 ether, relicIdA);
+        reliquary.withdraw(0.75 ether, relicIdA, address(0));
+        reliquary.deposit(1 ether, relicIdA, address(0));
 
         vm.stopPrank();
         uint256 relicIdB = reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
         skip(180 days);
-        reliquary.harvest(relicIdB, address(this));
+        reliquary.update(relicIdB, address(this));
 
         vm.startPrank(address(1));
-        reliquary.harvest(relicIdA, address(this));
+        reliquary.update(relicIdA, address(this));
         vm.stopPrank();
 
         assertApproxEqAbs(oath.balanceOf(address(this)) / 1e18, 3110400, 1);
@@ -168,7 +168,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1);
         vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
-        reliquary.harvest(relicId, address(this));
+        reliquary.update(relicId, address(this));
     }
 
     function testEmergencyWithdraw(uint256 amount) public {
@@ -260,12 +260,12 @@ contract ReliquaryTest is ERC721Holder, Test {
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
         skip(time);
-        reliquary.deposit(amount2, relicId);
+        reliquary.deposit(amount2, relicId, address(0));
         uint256 maturity1 = block.timestamp - reliquary.getPositionForId(relicId).entry;
 
         //reset maturity
-        reliquary.withdraw(amount1 + amount2, relicId);
-        reliquary.deposit(amount1, relicId);
+        reliquary.withdraw(amount1 + amount2, relicId, address(0));
+        reliquary.deposit(amount1, relicId, address(0));
 
         skip(time);
         uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount2);
@@ -280,7 +280,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 depositAmount2 = 50 ether;
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
         skip(2 days);
-        reliquary.harvest(relicId, address(this));
+        reliquary.update(relicId, address(this));
         reliquary.split(relicId, 50 ether, address(this));
         uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
         reliquary.merge(relicId, newRelicId);
@@ -292,7 +292,7 @@ contract ReliquaryTest is ERC721Holder, Test {
         vm.expectRevert(IReliquary.Reliquary__BURNING_PRINCIPAL.selector);
         reliquary.burn(relicId);
 
-        reliquary.withdrawAndHarvest(1 ether, relicId, address(this));
+        reliquary.withdraw(1 ether, relicId, address(this));
         vm.expectRevert(IReliquary.Reliquary__NOT_APPROVED_OR_OWNER.selector);
         vm.prank(address(1));
         reliquary.burn(relicId);
@@ -351,7 +351,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     //     uint relicId = reliquary.createRelicAndDeposit(address(this), 1, 1 ether);
     //     skip(1 days);
-    //     reliquary.harvest(relicId, address(this));
+    //     reliquary.update(relicId, address(this));
 
     //     assertApproxEqAbs(oath.balanceOf(address(this)), 4320 ether, 1e15);
     //     assertApproxEqAbs(parentToken.balanceOf(address(this)), 2160 ether, 1e15);

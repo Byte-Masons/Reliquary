@@ -15,7 +15,6 @@ uint256 constant MAX_SUPPLY_ALLOWED = 100e9 ether;
 enum Kind {
     DEPOSIT,
     WITHDRAW,
-    HARVEST,
     UPDATE
 }
 
@@ -104,17 +103,13 @@ interface IReliquary is IERC721 {
 
     function updatePool(uint256 _pid) external;
 
-    function deposit(uint256 _amount, uint256 _relicId) external;
+    function deposit(uint256 _amount, uint256 _relicId, address _harvestTo) external;
 
-    function withdraw(uint256 _amount, uint256 _relicId) external;
+    function withdraw(uint256 _amount, uint256 _relicId, address _harvestTo) external;
 
-    function harvest(uint256 _relicId, address _harvestTo) external;
-
-    function withdrawAndHarvest(uint256 _amount, uint256 _relicId, address _harvestTo) external;
+    function update(uint256 _relicId, address _harvestTo) external;
 
     function emergencyWithdraw(uint256 _relicId) external;
-
-    function updatePosition(uint256 _relicId) external;
 
     function poolLength() external view returns (uint256 pools_);
 

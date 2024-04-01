@@ -215,57 +215,45 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
     }
 
     /**
-     * @notice Update position without performing a deposit/withdraw/harvest.
-     * @param _relicId The NFT ID of the position being updated.
+     * @notice Update position without performing a deposit/withdraw.
+     *         if _harvestTo != address(0) update and harvest
+     *         else just update
+     * @param _relicId NFT ID of the position being harvested.
+     * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
-    function updatePosition(uint256 _relicId) external nonReentrant {
-        _requireOwned(_relicId);
-        _update(_relicId);
+    function update(uint256 _relicId, address _harvestTo) external nonReentrant {
+        if (_harvestTo != address(0)) _requireApprovedOrOwner(_relicId);
+        else _requireOwned(_relicId);
+        _update(_relicId, _harvestTo);
     }
 
     /**
      * @notice Deposit pool tokens to Reliquary for reward token allocation.
+     *         if _harvestTo != address(0) deposit and harvest
+     *         else just deposit
      * @param _amount Token amount to deposit.
      * @param _relicId NFT ID of the position being deposited to.
+     * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
-    function deposit(uint256 _amount, uint256 _relicId) external nonReentrant {
+    function deposit(uint256 _amount, uint256 _relicId, address _harvestTo) external nonReentrant {
         _requireApprovedOrOwner(_relicId);
-        _deposit(_amount, _relicId);
+        _deposit(_amount, _relicId, _harvestTo);
     }
 
     /**
      * @notice Withdraw pool tokens.
+     *         if _harvestTo != address(0) withdraw and harvest
+     *         else just withdraw
      * @param _amount token amount to withdraw.
      * @param _relicId NFT ID of the position being withdrawn.
-     */
-    function withdraw(uint256 _amount, uint256 _relicId) external nonReentrant {
-        _requireApprovedOrOwner(_relicId);
-        _withdraw(_amount, _relicId);
-    }
-
-    /**
-     * @notice Harvest proceeds for transaction sender to owner of Relic `relicId`.
-     * @param _relicId NFT ID of the position being harvested.
      * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
-    function harvest(uint256 _relicId, address _harvestTo) external nonReentrant {
-        _requireApprovedOrOwner(_relicId);
-        _harvest(_harvestTo, _relicId);
-    }
-
-    /**
-     * @notice Withdraw pool tokens and harvest proceeds for transaction sender to owner of Relic `relicId`.
-     * @param _amount token amount to withdraw.
-     * @param _relicId NFT ID of the position being withdrawn and harvested.
-     * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
-     */
-    function withdrawAndHarvest(uint256 _amount, uint256 _relicId, address _harvestTo)
+    function withdraw(uint256 _amount, uint256 _relicId, address _harvestTo)
         external
         nonReentrant
     {
         _requireApprovedOrOwner(_relicId);
-        _harvest(_harvestTo, _relicId);
-        _withdraw(_amount, _relicId);
+        _withdraw(_amount, _relicId, _harvestTo);
     }
 
     /**
@@ -309,7 +297,7 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
         if (_pid >= poolInfo.length) revert Reliquary__NON_EXISTENT_POOL();
         id_ = _mint(_to);
         positionForId[id_].poolId = _pid;
-        _deposit(_amount, id_);
+        _deposit(_amount, id_, address(0));
         emit ReliquaryEvents.CreateRelic(_pid, _to, id_);
     }
 
@@ -584,14 +572,18 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      * @param _amount Amount to deposit.
      * @param _relicId The NFT ID of the position on which the deposit is to be made.
      */
-    function _deposit(uint256 _amount, uint256 _relicId) internal {
+    function _deposit(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint256 poolId_,) = _updatePosition(_amount, _relicId, Kind.DEPOSIT, address(0));
+        (uint256 poolId_, uint256 receivedReward_) =
+            _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         emit ReliquaryEvents.Deposit(poolId_, _amount, ownerOf(_relicId), _relicId);
+        if (_harvestTo != address(0)) {
+            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        }
     }
 
     /**
@@ -599,38 +591,34 @@ contract Reliquary is Multicall, IReliquary, ERC721, AccessControlEnumerable, Re
      * @param _amount Amount to withdraw.
      * @param _relicId The NFT ID of the position on which the withdraw is to be made.
      */
-    function _withdraw(uint256 _amount, uint256 _relicId) internal {
+    function _withdraw(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint256 poolId_,) = _updatePosition(_amount, _relicId, Kind.WITHDRAW, address(0));
+        (uint256 poolId_, uint256 receivedReward_) =
+            _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
         emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
+
+        if (_harvestTo != address(0)) {
+            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        }
     }
 
     /**
      * @dev Internal update function that assumes `relicId` is valid.
      * @param _relicId The NFT ID of the position on which the withdraw is to be made.
      */
-    function _update(uint256 _relicId) internal {
-        (uint256 poolId_,) = _updatePosition(0, _relicId, Kind.UPDATE, address(0));
-
-        emit ReliquaryEvents.Update(poolId_, _relicId);
-    }
-
-    /**
-     * @dev Internal harvest function that assumes `relicId` is valid.
-     * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
-     * @param _relicId The NFT ID of the position on which the harvest is to be made.
-     */
-    function _harvest(address _harvestTo, uint256 _relicId) internal {
-        if (_harvestTo == address(0)) revert Reliquary__ZERO_INPUT();
-
+    function _update(uint256 _relicId, address _harvestTo) internal {
         (uint256 poolId_, uint256 receivedReward_) =
-            _updatePosition(0, _relicId, Kind.HARVEST, _harvestTo);
+            _updatePosition(0, _relicId, Kind.UPDATE, _harvestTo);
 
-        emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        if (_harvestTo != address(0)) {
+            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
+        } else {
+            emit ReliquaryEvents.Update(poolId_, _relicId);
+        }
     }
 
     /**
