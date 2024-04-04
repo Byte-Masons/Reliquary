@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-// TODO remove
-import "forge-std/console.sol";
-
 import "../interfaces/IRollingRewarder.sol";
 import "../interfaces/IRewarder.sol";
 import "../interfaces/IReliquary.sol";
@@ -105,9 +102,9 @@ contract RollingRewarder is IRollingRewarder {
     /// @dev Must always be called after `onUpdate`, `onDeposit` or `onWithdraw`.
     function onReward(uint256 _relicId, address _to) external virtual onlyParent {
         uint256 pending_ = rewardCredit[_relicId];
-        rewardCredit[_relicId] = 0;
 
-        if (pending_ > 0) {
+        if (pending_ != 0) {
+            rewardCredit[_relicId] = 0;
             IERC20(rewardToken).safeTransfer(_to, pending_);
             emit LogOnReward(_relicId, pending_, _to);
         }
