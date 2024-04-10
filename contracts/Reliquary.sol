@@ -98,6 +98,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         address _nftDescriptor,
         bool _allowPartialWithdrawals
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
+        
         // ----------------- Intensive curve compatibility checks.
         {
             if (_poolToken == rewardToken) revert Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();
@@ -130,8 +132,6 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
             //! We can't check this rule since curve are defined in [0, +infinity].
         }
         // -----------------
-
-        ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
 
         poolInfo.push(
             PoolInfo({
