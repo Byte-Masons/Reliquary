@@ -677,6 +677,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         pool_ = poolInfo[_poolId];
     }
 
+    /// @notice This function exists for gas optimization.
+    function getTotalLpSupplied(uint8 _poolId) external view returns (uint256 lp_) {
+        lp_ = poolInfo[_poolId].totalLpSupplied;
+    }
     /// @notice Returns the number of Reliquary pools.
     function poolLength() external view returns (uint256 pools_) {
         pools_ = poolInfo.length;

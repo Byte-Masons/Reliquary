@@ -122,6 +122,8 @@ interface IReliquary is IERC721 {
 
     function getPoolInfo(uint8 _poolId) external view returns (PoolInfo memory);
 
+    function getTotalLpSupplied(uint8 _poolId) external view returns (uint256 lp_);
+
     function isApprovedOrOwner(address, uint256) external view returns (bool);
 
     function createRelicAndDeposit(address _to, uint8 _poolId, uint256 _amount)

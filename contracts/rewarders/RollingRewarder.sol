@@ -262,7 +262,7 @@ contract RollingRewarder is IRollingRewarder {
     }
 
     function _issueTokens() internal returns (uint256 issuance_) {
-        uint256 poolBalance_ = IReliquary(reliquary).getPoolInfo(poolId).totalLpSupplied;
+        uint256 poolBalance_ = IReliquary(reliquary).getTotalLpSupplied(poolId);
         uint256 lastIssuanceTimestamp_ = lastIssuanceTimestamp; // Last time token was distributed.
         uint256 lastDistributionTime_ = lastDistributionTime; // Timestamp of the final distribution of tokens.
 
@@ -283,7 +283,7 @@ contract RollingRewarder is IRollingRewarder {
 
     /// @notice Returns the amount of pending rewardToken for a position from this rewarder.
     function pendingToken(uint256 _relicId) public view returns (uint256 amount_) {
-        uint256 poolBalance_ = IReliquary(reliquary).getPoolInfo(poolId).totalLpSupplied;
+        uint256 poolBalance_ = IReliquary(reliquary).getTotalLpSupplied(poolId);
         uint256 lastIssuanceTimestamp_ = lastIssuanceTimestamp; // Last time token was distributed.
         uint256 lastDistributionTime_ = lastDistributionTime; // Timestamp of the final distribution of tokens.
         uint256 newAccReward_ = accRewardPerShare;
