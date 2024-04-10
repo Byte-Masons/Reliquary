@@ -73,6 +73,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _emissionRate The contract address for the EmissionRate, which will return the base emission rate.
      */
     function setEmissionRate(uint256 _emissionRate) external onlyRole(EMISSION_RATE) {
+        ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
         emissionRate = _emissionRate;
         emit ReliquaryEvents.LogSetEmissionRate(_emissionRate);
     }
@@ -99,7 +100,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         bool _allowPartialWithdrawals
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
-        
+
         // ----------------- Intensive curve compatibility checks.
         {
             if (_poolToken == rewardToken) revert Reliquary__REWARD_TOKEN_AS_POOL_TOKEN();
