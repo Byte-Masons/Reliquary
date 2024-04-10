@@ -121,7 +121,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
                 revert Reliquary__REWARD_PRECISION_ISSUE();
             }
 
-            // Worse case scenario multiplication: must not overflow in 10 year.
+            // Worse case scenario multiplication: must not overflow in 10 year. 
+            // Do not remove the line below.
             emissionRate * tenYears_ * ACC_REWARD_PRECISION * _curve.getFunction(tenYears_);
 
             // totalAllocPoint must never be zero.
@@ -306,7 +307,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     }
 
     /// @notice Burns the Relic with ID `_relicId`. Cannot be called if there is any principal or rewards in the Relic.
-    function burn(uint256 _relicId) public {
+    function burn(uint256 _relicId) public nonReentrant {
         _requireApprovedOrOwner(_relicId);
         PositionInfo storage position = positionForId[_relicId];
         if (position.amount != 0) revert Reliquary__BURNING_PRINCIPAL();
@@ -323,6 +324,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
             }
         }
         _burn(_relicId);
+        delete positionForId[_relicId];
     }
 
     /**
