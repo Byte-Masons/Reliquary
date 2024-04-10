@@ -418,18 +418,19 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
         vars_.fromAmount = uint256(fromPosition.amount);
         vars_.toAmount = uint256(toPosition.amount);
-        toPosition.entry = uint40(
-            (
-                vars_.fromAmount * uint256(fromPosition.entry)
-                    + vars_.toAmount * uint256(toPosition.entry)
-            ) / (vars_.fromAmount + vars_.toAmount)
-        ); // unsafe cast ok
 
         vars_.newFromAmount = vars_.fromAmount - _amount;
         fromPosition.amount = vars_.newFromAmount.toUint128();
 
         vars_.newToAmount = vars_.toAmount + _amount;
         toPosition.amount = vars_.newToAmount.toUint128();
+        
+        toPosition.entry = uint40(
+            (
+                _amount * uint256(fromPosition.entry)
+                    + vars_.toAmount * uint256(toPosition.entry)
+            ) / vars_.newToAmount
+        ); // unsafe cast ok
 
         vars_.fromLevel = positionForId[_fromId].level;
         vars_.oldToLevel = positionForId[_toId].level;
