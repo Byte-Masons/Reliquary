@@ -16,8 +16,8 @@ contract Deploy is Script {
     struct Pool {
         uint allocPoint;
         bool allowPartialWithdrawals;
-        address[] childRewarderTokens;
         uint[] childRewarderPeriods;
+        address[] childRewarderTokens;
         uint[] levelMultipliers;
         string name;
         address poolToken;
