@@ -27,13 +27,13 @@ import "forge-std/console.sol";
 
 contract ReliquaryDoubleStaking is ERC721Holder, Test {
     Reliquary reliquary;
-    RollingRewarder rollingRewarderOHBR;
+    RollingRewarder rollingRewarderOToken;
     RollingRewarder rollingRewarderUSDT;
-    IERC20Metadata harborToken;
-    IWETH counterAsset;
-    ERC20DecimalsMock rewardToken1; //oHBR
+    IERC20Metadata lpToken0;
+    IERC20Metadata lpToken1;
+    ERC20DecimalsMock rewardToken1; //oToken
     ERC20DecimalsMock rewardToken2; //USDT
-    IERC20Metadata thenaToken;
+    IERC20Metadata cleoToken;
     ParentRewarderRolling parent;
     RewardsPool rewardsPoolOHBR;
     RewardsPool rewardsPoolUSDT;
@@ -41,42 +41,42 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     IGauge gauge;
     IPairFactory pairFactory;
     IPair poolToken;
-    address internal thenaReceiver;
+    address internal cleoReceiver;
 
     uint[] requiredMaturity = [0, 7 days, 14 days, 21 days, 28 days, 90 days, 180 days, 365 days];
     uint[] levelMultipliers = [100, 120, 150, 200, 300, 400, 500, 750];
 
     function setUp() public {
-        vm.createSelectFork("binance", 36082336);
+        vm.createSelectFork("mantle", 62365998);
 
-        harborToken = IERC20Metadata(0x42c95788F791a2be3584446854c8d9BB01BE88A9 ); // HBR
-        counterAsset = IWETH(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c); // WBNB
+        lpToken0 = IERC20Metadata(0x029d924928888697d3F3d169018d9d98d9f0d6B4); // MUTO
+        lpToken1 = IERC20Metadata(0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9); // USDC
         hoax(address(this));
 
 
-        voter = IVoter(0x3A1D0952809F4948d15EBCe8d345962A282C4fCb);
+        voter = IVoter(0xAAAf3D9CDD3602d117c67D80eEC37a160C8d9869);
         vm.label(address(voter), "Voter");
-        thenaToken = IERC20Metadata(0xF4C8E32EaDEC4BFe97E0F595AdD0f4450a863a11);
-        vm.label(address(thenaToken), "Thena Token");
+        cleoToken = IERC20Metadata(0xC1E0C8C30F251A07a894609616580ad2CEb547F2);
+        vm.label(address(cleoToken), "Cleo Token");
 
-        poolToken = IPair(0x5134729Cd5a5b40336BC3CA71349f2c108718428);
-        gauge = IGauge(0xf3c04d74B62544772e8efddD5448a3c1a85F8F3c);
+        poolToken = IPair(0xE32cacd691F96Ca68281f012d24843d184Bd85Ba);
+        gauge = IGauge(0xe6e2c20AEe34B2A5C9dc49748b5505e5665B016f);
         vm.label(address(gauge), "Gauge");
 
-        rewardToken1 = new ERC20DecimalsMock("Harbor oToken", "oHBR", 18);
-        vm.label(address(rewardToken1), "oHBR");
+        rewardToken1 = new ERC20DecimalsMock("Harbor oToken", "oToken", 18);
+        vm.label(address(rewardToken1), "oToken");
         rewardToken2 = new ERC20DecimalsMock("USDT", "USDT", 18);
         vm.label(address(rewardToken2), "USDT");
 
-        thenaReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("thena receiver"))))));
-        vm.label(thenaReceiver, "thenaReceiver");
+        cleoReceiver = payable(address(uint160(uint256(keccak256(abi.encodePacked("cleo receiver"))))));
+        vm.label(cleoReceiver, "cleoReceiver");
 
         reliquary = new Reliquary(
-            address(rewardToken1), // oHBR
+            address(rewardToken1), // oToken
             address(new Constant()),
-            address(thenaToken),
+            address(cleoToken),
             address(voter),
-            thenaReceiver,
+            cleoReceiver,
             "Reliquary Deposit",
             "RELIC"
         );
@@ -84,7 +84,7 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         reliquary.grantRole(keccak256(bytes("OPERATOR")), address(this));
 
         reliquary.addPool(
-            1000, address(poolToken), address(0), requiredMaturity, levelMultipliers, "harbor-staking", address(0), true
+            1000, address(poolToken), address(0), requiredMaturity, levelMultipliers, "staking", address(0), true
         );
 
         uint256 pid = reliquary.poolLength() - 1;
@@ -96,14 +96,14 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
 
         parent.grantRole(keccak256("CHILD_SETTER"), address(this));
         parent.grantRole(keccak256("REWARD_SETTER"), address(this));
-        reliquary.modifyPool(0, 1000, address(parent), "harbor-staking", address(0), true);
-        rollingRewarderOHBR = RollingRewarder(parent.createChild(address(rewardToken1), address(this)));
+        reliquary.modifyPool(0, 1000, address(parent), "staking", address(0), true);
+        rollingRewarderOToken = RollingRewarder(parent.createChild(address(rewardToken1), address(this)));
         rollingRewarderUSDT = RollingRewarder(parent.createChild(address(rewardToken2), address(this)));
         
         rewardsPoolUSDT = new RewardsPool(address(rewardToken2), address(rollingRewarderUSDT));
-        rewardsPoolOHBR = new RewardsPool(address(rewardToken1), address(rollingRewarderOHBR));
+        rewardsPoolOHBR = new RewardsPool(address(rewardToken1), address(rollingRewarderOToken));
     
-        parent.setChildsRewardPool(address(rollingRewarderOHBR), address(rewardsPoolOHBR));
+        parent.setChildsRewardPool(address(rollingRewarderOToken), address(rewardsPoolOHBR));
         parent.setChildsRewardPool(address(rollingRewarderUSDT), address(rewardsPoolUSDT));
     }
 
@@ -117,18 +117,20 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     }
 
     function testDeposit() public {
-        counterAsset.deposit{value: 1 ether}();
+        // lpToken1.deposit{value: 1 ether}();
 
-        vm.prank(0x6eB1fF8E939aFBF3086329B2b32725b72095512C); // HBR admin
-        IAccessControl(address(harborToken)).grantRole(
-            0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6 , // minting role
-            address(this)
-        );
-        vm.prank(address(this));
-        ERC20DecimalsMock(address(harborToken)).mint(address(this), 10 ether);
+        // vm.prank(0x6eB1fF8E939aFBF3086329B2b32725b72095512C); // HBR admin
+        // IAccessControl(address(lpToken0)).grantRole(
+        //     0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6 , // minting role
+        //     address(this)
+        // );
+        // vm.prank(address(this));
+        // ERC20DecimalsMock(address(lpToken0)).mint(address(this), 10 ether);
+        deal(address(lpToken0), address(this), 10 ether);
+        deal(address(lpToken1), address(this), 1 ether);
 
-        harborToken.transfer(address(poolToken), 10 ether);
-        IERC20Metadata(address(counterAsset)).transfer(address(poolToken), 1 ether);
+        lpToken0.transfer(address(poolToken), 10 ether);
+        lpToken1.transfer(address(poolToken), 1 ether);
         poolToken.mint(address(this));
 
         uint256 balance = IERC20Metadata(address(poolToken)).balanceOf(address(this));
@@ -155,16 +157,11 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         rewardsPoolUSDT.fundRewarder();
     
         //DEPOSIT
-        counterAsset.deposit{value: 1 ether}();
-        vm.prank(0x6eB1fF8E939aFBF3086329B2b32725b72095512C); // HBR admin
-        IAccessControl(address(harborToken)).grantRole(
-            0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6 , // minting role
-            address(this)
-        );
-        vm.prank(address(this));
-        ERC20DecimalsMock(address(harborToken)).mint(address(this), 10 ether);
-        harborToken.transfer(address(poolToken), 10 ether);
-        IERC20Metadata(address(counterAsset)).transfer(address(poolToken), 1 ether);
+        //lpToken1.deposit{value: 1 ether}();
+        deal(address(lpToken0), address(this), 10 ether);
+        deal(address(lpToken1), address(this), 1 ether);
+        lpToken0.transfer(address(poolToken), 10 ether);
+        lpToken1.transfer(address(poolToken), 1 ether);
         poolToken.mint(address(this));
         uint256 balance = IERC20Metadata(address(poolToken)).balanceOf(address(this));
         IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint).max);
@@ -234,6 +231,11 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         // factor in maturity = 20% boost for user1
         // 220 is the calculated pool size with multipliers
         assertApproxEqAbs(rewardUser1, 10 ether * uint(120) / 220, 1e5, "user1 reward not expected");
+
+        //reliquary.claimThenaRewards(0);
+        address[] memory gaugeRewards = new address[](1);
+        gaugeRewards[0] = address(cleoToken);
+        reliquary.claimThenaRewards(0, gaugeRewards);
     }
 
     function testSplit() public {
