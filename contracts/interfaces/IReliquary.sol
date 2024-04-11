@@ -5,8 +5,6 @@ import "contracts/interfaces/ICurves.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 /// @dev Level of precision rewards are calculated to.
-uint256 constant WEIGHT_PRECISION = 1e18;
-/// @dev Level of precision rewards are calculated to.
 uint256 constant ACC_REWARD_PRECISION = 1e41;
 /// @dev Max supply allowed for checks purpose.
 uint256 constant MAX_SUPPLY_ALLOWED = 100e9 ether;
@@ -41,7 +39,7 @@ struct PositionInfo {
  * @notice Info of each Reliquary pool.
  * @dev 7 storage slots
  * `name` Name of pool to be displayed in NFT image.
- * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / WEIGHT_PRECISION).
+ * `accRewardPerShare` Accumulated reward tokens per share of pool (1 / ACC_REWARD_PRECISION).
  * `totalLpSupplied` Total number of LPs in the pool.
  * `nftDescriptor` The nft descriptor address.
  * `rewarder` The nft rewarder address.

@@ -215,6 +215,28 @@ library ReliquaryLogic {
         }
     }
 
+    /**
+     * @notice Calculate the maturity weighted entry.
+     * @param _amountBefore The previous relic amount.
+     * @param _entryBefore Entry representing the past maturity.
+     * @param _amountAdded Amount to add.
+     * @param _entryAdded Entry of the amount to be added.
+     * @return weightedEntry_ The weighted entry.
+     */
+    function _weightEntry(
+        uint256 _amountBefore,
+        uint256 _entryBefore,
+        uint256 _amountAdded,
+        uint256 _entryAdded
+    ) internal pure returns (uint40 weightedEntry_) {
+        weightedEntry_ = uint40(
+            Math.ceilDiv(
+                _amountBefore * _entryBefore + _amountAdded * _entryAdded,
+                _amountBefore + _amountAdded
+            ) // round up div
+        ); // unsafe cast ok
+    }
+
     // -------------- Private --------------
 
     function _updateRewarder(
@@ -263,26 +285,6 @@ library ReliquaryLogic {
     }
 
     /**
-     * @notice Used in `_updateEntry` to find weights without any underflows or zero division problems.
-     * @param _addedValue New value being added.
-     * @param _oldValue Current amount of x.
-     */
-    function _findWeight(uint256 _addedValue, uint256 _oldValue)
-        private
-        pure
-        returns (uint256 weightNew_)
-    {
-        if (_oldValue < _addedValue) {
-            weightNew_ =
-                WEIGHT_PRECISION - (_oldValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
-        } else if (_addedValue < _oldValue) {
-            weightNew_ = (_addedValue * WEIGHT_PRECISION) / (_addedValue + _oldValue);
-        } else {
-            weightNew_ = WEIGHT_PRECISION / 2;
-        }
-    }
-
-    /**
      * @notice Updates the user's entry time based on the weight of their deposit or withdrawal.
      * @param position The position being updated.
      * @param _amount The amount of the deposit / withdrawal.
@@ -292,11 +294,8 @@ library ReliquaryLogic {
         if (amountBefore_ == 0) {
             position.entry = uint40(block.timestamp);
         } else {
-            uint256 entryBefore_ = uint256(position.entry);
-            uint256 maturity_ = block.timestamp - entryBefore_;
-            position.entry = uint40(
-                entryBefore_ + (maturity_ * _findWeight(_amount, amountBefore_)) / WEIGHT_PRECISION
-            ); // unsafe cast ok
+            position.entry =
+                _weightEntry(amountBefore_, uint256(position.entry), _amount, block.timestamp);
         }
     }
 

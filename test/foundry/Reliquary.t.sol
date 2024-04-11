@@ -303,16 +303,16 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testPocShiftVulnerability() public {
-        uint idParent = reliquary.createRelicAndDeposit(address(this), 0, 10000 ether);
+        uint256 idParent = reliquary.createRelicAndDeposit(address(this), 0, 10000 ether);
         skip(366 days);
         reliquary.update(idParent, address(0));
 
-        for (uint i = 0; i < 10; i++) {
-            uint idChild = reliquary.createRelicAndDeposit(address(this), 0, 10 ether);
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 idChild = reliquary.createRelicAndDeposit(address(this), 0, 10 ether);
             reliquary.shift(idParent, idChild, 1);
             reliquary.update(idParent, address(0));
-            uint levelChild = reliquary.getPositionForId(idChild).level;
-            assertEq(levelChild, 1); // assert max level
+            uint256 levelChild = reliquary.getPositionForId(idChild).level;
+            assertEq(levelChild, 0); // assert max level
         }
     }
 

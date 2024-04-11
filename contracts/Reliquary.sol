@@ -121,7 +121,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
                 revert Reliquary__REWARD_PRECISION_ISSUE();
             }
 
-            // Worse case scenario multiplication: must not overflow in 10 year. 
+            // Worse case scenario multiplication: must not overflow in 10 year.
             // Do not remove the line below.
             emissionRate * tenYears_ * ACC_REWARD_PRECISION * _curve.getFunction(tenYears_);
 
@@ -427,13 +427,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
         vars_.newToAmount = vars_.toAmount + _amount;
         toPosition.amount = vars_.newToAmount.toUint128();
-        
-        toPosition.entry = uint40(
-            (
-                _amount * uint256(fromPosition.entry)
-                    + vars_.toAmount * uint256(toPosition.entry)
-            ) / vars_.newToAmount
-        ); // unsafe cast ok
+
+        toPosition.entry = ReliquaryLogic._weightEntry(
+            vars_.toAmount, uint256(toPosition.entry), _amount, uint256(fromPosition.entry)
+        );
 
         vars_.fromLevel = positionForId[_fromId].level;
         vars_.oldToLevel = positionForId[_toId].level;
@@ -514,10 +511,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         uint256 toAmount_ = uint256(toPosition.amount);
         uint256 newToAmount_ = toAmount_ + fromAmount_;
         if (newToAmount_ == 0) revert Reliquary__MERGING_EMPTY_RELICS();
-        toPosition.entry = uint40(
-            (fromAmount_ * uint256(fromPosition.entry) + toAmount_ * uint256(toPosition.entry))
-                / newToAmount_
-        ); // unsafe cast ok
+
+        toPosition.entry = ReliquaryLogic._weightEntry(
+            toAmount_, uint256(toPosition.entry), fromAmount_, uint256(fromPosition.entry)
+        );
 
         toPosition.amount = newToAmount_.toUint128();
 
@@ -682,6 +679,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         lp_ = poolInfo[_poolId].totalLpSupplied;
     }
     /// @notice Returns the number of Reliquary pools.
+
     function poolLength() external view returns (uint256 pools_) {
         pools_ = poolInfo.length;
     }
