@@ -23,7 +23,6 @@ contract RollingRewarder is IRollingRewarder {
     uint256 public distributionPeriod;
     uint256 public lastIssuanceTimestamp;
     uint256 public totalIssued;
-    uint256 public totalRewardsSent;
 
     uint256 public rewardPerSecond;
     uint256 public accRewardPerShare;
@@ -69,7 +68,6 @@ contract RollingRewarder is IRollingRewarder {
 
     function fund(uint256 _amount) external onlyOwner {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
-        totalRewardsSent += _amount;
         _fund(_amount);
     }
 
