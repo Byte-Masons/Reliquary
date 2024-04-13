@@ -112,7 +112,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
             // Multiplier at f(0) must not be 0.
             if (_curve.getFunction(0) == 0) {
-                revert Reliquary__MULTIPLIER_AT_MATURITY_ZERO_SHOULD_BE_GT_ZERO();
+                revert Reliquary__MULTIPLIER_AT_LEVEL_ZERO_SHOULD_BE_GT_ZERO();
             }
 
             // MAX_SUPPLY_ALLOWED in 10 years should not round down at 0 in case of division.
@@ -297,13 +297,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     function createRelicAndDeposit(address _to, uint8 _poolId, uint256 _amount)
         public
         nonReentrant
-        returns (uint256 id_)
+        returns (uint256 relicId_)
     {
-        if (_poolId >= uint8(poolInfo.length)) revert Reliquary__NON_EXISTENT_POOL();
-        id_ = _mint(_to);
-        positionForId[id_].poolId = _poolId;
-        _deposit(_amount, id_, address(0));
-        emit ReliquaryEvents.CreateRelic(_poolId, _to, id_);
+        relicId_ = _create(_poolId, _to);
+        _deposit(_amount, relicId_, address(0));
     }
 
     /// @notice Burns the Relic with ID `_relicId`. Cannot be called if there is any principal or rewards in the Relic.
@@ -353,13 +350,12 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         uint256 newFromAmount_ = fromAmount_ - _amount;
         fromPosition.amount = newFromAmount_.toUint128();
 
-        newId_ = _mint(_to);
+        newId_ = _create(poolId_, _to);
         PositionInfo storage newPosition = positionForId[newId_];
         newPosition.amount = _amount.toUint128();
         newPosition.entry = fromPosition.entry;
         uint256 level_ = uint256(fromPosition.level);
         newPosition.level = uint40(level_);
-        newPosition.poolId = poolId_;
 
         uint256 multiplier_ = ReliquaryLogic._updatePool(
             poolInfo[poolId_], emissionRate, totalAllocPoint
@@ -376,7 +372,6 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
             );
         }
 
-        emit ReliquaryEvents.CreateRelic(poolId_, _to, newId_);
         emit ReliquaryEvents.Split(_fromId, newId_, _amount);
     }
 
@@ -584,15 +579,11 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     function _deposit(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint8 poolId_, uint256 receivedReward_) =
-            _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
+        uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         emit ReliquaryEvents.Deposit(poolId_, _amount, ownerOf(_relicId), _relicId);
-        if (_harvestTo != address(0)) {
-            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
-        }
     }
 
     /**
@@ -603,16 +594,11 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     function _withdraw(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
-        (uint8 poolId_, uint256 receivedReward_) =
-            _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
+        uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
         emit ReliquaryEvents.Withdraw(poolId_, _amount, msg.sender, _relicId);
-
-        if (_harvestTo != address(0)) {
-            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
-        }
     }
 
     /**
@@ -620,16 +606,28 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _relicId The NFT ID of the position on which the withdraw is to be made.
      */
     function _update(uint256 _relicId, address _harvestTo) internal {
-        (uint8 poolId_, uint256 receivedReward_) =
-            _updatePosition(0, _relicId, Kind.UPDATE, _harvestTo);
+        uint8 poolId_ = _updatePosition(0, _relicId, Kind.UPDATE, _harvestTo);
 
-        if (_harvestTo != address(0)) {
-            emit ReliquaryEvents.Harvest(poolId_, receivedReward_, _harvestTo, _relicId);
-        } else {
-            emit ReliquaryEvents.Update(poolId_, _relicId);
-        }
+        emit ReliquaryEvents.Update(poolId_, _relicId);
     }
 
+    /**
+     * @dev Internal create relic function.
+     * @param _poolId The index of the pool.
+     * @param _to Address to mint the Relic to.
+     * @return relicId_ Relic Id of the newly created position.
+     */
+    function _create(uint8 _poolId, address _to) internal returns (uint256 relicId_) {
+        if (_poolId >= uint8(poolInfo.length)) revert Reliquary__NON_EXISTENT_POOL();
+
+        unchecked {
+            relicId_ = ++idNonce;
+        }
+        _safeMint(_to, relicId_);
+        positionForId[relicId_].poolId = _poolId;
+
+        emit ReliquaryEvents.CreateRelic(_poolId, _to, relicId_);
+    }
     /**
      * @dev Internal function called whenever a position's state needs to be modified.
      * @param _amount Amount of poolToken to deposit/withdraw.
@@ -637,16 +635,16 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _kind Indicates whether tokens are being added to, or removed from, a pool.
      * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      * @return poolId_ Pool ID of the given position.
-     * @return received_ Amount of reward token dispensed to `_harvestTo` on harvest.
      */
+
     function _updatePosition(uint256 _amount, uint256 _relicId, Kind _kind, address _harvestTo)
         private
-        returns (uint8 poolId_, uint256 received_)
+        returns (uint8 poolId_)
     {
         PositionInfo storage position = positionForId[_relicId];
         poolId_ = position.poolId;
 
-        received_ = ReliquaryLogic._updateRelic(
+        uint256 received_ = ReliquaryLogic._updateRelic(
             position,
             poolInfo[poolId_],
             _kind,
@@ -657,6 +655,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
             totalAllocPoint,
             rewardToken
         );
+
+        if (_harvestTo != address(0)) {
+            emit ReliquaryEvents.Harvest(poolId_, received_, _harvestTo, _relicId);
+        }
     }
     // -------------- views --------------
 

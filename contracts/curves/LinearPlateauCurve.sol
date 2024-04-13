@@ -17,8 +17,8 @@ contract LinearPlateauCurve is ICurves {
         plateauLevel = _plateauLevel;
     }
 
-    function getFunction(uint256 _maturity) external view returns (uint256) {
-        if (_maturity >= plateauLevel) return plateauLevel * slope + minMultiplier;
-        return _maturity * slope + minMultiplier;
+    function getFunction(uint256 _level) external view returns (uint256) {
+        if (_level >= plateauLevel) return plateauLevel * slope + minMultiplier;
+        return _level * slope + minMultiplier;
     }
 }

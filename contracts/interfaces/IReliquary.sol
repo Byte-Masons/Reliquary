@@ -78,7 +78,7 @@ interface IReliquary is IERC721 {
     error Reliquary__MERGING_EMPTY_RELICS();
     error Reliquary__NOT_APPROVED_OR_OWNER();
     error Reliquary__PARTIAL_WITHDRAWALS_DISABLED();
-    error Reliquary__MULTIPLIER_AT_MATURITY_ZERO_SHOULD_BE_GT_ZERO();
+    error Reliquary__MULTIPLIER_AT_LEVEL_ZERO_SHOULD_BE_GT_ZERO();
     error Reliquary__REWARD_PRECISION_ISSUE();
 
     function setEmissionRate(uint256 _emissionRate) external;
@@ -126,11 +126,11 @@ interface IReliquary is IERC721 {
 
     function createRelicAndDeposit(address _to, uint8 _poolId, uint256 _amount)
         external
-        returns (uint256 _id_);
+        returns (uint256 newRelicId_);
 
     function split(uint256 _relicId, uint256 _amount, address _to)
         external
-        returns (uint256 newId_);
+        returns (uint256 newRelicId_);
 
     function shift(uint256 _fromId, uint256 _toId, uint256 _amount) external;
 

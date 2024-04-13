@@ -8,7 +8,7 @@ script = 'scripts'
 
 solc_version = "0.8.23"
 optimizer = true
-optimizer_runs = 1500
+optimizer_runs = 2100
 via_ir = false
 verbosity = 1
 

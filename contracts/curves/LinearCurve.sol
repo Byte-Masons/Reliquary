@@ -15,7 +15,7 @@ contract LinearCurve is ICurves {
         minMultiplier = _minMultiplier;
     }
 
-    function getFunction(uint256 _maturity) external view returns (uint256) {
-        return _maturity * slope + minMultiplier;
+    function getFunction(uint256 _level) external view returns (uint256) {
+        return _level * slope + minMultiplier;
     }
 }
