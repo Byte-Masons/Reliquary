@@ -22,7 +22,6 @@ contract RollingRewarder is IRollingRewarder {
     uint256 public lastDistributionTime;
     uint256 public distributionPeriod;
     uint256 public lastIssuanceTimestamp;
-    uint256 public totalIssued;
 
     uint256 public rewardPerSecond;
     uint256 public accRewardPerShare;
@@ -38,6 +37,8 @@ contract RollingRewarder is IRollingRewarder {
     // Events
     event LogOnReward(uint256 _relicId, uint256 _rewardAmount, address _to);
     event UpdateDistributionPeriod(uint256 _newDistributionPeriod);
+    event Fund(uint256 _newDistributionPeriod);
+    event Issue(uint256 _newDistributionPeriod);
 
     /// @dev We define owner of parent owner of the child too.
     modifier onlyOwner() {
@@ -257,6 +258,7 @@ contract RollingRewarder is IRollingRewarder {
         rewardPerSecond = (amount_ * REWARD_PER_SECOND_PRECISION) / distributionPeriod_; // How many tokens per second will be distributed.
         lastDistributionTime = block.timestamp + distributionPeriod_; // When will the new final distribution be.
         lastIssuanceTimestamp = block.timestamp; // When was the last time tokens were distributed -- now.
+        emit Fund(_amount);
     }
 
     function _issueTokens() internal returns (uint256 issuance_) {
@@ -270,11 +272,10 @@ contract RollingRewarder is IRollingRewarder {
             issuance_ = getRewardAmount(endTimestamp_ - lastIssuanceTimestamp_);
             if (poolBalance_ != 0) {
                 accRewardPerShare += Math.mulDiv(issuance_, ACC_REWARD_PRECISION, poolBalance_);
-
-                totalIssued = totalIssued + issuance_;
             }
         }
         lastIssuanceTimestamp = block.timestamp;
+        emit Issue(issuance_);
     }
 
     // -------------- View --------------
