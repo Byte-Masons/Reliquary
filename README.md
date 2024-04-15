@@ -1,4 +1,4 @@
-# Reliquary
+# Reliquary V2
 
 ![Reliquary](header.png "Reliquary")
 
@@ -21,6 +21,25 @@ random curve, you can codify the user behaviors you'd like to promote.
 Please reach out to zokunei@bytemasons.com to report bugs or other funky behavior. We will proceed with various stages of production
 testing in the coming weeks.
 
+## V2 update notes
+
+1. **Maturity Evolution Curves**: We have replaced the previous level evolution mechanism with curves to provide more flexibility and precision. The available curve options are:
+   - Linear
+   - Linear Plateau
+   - Polynomial Plateau
+
+2. **Scalable 'Level' Number**: The 'Level' number now scales with an O(1) complexity, ensuring consistent performance as the system grows.
+
+3. **Multi-Rewards with Rolling Rewarders**: The V2 update now enables the possibility of multiple rewards with the rolling rewarders.
+
+4. **ABI Simplification**: We have simplified ABI to streamline the interaction between the smart contracts and the user interface.
+
+5. **Gas Optimization**: The V2 update brings a 20% reduction in gas consumption, resulting in lower transaction fees and improved efficiency.
+
+6. **Bug Fixes**: We have addressed bugs identified in the previous version (see audit/ for more details).
+
+7. **Code Clean-up, Formatting, and Normalization**: The codebase has undergone a thorough clean-up, formatting, and normalization process to improve readability and maintainability.
+
 ## Installation
 
 This is a Foundry project. Get Foundry from [here](https://github.com/foundry-rs/foundry).
@@ -29,6 +48,26 @@ Please run the following command in this project's root directory to enable pre-
 
 ```bash
 ln -s ../../pre-commit .git/hooks/pre-commit
+```
+
+## Quick start
+
+### Env setup
+```bash
+mv .env.example .env
+```
+Fill your `ETHERSCAN_API_KEY` in the `.env`.
+
+### Foundry
+```bash
+forge install
+forge test
+```
+
+### Echidna
+```bash
+echidna test/echidna/ReliquaryProperties.sol  --contract ReliquaryProperties --config test/echidna/config1_fast.yaml
+
 ```
 
 ## Typing conventions
@@ -62,7 +101,7 @@ ln -s ../../pre-commit .git/hooks/pre-commit
 
 Please use `forge fmt` before commiting.
 
-## TODO
+## TODOs
 
 -   NFT Desccriptor needs to be ajusted to curve
 -   Tests PolynomialCurves
