@@ -67,7 +67,6 @@ forge test
 ### Echidna
 ```bash
 echidna test/echidna/ReliquaryProperties.sol  --contract ReliquaryProperties --config test/echidna/config1_fast.yaml
-
 ```
 
 ## Typing conventions

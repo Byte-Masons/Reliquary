@@ -121,9 +121,14 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
                 revert Reliquary__REWARD_PRECISION_ISSUE();
             }
 
-            // Worse case scenario multiplication: must not overflow in 10 year.
-            // Do not remove the line below.
-            emissionRate * tenYears_ * ACC_REWARD_PRECISION * _curve.getFunction(tenYears_);
+            // Worse case scenario multiplication: must not overflow in 10 year:
+            uint256 result;
+            uint256 elem0 = emissionRate * tenYears_ * ACC_REWARD_PRECISION;
+            uint256 elem1 = _curve.getFunction(tenYears_);
+            unchecked {
+                result = elem0 * elem1;
+            }
+            if (result / elem1 != elem0) revert Reliquary__CURVE_OVERFLOW();
 
             // totalAllocPoint must never be zero.
             uint256 totalAlloc_ = totalAllocPoint + _allocPoint;
@@ -750,13 +755,5 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         if (!_isAuthorized(_ownerOf(_relicId), msg.sender, _relicId)) {
             revert Reliquary__NOT_APPROVED_OR_OWNER();
         }
-    }
-
-    /// @dev Increments the ID nonce and mints a new Relic to `to`.
-    function _mint(address _to) private returns (uint256 id_) {
-        unchecked {
-            id_ = ++idNonce;
-        }
-        _safeMint(_to, id_);
     }
 }
