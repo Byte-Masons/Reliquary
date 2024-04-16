@@ -45,14 +45,41 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         linearCurve = new LinearCurve(slope, minMultiplier);
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
+        deal(address(wethVault), address(this), 1);
+        wethVault.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
         reliquary.addPool(
-            1000, address(wethVault), address(0), linearCurve, "WETH", nftDescriptor, true
+            1000,
+            address(wethVault),
+            address(0),
+            linearCurve,
+            "WETH",
+            nftDescriptor,
+            true,
+            address(this)
         );
+        deal(address(usdcVault), address(this), 1);
+        usdcVault.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
         reliquary.addPool(
-            1000, address(usdcVault), address(0), linearCurve, "USDC", nftDescriptor, true
+            1000,
+            address(usdcVault),
+            address(0),
+            linearCurve,
+            "USDC",
+            nftDescriptor,
+            true,
+            address(this)
         );
+        deal(address(sternVault), address(this), 1);
+        sternVault.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
         reliquary.addPool(
-            1000, address(sternVault), address(0), linearCurve, "ERN", nftDescriptor, true
+            1000,
+            address(sternVault),
+            address(0),
+            linearCurve,
+            "ERN",
+            nftDescriptor,
+            true,
+            address(this)
         );
 
         weth = IWeth(address(wethVault.token()));
@@ -69,7 +96,7 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
             helper.createRelicAndDeposit{value: depositETH ? amount : 0}(0, amount);
 
         assertEq(weth.balanceOf(address(helper)), 0);
-        assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
+        assertEq(reliquary.balanceOf(address(this)), 4, "no Relic given");
         assertEq(
             reliquary.getPositionForId(relicId).amount,
             shares,

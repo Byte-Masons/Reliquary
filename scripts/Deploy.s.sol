@@ -9,6 +9,8 @@ import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
 import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
 import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
 import {ParentRollingRewarder} from "contracts/rewarders/ParentRollingRewarder.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
 
 contract Deploy is Script {
     using stdJson for string;
@@ -48,6 +50,7 @@ contract Deploy is Script {
 
     string config;
     address multisig;
+    address bootstrapAdd;
     Reliquary reliquary;
     uint256 poolCount;
     address rewardToken;
@@ -64,6 +67,7 @@ contract Deploy is Script {
         string memory name = config.readString(".name");
         string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
+        bootstrapAdd = config.readAddress(".multisig"); //! bootstrapAdd set to multisig.
         rewardToken = config.readAddress(".rewardToken");
         uint256 emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
@@ -92,7 +96,8 @@ contract Deploy is Script {
             }
 
             address nftDescriptor = _deployHelpers(pool.tokenType);
-
+            
+            ERC20(pool.poolToken).approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
             reliquary.addPool(
                 pool.allocPoint,
                 pool.poolToken,
@@ -100,7 +105,8 @@ contract Deploy is Script {
                 curve,
                 pool.name,
                 nftDescriptor,
-                pool.allowPartialWithdrawals
+                pool.allowPartialWithdrawals,
+                bootstrapAdd
             );
         }
 

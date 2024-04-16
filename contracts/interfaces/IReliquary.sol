@@ -91,7 +91,8 @@ interface IReliquary is IERC721 {
         ICurves _curve,
         string memory _name,
         address _nftDescriptor,
-        bool _allowPartialWithdrawals
+        bool _allowPartialWithdrawals,
+        address _to
     ) external;
 
     function modifyPool(

@@ -49,11 +49,19 @@ contract ReliquaryTest is ERC721Holder, Test {
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
+        testToken.mint(address(this), 100_000_000 ether);
+        testToken.approve(address(reliquary), 1);
         reliquary.addPool(
-            100, address(testToken), address(0), linearCurve, "ETH Pool", nftDescriptor, true
+            100,
+            address(testToken),
+            address(0),
+            linearCurve,
+            "ETH Pool",
+            nftDescriptor,
+            true,
+            address(5)
         );
 
-        testToken.mint(address(this), 100_000_000 ether);
         testToken.approve(address(reliquary), type(uint256).max);
     }
 
@@ -84,8 +92,11 @@ contract ReliquaryTest is ERC721Holder, Test {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
         reliquary.update(relicId, address(0));
+        // reliquary.pendingReward(1) is the bootstrapped relic.
         assertApproxEqAbs(
-            reliquary.pendingReward(relicId), time * emissionRate, (time * emissionRate) / 100000
+            reliquary.pendingReward(relicId) + reliquary.pendingReward(1),
+            time * emissionRate,
+            (time * emissionRate) / 100000
         ); // max 0,0001%
     }
 
@@ -101,7 +112,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testCreateRelicAndDeposit(uint256 amount) public {
         amount = bound(amount, 1, testToken.balanceOf(address(this)));
         vm.expectEmit(true, true, true, true);
-        emit ReliquaryEvents.Deposit(0, amount, address(this), 1);
+        emit ReliquaryEvents.Deposit(0, amount, address(this), 2);
         reliquary.createRelicAndDeposit(address(this), 0, amount);
     }
 

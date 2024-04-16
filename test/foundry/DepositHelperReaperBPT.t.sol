@@ -55,8 +55,17 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
+        deal(address(vault), address(this), 1);
+        vault.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
         reliquary.addPool(
-            1000, address(vault), address(0), linearCurve, "A Late Quartet", nftDescriptor, true
+            1000,
+            address(vault),
+            address(0),
+            linearCurve,
+            "A Late Quartet",
+            nftDescriptor,
+            true,
+            address(this)
         );
 
         reZap = IReZapTest(0x6E87672e547D40285C8FdCE1139DE4bc7CBF2127);
@@ -75,7 +84,7 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
             helper.createRelicAndDeposit{value: depositFTM ? amount : 0}(steps, 0, amount);
 
         assertEq(wftm.balanceOf(address(helper)), 0);
-        assertEq(reliquary.balanceOf(address(this)), 1, "no Relic given");
+        assertEq(reliquary.balanceOf(address(this)), 2, "no Relic given");
         assertEq(
             reliquary.getPositionForId(relicId).amount,
             shares,

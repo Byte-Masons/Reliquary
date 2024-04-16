@@ -81,6 +81,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     /**
      * @notice Add a new pool for the specified LP. Can only be called by an operator.
      * @dev max number of pools 255 (uint8)
+     * Bootstrap the newly created pool with 1 wei of poolToken to avoid any reward losses.
      * @param _allocPoint The allocation points for the new pool.
      * @param _poolToken Address of the pooled ERC-20 token.
      * @param _rewarder Address of the rewarder delegate.
@@ -88,6 +89,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _name Name of pool to be displayed in NFT image.
      * @param _nftDescriptor The contract address for NFTDescriptor, which will return the token URI.
      * @param _allowPartialWithdrawals Whether users can withdraw less than their entire position. A value of false
+     * @param _to Where the 1 wei bootstrap is sent to.
      * will also disable shift and split functionality. This is useful for adding pools with decreasing levelMultipliers.
      */
     function addPool(
@@ -97,7 +99,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         ICurves _curve,
         string memory _name,
         address _nftDescriptor,
-        bool _allowPartialWithdrawals
+        bool _allowPartialWithdrawals,
+        address _to
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
 
@@ -159,6 +162,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         if (_rewarder != address(0)) {
             IParentRollingRewarder(_rewarder).initialize(newPoolId_);
         }
+
+        createRelicAndDeposit(_to, newPoolId_, 1);
 
         emit ReliquaryEvents.LogPoolAddition(
             newPoolId_, _allocPoint, _poolToken, _rewarder, _nftDescriptor, _allowPartialWithdrawals

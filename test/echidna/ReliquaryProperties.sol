@@ -103,6 +103,9 @@ contract ReliquaryProperties {
             ERC20Mock token = new ERC20Mock("Pool Token", "PT");
             tokenPoolIds.push(token);
 
+            token.mint(address(this), 1);
+            token.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
+
             // no rewarder for now
             reliquary.addPool(
                 100,
@@ -111,7 +114,7 @@ contract ReliquaryProperties {
                 polynomialPlateauCurve,
                 "reaper",
                 address(nftDescriptor),
-                true
+                true, address(this)
             );
             poolIds.push(i);
         }
@@ -150,6 +153,9 @@ contract ReliquaryProperties {
         tokenPoolIds.push(token);
         ICurves curve = curves[randCurves % curves.length];
 
+        token.mint(address(this), 1);
+        token.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
+
         // no rewarder for now
         reliquary.addPool(
             allocPoint % 10000 ether, // to avoid overflow on totalAllocPoint [0, 10000e18]
@@ -158,7 +164,7 @@ contract ReliquaryProperties {
             curve,
             "reaper",
             address(nftDescriptor),
-            true
+            true, address(this)
         );
         poolIds.push(startPoolIdsLen);
         totalNbPools++;

@@ -62,6 +62,8 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
 
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
 
+        deal(address(suppliedToken), address(this), 1);
+        suppliedToken.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
         reliquary.addPool(
             100,
             address(suppliedToken),
@@ -69,7 +71,8 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
             linearPlateauCurve,
             "ETH Pool",
             nftDescriptor,
-            true
+            true,
+            address(this)
         );
 
         for (uint256 i = 0; i < nbChildRewarder; i++) {
