@@ -56,6 +56,7 @@ struct PoolInfo {
     uint256 totalLpSupplied;
     address nftDescriptor;
     address rewarder;
+    address gauge;
     address poolToken;
     uint40 lastRewardTime;
     bool allowPartialWithdrawals;

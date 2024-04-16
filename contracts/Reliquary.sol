@@ -6,6 +6,7 @@ import "./interfaces/IParentRollingRewarder.sol";
 import "./interfaces/IRewarder.sol";
 import "./interfaces/INFTDescriptor.sol";
 import "./libraries/ReliquaryLogic.sol";
+import "./libraries/DoubleStakingLogic.sol";
 import "./libraries/ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
@@ -44,6 +45,10 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     uint256 public totalAllocPoint;
     /// @dev Nonce to use for new relicId.
     uint256 private idNonce;
+    /// @dev Gauge reward receiver.
+    address public gaugeRewardReceiver;
+    /// @dev Voter contract.
+    IVoter public immutable voter;
 
     /// @dev Info of each Reliquary pool.
     PoolInfo[] private poolInfo;
@@ -58,11 +63,15 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     constructor(
         address _rewardToken,
         uint256 _emissionRate,
+        address _gaugeRewardReceiver,
+        address _voter,
         string memory _name,
         string memory _symbol
     ) ERC721(_name, _symbol) {
         rewardToken = _rewardToken;
         emissionRate = _emissionRate;
+        gaugeRewardReceiver = _gaugeRewardReceiver;
+        voter = IVoter(_voter);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -154,9 +163,12 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
                 allowPartialWithdrawals: _allowPartialWithdrawals,
                 nftDescriptor: _nftDescriptor,
                 rewarder: _rewarder,
+                gauge: address(0),
                 poolToken: _poolToken
             })
         );
+
+        enableGauge(uint8(poolInfo.length - 1));
 
         uint8 newPoolId_ = (poolInfo.length - 1).toUint8();
         if (_rewarder != address(0)) {
@@ -227,6 +239,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      */
     function updatePool(uint8 _poolId) external nonReentrant {
         ReliquaryLogic._updatePool(poolInfo[_poolId], emissionRate, totalAllocPoint);
+        updatePoolWithGaugeDeposit(_poolId);
     }
 
     /**
@@ -292,6 +305,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
         _burn(_relicId);
         delete positionForId[_relicId];
+
+        withdrawFromGauge(poolId_, amount_);
 
         IERC20(pool.poolToken).safeTransfer(to_, amount_);
 
@@ -593,6 +608,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
         IERC20(poolInfo[poolId_].poolToken).safeTransferFrom(msg.sender, address(this), _amount);
 
+        updatePoolWithGaugeDeposit(poolId_);
+
         emit ReliquaryEvents.Deposit(poolId_, _amount, ownerOf(_relicId), _relicId);
     }
 
@@ -605,6 +622,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
         uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
+
+        withdrawFromGauge(poolId_, _amount);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
@@ -760,5 +779,30 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         if (!_isAuthorized(_ownerOf(_relicId), msg.sender, _relicId)) {
             revert Reliquary__NOT_APPROVED_OR_OWNER();
         }
+    }
+
+    // @dev Deposit LP tokens to earn THE.
+    function updatePoolWithGaugeDeposit(uint256 _pid) public {
+        DoubleStakingLogic.updatePoolWithGaugeDeposit(poolInfo, _pid);
+    }
+
+    function withdrawFromGauge(uint256 _pid, uint256 _amount) internal {
+        DoubleStakingLogic.withdrawFromGauge(poolInfo, _pid, _amount);
+    }
+
+    function enableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.enableGauge(voter, poolInfo, _pid);
+    }
+
+    function disableGauge(uint256 _pid) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.disableGauge(voter, poolInfo, _pid);
+    }
+
+    function setGaugeReceiver(address _gaugeRewardReceiver) public onlyRole(OPERATOR) {
+        gaugeRewardReceiver = _gaugeRewardReceiver;
+    }
+
+    function claimThenaRewards(uint256 _pid, address[] calldata rewardTokens) public {
+        DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid, rewardTokens);
     }
 }
