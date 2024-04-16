@@ -11,7 +11,6 @@ import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSi
 import {ParentRollingRewarder} from "contracts/rewarders/ParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
-
 contract Deploy is Script {
     using stdJson for string;
 
@@ -96,7 +95,7 @@ contract Deploy is Script {
             }
 
             address nftDescriptor = _deployHelpers(pool.tokenType);
-            
+
             ERC20(pool.poolToken).approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
             reliquary.addPool(
                 pool.allocPoint,

@@ -55,7 +55,6 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
             true,
             address(this)
         );
-
     }
 
     function testCreateNew(uint256 amount, bool depositETH) public {

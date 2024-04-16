@@ -103,4 +103,3 @@ Please use `forge fmt` before commiting.
 ## TODOs
 
 -   NFT Desccriptor needs to be ajusted to curve
--   Tests PolynomialCurves
