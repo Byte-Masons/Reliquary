@@ -5,14 +5,18 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "contracts/Reliquary.sol";
 import "contracts/interfaces/IReliquary.sol";
+import "contracts/interfaces/IVoter.sol";
+import "contracts/interfaces/IPair.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/curves/LinearCurve.sol";
 import "contracts/curves/LinearPlateauCurve.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/curves/PolynomialPlateauCurve.sol";
 import "./mocks/ERC20Mock.sol";
+import "./mocks/VoterMock.sol";
 
-contract ReliquaryTest is ERC721Holder, Test {
+contract GaugeRewardsTest is ERC721Holder, Test {
     using Strings for address;
     using Strings for uint256;
 
@@ -21,9 +25,15 @@ contract ReliquaryTest is ERC721Holder, Test {
     LinearPlateauCurve linearPlateauCurve;
     PolynomialPlateauCurve polynomialPlateauCurve;
     ERC20Mock oath;
-    ERC20Mock testToken;
+    IERC20Metadata poolToken;
     address nftDescriptor;
+    IVoter voter;
+    address gaugeReceiver;
     uint256 emissionRate = 1e17;
+
+    IERC20Metadata lpToken0;
+    IERC20Metadata lpToken1;
+    IERC20Metadata cleoToken;
 
     // Linear function config (to config)
     uint256 slope = 100; // Increase of multiplier every second
@@ -32,28 +42,50 @@ contract ReliquaryTest is ERC721Holder, Test {
     int256[] public coeff = [int256(100e18), int256(1e18), int256(5e15), int256(-1e13), int256(5e9)];
 
     function setUp() public {
+        vm.createSelectFork("mantle", 62928156);
+        
+        lpToken0 = IERC20Metadata(0xD2B4C9B0d70e3Da1fBDD98f469bD02E77E12FC79); // aUSD
+        lpToken1 = IERC20Metadata(0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8); // WMNT
+
+        voter = IVoter(0xAAAf3D9CDD3602d117c67D80eEC37a160C8d9869);
+        vm.label(address(voter), "Voter");
+        cleoToken = IERC20Metadata(0xC1E0C8C30F251A07a894609616580ad2CEb547F2);
+        vm.label(address(cleoToken), "Cleo Token");
+
+        hoax(address(this));
+
         int256[] memory coeffDynamic = new int256[](5);
         for (uint256 i = 0; i < 5; i++) {
             coeffDynamic[i] = coeff[i];
         }
 
         oath = new ERC20Mock(18);
-        reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
+        gaugeReceiver = makeAddr("gaugeReceiver");
+        reliquary = new Reliquary(address(oath), emissionRate, gaugeReceiver, address(voter), "Reliquary Deposit", "RELIC");
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
         linearCurve = new LinearCurve(slope, minMultiplier);
         polynomialPlateauCurve = new PolynomialPlateauCurve(coeffDynamic, 850);
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
-        testToken = new ERC20Mock(6);
+        poolToken = IERC20Metadata(0xfAF0ef896A5E214ef4430241a3723D4cEd4d5cd9);
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
+        // poolToken.mint(address(this), 100_000_000 ether);
+        deal(address(lpToken0), address(this), 100_000 ether);
+        deal(address(lpToken1), address(this), 100_000 ether);
+        lpToken0.transfer(address(poolToken), 100_000 ether);
+        lpToken1.transfer(address(poolToken), 100_000 ether);
+        IPair(address(poolToken)).mint(address(this));
+
+        uint256 balance = IERC20Metadata(address(poolToken)).balanceOf(address(this));
+        IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint256).max);
+        console.log(balance);
+        
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
-        testToken.mint(address(this), 100_000_000 ether);
-        testToken.approve(address(reliquary), 1);
         reliquary.addPool(
             100,
-            address(testToken),
+            address(poolToken),
             address(0),
             linearCurve,
             "ETH Pool",
@@ -61,8 +93,6 @@ contract ReliquaryTest is ERC721Holder, Test {
             true,
             address(5)
         );
-
-        testToken.approve(address(reliquary), type(uint256).max);
     }
 
     function testPolynomialCurve() public view {
@@ -88,7 +118,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     function testPendingOath(uint256 amount, uint256 time) public {
         time = bound(time, 0, 3650 days);
-        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        amount = bound(amount, 1, poolToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(time);
         reliquary.update(relicId, address(0));
@@ -110,7 +140,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     // }
 
     function testCreateRelicAndDeposit(uint256 amount) public {
-        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        amount = bound(amount, 1, poolToken.balanceOf(address(this)));
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.Deposit(0, amount, address(this), 2);
         reliquary.createRelicAndDeposit(address(this), 0, amount);
@@ -119,7 +149,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testDepositExisting(uint256 amountA, uint256 amountB) public {
         amountA = bound(amountA, 1, type(uint256).max / 2);
         amountB = bound(amountB, 1, type(uint256).max / 2);
-        vm.assume(amountA + amountB <= testToken.balanceOf(address(this)));
+        vm.assume(amountA + amountB <= poolToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amountA);
         reliquary.deposit(amountB, relicId, address(0));
         assertEq(reliquary.getPositionForId(relicId).amount, amountA + amountB);
@@ -139,7 +169,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testWithdraw(uint256 amount) public {
-        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        amount = bound(amount, 1, poolToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.Withdraw(0, amount, address(this), relicId);
@@ -154,10 +184,10 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testHarvest() public {
-        testToken.transfer(address(1), 1.25 ether);
+        poolToken.transfer(address(1), 1.25 ether);
 
         vm.startPrank(address(1));
-        testToken.approve(address(reliquary), type(uint256).max);
+        poolToken.approve(address(reliquary), type(uint256).max);
         uint256 relicIdA = reliquary.createRelicAndDeposit(address(1), 0, 1 ether);
         skip(180 days);
         reliquary.withdraw(0.75 ether, relicIdA, address(0));
@@ -183,7 +213,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testEmergencyWithdraw(uint256 amount) public {
-        amount = bound(amount, 1, testToken.balanceOf(address(this)));
+        amount = bound(amount, 1, poolToken.balanceOf(address(this)));
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         vm.expectEmit(true, true, true, true);
         emit ReliquaryEvents.EmergencyWithdraw(0, amount, address(this), relicId);
@@ -198,7 +228,7 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testSplit(uint256 depositAmount, uint256 splitAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)));
+        depositAmount = bound(depositAmount, 1, poolToken.balanceOf(address(this)));
         splitAmount = bound(splitAmount, 1, depositAmount);
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
@@ -210,9 +240,9 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnSplitUnderflow(uint256 depositAmount, uint256 splitAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
+        depositAmount = bound(depositAmount, 1, poolToken.balanceOf(address(this)) / 2 - 1);
         splitAmount = bound(
-            splitAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount
+            splitAmount, depositAmount + 1, poolToken.balanceOf(address(this)) - depositAmount
         );
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
@@ -223,9 +253,9 @@ contract ReliquaryTest is ERC721Holder, Test {
     function testShift(uint256 depositAmount1, uint256 depositAmount2, uint256 shiftAmount)
         public
     {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
+        depositAmount1 = bound(depositAmount1, 1, poolToken.balanceOf(address(this)) - 1);
         depositAmount2 =
-            bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+            bound(depositAmount2, 1, poolToken.balanceOf(address(this)) - depositAmount1);
         shiftAmount = bound(shiftAmount, 1, depositAmount1);
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
@@ -237,9 +267,9 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testRevertOnShiftUnderflow(uint256 depositAmount, uint256 shiftAmount) public {
-        depositAmount = bound(depositAmount, 1, testToken.balanceOf(address(this)) / 2 - 1);
+        depositAmount = bound(depositAmount, 1, poolToken.balanceOf(address(this)) / 2 - 1);
         shiftAmount = bound(
-            shiftAmount, depositAmount + 1, testToken.balanceOf(address(this)) - depositAmount
+            shiftAmount, depositAmount + 1, poolToken.balanceOf(address(this)) - depositAmount
         );
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount);
@@ -249,9 +279,9 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testMerge(uint256 depositAmount1, uint256 depositAmount2) public {
-        depositAmount1 = bound(depositAmount1, 1, testToken.balanceOf(address(this)) - 1);
+        depositAmount1 = bound(depositAmount1, 1, poolToken.balanceOf(address(this)) - 1);
         depositAmount2 =
-            bound(depositAmount2, 1, testToken.balanceOf(address(this)) - depositAmount1);
+            bound(depositAmount2, 1, poolToken.balanceOf(address(this)) - depositAmount1);
 
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
         uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
@@ -261,8 +291,8 @@ contract ReliquaryTest is ERC721Holder, Test {
     }
 
     function testCompareDepositAndMerge(uint256 amount1, uint256 amount2, uint256 time) public {
-        amount1 = bound(amount1, 1, testToken.balanceOf(address(this)) - 1);
-        amount2 = bound(amount2, 1, testToken.balanceOf(address(this)) - amount1);
+        amount1 = bound(amount1, 1, poolToken.balanceOf(address(this)) - 1);
+        amount2 = bound(amount2, 1, poolToken.balanceOf(address(this)) - amount1);
         time = bound(time, 1, 356 days * 1); // 100 years
 
         console.log(amount1);
@@ -327,6 +357,17 @@ contract ReliquaryTest is ERC721Holder, Test {
         }
     }
 
+    function testGaugeReward() public {
+        uint256 amount = 30_000 ether;
+        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
+        skip(1 days);
+        reliquary.update(relicId, address(this));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cleoToken);
+        reliquary.claimGaugeRewards(0, tokens);
+        console.log("reward: ", cleoToken.balanceOf(gaugeReceiver));
+    }
+
     // function testDepositBonusRewarder() public {
     //     DepositBonusRewarder rewarder = new DepositBonusRewarder(
     //         1000 ether,
@@ -339,7 +380,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     //     reliquary.addPool(
     //         100,
-    //         address(testToken),
+    //         address(poolToken),
     //         address(rewarder),
     //         linearPlateauCurve,
     //         "ETH Pool",
@@ -366,7 +407,7 @@ contract ReliquaryTest is ERC721Holder, Test {
 
     //     reliquary.addPool(
     //         100,
-    //         address(testToken),
+    //         address(poolToken),
     //         address(parent),
     //         linearPlateauCurve,
     //         "ETH Pool",

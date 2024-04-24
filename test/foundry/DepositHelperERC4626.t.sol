@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import "./mocks/ERC20Mock.sol";
+import "./mocks/VoterMock.sol";
 import "openzeppelin-contracts/contracts/mocks/token/ERC4626Mock.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
@@ -18,6 +19,8 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
     ERC20Mock oath;
     WETH weth;
     LinearCurve linearCurve;
+    address voter;
+    address gaugeReceiver;
     uint256 emissionRate = 1e17;
 
     // Linear function config (to config)
@@ -28,7 +31,9 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
 
     function setUp() public {
         oath = new ERC20Mock(18);
-        reliquary = new Reliquary(address(oath), 1e17, "Reliquary Deposit", "RELIC");
+        voter = address(new VoterMock());
+        gaugeReceiver = makeAddr("gaugeReceiver");
+        reliquary = new Reliquary(address(oath), 1e17, gaugeReceiver, voter, "Reliquary Deposit", "RELIC");
 
         weth = new WETH();
         vault = new ERC4626Mock(address(weth));

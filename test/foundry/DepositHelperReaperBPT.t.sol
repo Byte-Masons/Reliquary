@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "./mocks/VoterMock.sol";
 import "contracts/helpers/DepositHelperReaperBPT.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
@@ -32,6 +33,8 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
     Reliquary reliquary;
     IReaperVaultTest vault;
     LinearCurve linearCurve;
+    address voter;
+    address gaugeReceiver;
     address bpt;
     IERC20 oath;
     IWftm wftm;
@@ -47,7 +50,9 @@ contract DepositHelperReaperBPTTest is ERC721Holder, Test {
         vm.createSelectFork("fantom", 53341452);
 
         oath = IERC20(0x21Ada0D2aC28C3A5Fa3cD2eE30882dA8812279B6);
-        reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
+        voter = address(new VoterMock());
+        gaugeReceiver = makeAddr("gaugeReceiver");
+        reliquary = new Reliquary(address(oath), emissionRate, gaugeReceiver, voter, "Reliquary Deposit", "RELIC");
         linearCurve = new LinearCurve(slope, minMultiplier);
 
         vault = IReaperVaultTest(0xA817164Cb1BF8bdbd96C502Bbea93A4d2300CBe1);

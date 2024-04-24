@@ -49,6 +49,8 @@ contract Deploy is Script {
 
     string config;
     address multisig;
+    address gaugeRewardReceiver;
+    address voter;
     address bootstrapAdd;
     Reliquary reliquary;
     uint256 poolCount;
@@ -66,6 +68,8 @@ contract Deploy is Script {
         string memory name = config.readString(".name");
         string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
+        gaugeRewardReceiver = config.readAddress(".gaugeRewardReceiver");
+        voter = config.readAddress(".voter");
         bootstrapAdd = config.readAddress(".multisig"); //! bootstrapAdd set to multisig.
         rewardToken = config.readAddress(".rewardToken");
         uint256 emissionRate = config.readUint(".emissionRate");
@@ -76,7 +80,7 @@ contract Deploy is Script {
 
         _deployCurves();
 
-        reliquary = new Reliquary(rewardToken, emissionRate, name, symbol);
+        reliquary = new Reliquary(rewardToken, emissionRate, gaugeRewardReceiver, voter, name, symbol);
 
         _deployRewarders();
 

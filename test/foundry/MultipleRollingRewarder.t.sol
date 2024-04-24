@@ -11,6 +11,7 @@ import "contracts/rewarders/RollingRewarder.sol";
 import "contracts/rewarders/ParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./mocks/ERC20Mock.sol";
+import "./mocks/VoterMock.sol";
 
 contract MultipleRollingRewarder is ERC721Holder, Test {
     using Strings for address;
@@ -22,6 +23,9 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
     ERC20Mock public oath;
     ERC20Mock public suppliedToken;
     ParentRollingRewarder public parentRewarder;
+    
+    address voter;
+    address gaugeReceiver;
 
     uint256 public nbChildRewarder = 3;
     RollingRewarder[] public childRewarders;
@@ -47,8 +51,10 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
 
     function setUp() public {
         oath = new ERC20Mock(18);
+        voter = address(new VoterMock());
+        gaugeReceiver = makeAddr("gaugeReceiver");
 
-        reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
+        reliquary = new Reliquary(address(oath), emissionRate, gaugeReceiver, voter, "Reliquary Deposit", "RELIC");
         linearPlateauCurve = new LinearPlateauCurve(slope, minMultiplier, plateau);
         linearCurve = new LinearCurve(slope, minMultiplier);
 

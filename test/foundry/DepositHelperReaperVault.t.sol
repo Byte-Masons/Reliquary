@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
+import "./mocks/VoterMock.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "contracts/helpers/DepositHelperReaperVault.sol";
 import "contracts/nft_descriptors/NFTDescriptor.sol";
@@ -29,6 +30,8 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
     IReaperVaultTest sternVault = IReaperVaultTest(0x3eE6107d9C93955acBb3f39871D32B02F82B78AB);
     IERC20 oath;
     IWeth weth;
+    address voter;
+    address gaugeReceiver;
     uint256 emissionRate = 1e17;
 
     // Linear function config (to config)
@@ -41,12 +44,15 @@ contract DepositHelperReaperVaultTest is ERC721Holder, Test {
         vm.createSelectFork("optimism", 111980000);
 
         oath = IERC20(0x00e1724885473B63bCE08a9f0a52F35b0979e35A);
-        reliquary = new Reliquary(address(oath), emissionRate, "Reliquary Deposit", "RELIC");
+        voter = address(new VoterMock());
+        gaugeReceiver = makeAddr("gaugeReceiver");
+        reliquary = new Reliquary(address(oath), emissionRate, gaugeReceiver, voter, "Reliquary Deposit", "RELIC");
         linearCurve = new LinearCurve(slope, minMultiplier);
 
         address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         deal(address(wethVault), address(this), 1);
         wethVault.approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
+        reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
             1000,
             address(wethVault),
