@@ -3,45 +3,58 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import {Reliquary} from "contracts/Reliquary.sol";
-import {OwnableCurve} from "contracts/emission_curves/OwnableCurve.sol";
+import {ICurves, LinearCurve} from "contracts/curves/LinearCurve.sol";
+import {LinearPlateauCurve} from "contracts/curves/LinearPlateauCurve.sol";
 import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
-import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
-import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
-import {ParentRewarder} from "contracts/rewarders/ParentRewarder.sol";
+import {NFTDescriptor} from "contracts/nft_descriptors/NFTDescriptor.sol";
+import {ParentRollingRewarder} from "contracts/rewarders/ParentRollingRewarder.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract Deploy is Script {
     using stdJson for string;
 
     struct Pool {
-        uint allocPoint;
+        uint256 allocPoint;
         bool allowPartialWithdrawals;
-        uint[] levelMultipliers;
+        uint256 curveIndex;
+        string curveType;
         string name;
         address poolToken;
-        uint[] requiredMaturities;
-        int rewarderIndex;
         string tokenType;
     }
 
-    struct Rewarder {
-        int parentIndex;
-        uint rewardMultiplier;
+    struct ParentRewarderParams {
+        uint256 poolId;
+    }
+
+    struct ChildRewarderParams {
+        uint256 parentIndex;
         address rewarderToken;
     }
 
+    struct LinearCurveParams {
+        uint256 minMultiplier;
+        uint256 slope;
+    }
+
+    struct LinearPlateauCurveParams {
+        uint256 minMultiplier;
+        uint256 plateauLevel;
+        uint256 slope;
+    }
+
     bytes32 constant OPERATOR = keccak256("OPERATOR");
-    bytes32 constant EMISSION_CURVE = keccak256("EMISSION_CURVE");
-    bytes32 constant CHILD_SETTER = keccak256("CHILD_SETTER");
+    bytes32 constant EMISSION_RATE = keccak256("EMISSION_RATE");
 
     string config;
     address multisig;
+    address bootstrapAdd;
     Reliquary reliquary;
-    OwnableCurve emissionCurve;
-    address[] rewarderAddresses;
-    ParentRewarder[] parentRewarders;
-    address nftDescriptorNormal;
-    address nftDescriptor4626;
-    address nftDescriptorPair;
+    uint256 poolCount;
+    address rewardToken;
+    mapping(uint256 => ParentRollingRewarder) parentForPoolId;
+    LinearCurve[] linearCurves;
+    LinearPlateauCurve[] linearPlateauCurves;
     address depositHelper4626;
 
     function run() external {
@@ -49,33 +62,47 @@ contract Deploy is Script {
         string memory name = config.readString(".name");
         string memory symbol = config.readString(".symbol");
         multisig = config.readAddress(".multisig");
-        address rewardToken = config.readAddress(".rewardToken");
-        uint emissionRate = config.readUint(".emissionRate");
+        bootstrapAdd = config.readAddress(".multisig"); //! bootstrapAdd set to multisig.
+        rewardToken = config.readAddress(".rewardToken");
+        uint256 emissionRate = config.readUint(".emissionRate");
         Pool[] memory pools = abi.decode(config.parseRaw(".pools"), (Pool[]));
+        poolCount = pools.length;
 
         vm.startBroadcast();
 
-        emissionCurve = new OwnableCurve(emissionRate);
+        _deployCurves();
 
-        reliquary = new Reliquary(rewardToken, address(emissionCurve), name, symbol);
+        reliquary = new Reliquary(rewardToken, emissionRate, name, symbol);
 
         _deployRewarders();
 
         reliquary.grantRole(OPERATOR, tx.origin);
-        for (uint i = 0; i < pools.length; ++i) {
+        for (uint256 i = 0; i < pools.length; ++i) {
             Pool memory pool = pools[i];
 
-            address nftDescriptor = _deployHelpers(pool.tokenType);
+            ICurves curve;
+            bytes32 curveTypeHash = keccak256(bytes(pool.curveType));
+            if (curveTypeHash == keccak256("linearCurve")) {
+                curve = linearCurves[pool.curveIndex];
+            } else if (curveTypeHash == keccak256("linearPlateauCurve")) {
+                curve = linearPlateauCurves[pool.curveIndex];
+            } else {
+                revert(string.concat("invalid curve type ", pool.curveType));
+            }
 
+            _deployHelpers(pool.tokenType);
+            address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
+
+            ERC20(pool.poolToken).approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
             reliquary.addPool(
                 pool.allocPoint,
                 pool.poolToken,
-                pool.rewarderIndex < 0 ? address(0) : rewarderAddresses[uint(pool.rewarderIndex)],
-                pool.requiredMaturities,
-                pool.levelMultipliers,
+                address(parentForPoolId[i]),
+                curve,
                 pool.name,
                 nftDescriptor,
-                pool.allowPartialWithdrawals
+                pool.allowPartialWithdrawals,
+                bootstrapAdd
             );
         }
 
@@ -87,48 +114,54 @@ contract Deploy is Script {
     }
 
     function _deployRewarders() internal {
-        Rewarder[] memory rewarders = abi.decode(config.parseRaw(".rewarders"), (Rewarder[]));
-        for (uint i; i < rewarders.length; ++i) {
-            Rewarder memory rewarder = rewarders[i];
+        ParentRewarderParams[] memory parentParams =
+            abi.decode(config.parseRaw(".parentRewarders"), (ParentRewarderParams[]));
+        ParentRollingRewarder[] memory parentRewarders =
+            new ParentRollingRewarder[](parentParams.length);
+        for (uint256 i; i < parentParams.length; ++i) {
+            ParentRewarderParams memory params = parentParams[i];
 
-            if (rewarder.parentIndex < 0) {
-                ParentRewarder newParent =
-                    new ParentRewarder(rewarder.rewardMultiplier, rewarder.rewarderToken, address(reliquary));
-                newParent.grantRole(CHILD_SETTER, tx.origin);
+            ParentRollingRewarder newParent = new ParentRollingRewarder();
 
-                parentRewarders.push(newParent);
-                rewarderAddresses.push(address(newParent));
-            } else {
-                rewarderAddresses.push(
-                    ParentRewarder(rewarderAddresses[uint(rewarder.parentIndex)]).createChild(
-                        rewarder.rewarderToken, rewarder.rewardMultiplier, multisig != address(0) ? multisig : tx.origin
-                    )
-                );
-            }
+            parentRewarders[i] = newParent;
+            parentForPoolId[params.poolId] = newParent;
+        }
+
+        ChildRewarderParams[] memory children =
+            abi.decode(config.parseRaw(".childRewarders"), (ChildRewarderParams[]));
+        for (uint256 i; i < children.length; ++i) {
+            ChildRewarderParams memory child = children[i];
+            ParentRollingRewarder parent = ParentRollingRewarder(parentRewarders[child.parentIndex]);
+            parent.createChild(child.rewarderToken);
         }
     }
 
-    function _deployHelpers(string memory poolTokenType) internal returns (address nftDescriptor) {
+    function _deployCurves() internal {
+        LinearCurveParams[] memory linearCurveParams =
+            abi.decode(config.parseRaw(".linearCurves"), (LinearCurveParams[]));
+        for (uint256 i; i < linearCurveParams.length; ++i) {
+            LinearCurveParams memory params = linearCurveParams[i];
+            linearCurves.push(new LinearCurve(params.slope, params.minMultiplier));
+        }
+
+        LinearPlateauCurveParams[] memory linearPlateauCurveParams =
+            abi.decode(config.parseRaw(".linearPlateauCurves"), (LinearPlateauCurveParams[]));
+        for (uint256 i; i < linearPlateauCurveParams.length; ++i) {
+            LinearPlateauCurveParams memory params = linearPlateauCurveParams[i];
+            linearPlateauCurves.push(
+                new LinearPlateauCurve(params.slope, params.minMultiplier, params.plateauLevel)
+            );
+        }
+    }
+
+    function _deployHelpers(string memory poolTokenType) internal {
         bytes32 typeHash = keccak256(bytes(poolTokenType));
-        if (typeHash == keccak256("normal")) {
-            if (nftDescriptorNormal == address(0)) {
-                nftDescriptorNormal = address(new NFTDescriptor(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptorNormal;
-        } else if (typeHash == keccak256("4626")) {
-            if (nftDescriptor4626 == address(0)) {
-                nftDescriptor4626 = address(new NFTDescriptorSingle4626(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptor4626;
+        if (typeHash == keccak256("4626")) {
             if (depositHelper4626 == address(0)) {
-                depositHelper4626 = address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
+                depositHelper4626 =
+                    address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
             }
-        } else if (typeHash == keccak256("pair")) {
-            if (nftDescriptorPair == address(0)) {
-                nftDescriptorPair = address(new NFTDescriptorPair(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptorPair;
-        } else {
+        } else if (typeHash != keccak256("normal") && typeHash != keccak256("pair")) {
             revert(string.concat("invalid token type ", poolTokenType));
         }
     }
@@ -137,13 +170,15 @@ contract Deploy is Script {
         bytes32 defaultAdminRole = reliquary.DEFAULT_ADMIN_ROLE();
         reliquary.grantRole(defaultAdminRole, multisig);
         reliquary.grantRole(OPERATOR, multisig);
-        reliquary.grantRole(EMISSION_CURVE, multisig);
+        reliquary.grantRole(EMISSION_RATE, multisig);
         reliquary.renounceRole(OPERATOR, tx.origin);
         reliquary.renounceRole(defaultAdminRole, tx.origin);
-        emissionCurve.transferOwnership(multisig);
-        for (uint i; i < parentRewarders.length; ++i) {
-            parentRewarders[i].renounceRole(defaultAdminRole, tx.origin);
-            parentRewarders[i].renounceRole(CHILD_SETTER, tx.origin);
+        if (multisig != address(0)) {
+            for (uint256 i; i < poolCount; ++i) {
+                if (address(parentForPoolId[i]) != address(0)) {
+                    parentForPoolId[i].transferOwnership(multisig);
+                }
+            }
         }
     }
 }

@@ -18,19 +18,26 @@
 #         total number of allocation points for all pools.                                                             #
 #     `allowPartialWithdrawals`: hether users can withdraw less than their entire position. A value of false will also #
 #         disable shift and split functionality. This is useful for adding pools with decreasing levelMultipliers.     #
-#     `levelMultipliers`: Multiplier applied to size of positions in each maturity level when calculating rewards.     #
+#     `curveIndex`: Index of curve in linearCurves or linearPlateauCurves array.                                       #
+#     `curveType`: Type of curve for this pool (linearCurve or linearPlateauCurve)                                     #
 #     `name`: Name of the pool.                                                                                        #
 #     `poolToken`: Address for the token this pool takes for deposits.                                                 #
-#     `requiredMaturities`: Maturity required, in seconds, for a position to reach each maturity level.                #
-#     `rewarderIndex`: Index of the rewarder to use for this pool. -1 for no rewarder contract.                        #
 #     `tokenType`: Type of NFTDescriptor to use for this token. Valid values are "normal", "4626", and "pair". Use     #
 #         "4626" if `poolToken` is an ERC4626 contract, and "pair" if it is a UniswapV2Pair.                           #
 #                                                                                                                      #
-# `rewarders`: May be of any length (or empty). Each member must have each property defined in the correct order shown.#
-#     `parentIndex`: Index of this rewarder's parent. -1 if this rewarder is a parent. Children must have a later      #
-#         index than their parent.                                                                                     #
-#     `rewardMultiplier`: Multiplier relative to `rewardToken` to emit of `rewarderToken` where 100% is                #
-#         1000000000000000000. Very important to account for `rewardToken` and `rewarderToken` decimals when setting.  #
+# `linearCurves`: May be of any lenght (or empty). Each member must have each property defined in the correct order.   #
+#     `minMultiplier`:                                                                                                 #
+#     `slope`:                                                                                                         #
+# `linearPlateauCurves`: May be of any lenght (or empty). Each member must have each property defined in the correct   #
+#     order shown.                                                                                                     #
+#     `minMultiplier`:                                                                                                 #
+#     `plateauLevel`:                                                                                                  #
+#     `slope`:                                                                                                         #
+#                                                                                                                      #
+# `parentRewarders`: May be of any length (or empty). Each member must have each property defined in the correct order.#
+#     `poolId`: The Reliquary poolId (index of `pools` array) this parent manages rewards for.                         #
+# `childRewarders`: May be of any length (or empty). Each member must have each property defined in the correct order. #
+#     `parentIndex`: Index of this rewarder's parent in the array of `parentRewarders`.                                #
 #     `rewarderToken`: Address of the token this rewarder is emitting.                                                 #
 #                                                                                                                      #
 ########################################################################################################################
@@ -49,35 +56,44 @@
         {
             "allocPoint": 100,
             "allowPartialWithdrawals": true,
-            "levelMultipliers": [100, 120, 150, 200, 300, 400, 500, 750],
+            "curveIndex": 0,
+            "curveType": "linearPlateauCurve",
             "name": "USDC Optimizer",
             "poolToken": "0x3d34C680428F05C185ee692A6fA677a494fB787A",
-            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000, 15552000, 31536000],
-            "rewarderIndex": 0,
             "tokenType": "4626"
         },
         {
             "allocPoint": 50,
             "allowPartialWithdrawals": true,
-            "levelMultipliers": [100, 120, 150, 200, 300, 400],
+            "curveIndex": 0,
+            "curveType": "linearPlateauCurve",
             "name": "ETH Optimizer",
             "poolToken": "0x00764a204165db75CC4f7c50CdC7A409b14F995d",
-            "requiredMaturities": [0, 86400, 604800, 1209600, 2592000, 7776000],
-            "rewarderIndex": -1,
             "tokenType": "4626"
         }
     ],
 
-    "rewarders": [
+    "parentRewarders": [
         {
-            "parentIndex": -1,
-            "rewardMultiplier": 1000000000000000000,
-            "rewarderToken": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75"
-        },
+            "poolId": 0
+        }
+    ],
+
+    "childRewarders": [
         {
             "parentIndex": 0,
-            "rewardMultiplier": 50000000000000,
             "rewarderToken": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
+        }
+    ],
+
+    "linearCurves": [
+    ],
+
+    "linearPlateauCurves": [
+        {
+            "minMultiplier": 31536000,
+            "plateauLevel": 31536000,
+            "slope": 1
         }
     ]
 }
