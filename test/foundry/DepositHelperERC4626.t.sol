@@ -7,7 +7,7 @@ import "openzeppelin-contracts/contracts/mocks/token/ERC4626Mock.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {WETH} from "solmate/tokens/WETH.sol";
 import "contracts/helpers/DepositHelperERC4626.sol";
-import "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
+import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "contracts/Reliquary.sol";
 import "contracts/curves/LinearCurve.sol";
 
@@ -34,7 +34,7 @@ contract DepositHelperERC4626Test is ERC721Holder, Test {
         vault = new ERC4626Mock(address(weth));
         linearCurve = new LinearCurve(slope, minMultiplier);
 
-        address nftDescriptor = address(new NFTDescriptorSingle4626(address(reliquary)));
+        address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
 
         weth.deposit{value: 1_000_000 ether}();
