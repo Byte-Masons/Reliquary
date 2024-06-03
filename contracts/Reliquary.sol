@@ -890,7 +890,7 @@ contract Reliquary is
         thenaReceiver = _thenaReceiver;
     }
 
-    function claimThenaRewards(uint256 _pid, address[] calldata rewardTokens) public {
-        DoubleStakingLogic.claimThenaRewards(poolInfo, thenaToken, thenaReceiver, _pid, rewardTokens);
+    function claimThenaRewards(uint256 _pid) public {
+        DoubleStakingLogic.claimThenaRewards(poolInfo, thenaToken, thenaReceiver, _pid);
     }
 }

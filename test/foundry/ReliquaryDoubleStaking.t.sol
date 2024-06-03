@@ -17,8 +17,8 @@ import "contracts/rewarders/ParentRewarder-Rolling.sol";
 import "contracts/rewarders/RewardsPool.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IGauge.sol";
-import "contracts/interfaces/IPairFactory.sol";
-import "contracts/interfaces/IPair.sol";
+import "contracts/interfaces/IPoolFactory.sol";
+import "contracts/interfaces/IPool.sol";
 import "contracts/interfaces/IWETH.sol";
 import "contracts/interfaces/IRouter01.sol";
 
@@ -39,8 +39,8 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
     RewardsPool rewardsPoolUSDT;
     IVoter voter;
     IGauge gauge;
-    IPairFactory pairFactory;
-    IPair poolToken;
+    IPoolFactory poolFactory;
+    IPool poolToken;
     address internal cleoReceiver;
 
     uint[] requiredMaturity = [0, 7 days, 14 days, 21 days, 28 days, 90 days, 180 days, 365 days];
@@ -59,7 +59,7 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         cleoToken = IERC20Metadata(0xC1E0C8C30F251A07a894609616580ad2CEb547F2);
         vm.label(address(cleoToken), "Cleo Token");
 
-        poolToken = IPair(0xE32cacd691F96Ca68281f012d24843d184Bd85Ba);
+        poolToken = IPool(0xE32cacd691F96Ca68281f012d24843d184Bd85Ba);
         gauge = IGauge(0xe6e2c20AEe34B2A5C9dc49748b5505e5665B016f);
         vm.label(address(gauge), "Gauge");
 
@@ -233,9 +233,7 @@ contract ReliquaryDoubleStaking is ERC721Holder, Test {
         assertApproxEqAbs(rewardUser1, 10 ether * uint(120) / 220, 1e5, "user1 reward not expected");
 
         //reliquary.claimThenaRewards(0);
-        address[] memory gaugeRewards = new address[](1);
-        gaugeRewards[0] = address(cleoToken);
-        reliquary.claimThenaRewards(0, gaugeRewards);
+        reliquary.claimThenaRewards(0);
     }
 
     function testSplit() public {

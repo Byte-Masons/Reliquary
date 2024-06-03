@@ -3,7 +3,6 @@
 pragma solidity ^0.8.15;
 
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../interfaces/IVoter.sol";
 import "../interfaces/IReliquary.sol";
 
 library ReliquaryLogic {
