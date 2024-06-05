@@ -802,7 +802,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         gaugeRewardReceiver = _gaugeRewardReceiver;
     }
 
-    function claimGaugeRewards(uint256 _pid, address[] calldata rewardTokens) public {
-        DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid, rewardTokens);
+    function claimGaugeRewards(uint256 _pid) public {
+        DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid);
     }
 }

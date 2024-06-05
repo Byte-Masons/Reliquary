@@ -23,7 +23,7 @@ fs_permissions = [{ access = "read", path = "./"}]
 [profile.default.rpc_endpoints]
 fantom = "https://rpcapi.fantom.network"
 optimism = "https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-mantle = "https://mantle-rpc.publicnode.com"
+mode = "https://mainnet.mode.network"
 
 [profile.test.optimizer_details.yulDetails]
 # Reduces compile times but produces poorly optimized code

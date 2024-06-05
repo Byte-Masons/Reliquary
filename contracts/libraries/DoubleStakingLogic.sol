@@ -27,7 +27,7 @@ library DoubleStakingLogic {
                     poolToken.approve(pool.gauge, type(uint256).max);
                 }
                 // Deposit the LP in the gauge
-                IGauge(pool.gauge).deposit(balance, 0);
+                IGauge(pool.gauge).deposit(balance);
             }
         }
     }
@@ -73,17 +73,14 @@ library DoubleStakingLogic {
     function claimGaugeRewards(
         PoolInfo[] storage poolInfo,
         address rewardReceiver,
-        uint256 _pid,
-        address[] calldata rewardTokens
+        uint256 _pid
     ) public {
-        address gauge = poolInfo[_pid].gauge;
-        if (gauge != address(0)) {
-            // claim the thena rewards
-            IGauge(gauge).getReward(address(this), rewardTokens);
-            for (uint256 i = 0; i < rewardTokens.length; i++) {
-                IERC20 token = IERC20(rewardTokens[i]);
-                token.safeTransfer(rewardReceiver, token.balanceOf(address(this)));
-            }  
+        IGauge gauge = IGauge(poolInfo[_pid].gauge);
+        if (address(gauge) != address(0)) {
+            // claim the rewards
+            gauge.getReward(address(this));
+            IERC20 rewardToken = IERC20(gauge.rewardToken());
+            rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
         }
     }
 }
