@@ -35,7 +35,11 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
     /// @dev Access control roles.
     bytes32 private constant OPERATOR = keccak256("OPERATOR");
+    bytes32 private constant GUARDIAN = keccak256("GUARDIAN");
     bytes32 private constant EMISSION_RATE = keccak256("EMISSION_RATE");
+
+    /// @dev Bool of pause status
+    bool internal paused;
 
     /// @dev Address of the reward token contract.
     address public immutable rewardToken;
@@ -239,7 +243,6 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      */
     function updatePool(uint8 _poolId) external nonReentrant {
         ReliquaryLogic._updatePool(poolInfo[_poolId], emissionRate, totalAllocPoint);
-        updatePoolWithGaugeDeposit(_poolId);
     }
 
     /**
@@ -602,6 +605,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _relicId The NFT ID of the position on which the deposit is to be made.
      */
     function _deposit(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
+        if (paused) revert Reliquary__PAUSED();
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
         uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
@@ -794,15 +798,24 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         DoubleStakingLogic.enableGauge(voter, poolInfo, _pid);
     }
 
-    function disableGauge(uint256 _pid) public onlyRole(OPERATOR) {
-        DoubleStakingLogic.disableGauge(voter, poolInfo, _pid);
+    function disableGauge(uint256 _pid, bool _claimRewards) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.disableGauge(voter, poolInfo, _pid, gaugeRewardReceiver, _claimRewards);
     }
 
     function setGaugeReceiver(address _gaugeRewardReceiver) public onlyRole(OPERATOR) {
+        if (_gaugeRewardReceiver == address(0)) revert Reliquary__ZERO_INPUT();
         gaugeRewardReceiver = _gaugeRewardReceiver;
     }
 
     function claimGaugeRewards(uint256 _pid) public {
         DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid);
+    }
+
+    function pause() external onlyRole(GUARDIAN) {
+        paused = true;
+    }
+
+    function unpause() external onlyRole(OPERATOR) {
+        paused = false;
     }
 }

@@ -60,12 +60,22 @@ library DoubleStakingLogic {
     function disableGauge(
         IVoter voter,
         PoolInfo[] storage poolInfo,
-        uint256 _pid
+        uint256 _pid,
+        address rewardReceiver,
+        bool _claimRewards
     ) public {
         address gauge = voter.gauges(poolInfo[_pid].poolToken);
         if (gauge != address(0)) {
             uint256 balance = IGauge(gauge).balanceOf(address(this));
             withdrawFromGauge(poolInfo, _pid, balance);
+
+            // claim rewards before disabling gauge 
+            if (_claimRewards) {
+                IGauge(gauge).getReward(address(this));
+                IERC20 rewardToken = IERC20(IGauge(gauge).rewardToken());
+                rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
+            }
+
             poolInfo[_pid].gauge = address(0);
         }
     }
