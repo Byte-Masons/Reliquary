@@ -234,6 +234,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @notice Update reward variables for all pools. Be careful of gas spending!
      */
     function massUpdatePools() external nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         ReliquaryLogic._massUpdatePools(poolInfo, emissionRate, totalAllocPoint);
     }
 
@@ -242,6 +243,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _poolId The index of the pool. See poolInfo.
      */
     function updatePool(uint8 _poolId) external nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         ReliquaryLogic._updatePool(poolInfo[_poolId], emissionRate, totalAllocPoint);
     }
 
@@ -253,6 +255,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _harvestTo Address to send rewards to (zero address if harvest should not be performed).
      */
     function update(uint256 _relicId, address _harvestTo) external nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         if (_harvestTo != address(0)) _requireApprovedOrOwner(_relicId);
         else _requireOwned(_relicId);
         _update(_relicId, _harvestTo);
@@ -333,6 +336,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
     /// @notice Burns the Relic with ID `_relicId`. Cannot be called if there is any principal or rewards in the Relic.
     function burn(uint256 _relicId) public nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         _requireApprovedOrOwner(_relicId);
         PositionInfo storage position = positionForId[_relicId];
         if (position.amount != 0) revert Reliquary__BURNING_PRINCIPAL();
@@ -364,6 +368,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         nonReentrant
         returns (uint256 newId_)
     {
+        if (paused) revert Reliquary__PAUSED();
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
         _requireApprovedOrOwner(_fromId);
 
@@ -425,6 +430,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _amount The amount being transferred.
      */
     function shift(uint256 _fromId, uint256 _toId, uint256 _amount) public nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
         if (_fromId == _toId) revert Reliquary__DUPLICATE_RELIC_IDS();
         _requireApprovedOrOwner(_fromId);
@@ -518,6 +524,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _toId The NFT ID of the Relic being transferred to.
      */
     function merge(uint256 _fromId, uint256 _toId) public nonReentrant {
+        if (paused) revert Reliquary__PAUSED();
         if (_fromId == _toId) revert Reliquary__DUPLICATE_RELIC_IDS();
         _requireApprovedOrOwner(_fromId);
         _requireApprovedOrOwner(_toId);
@@ -623,6 +630,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
      * @param _relicId The NFT ID of the position on which the withdraw is to be made.
      */
     function _withdraw(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
+        if (paused) revert Reliquary__PAUSED();
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
 
         uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
@@ -787,6 +795,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
     // @dev Deposit LP tokens to earn THE.
     function updatePoolWithGaugeDeposit(uint256 _pid) public {
+        if (paused) revert Reliquary__PAUSED();
         DoubleStakingLogic.updatePoolWithGaugeDeposit(poolInfo, _pid);
     }
 
@@ -808,6 +817,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     }
 
     function claimGaugeRewards(uint256 _pid) public {
+        if (paused) revert Reliquary__PAUSED();
         DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid);
     }
 
