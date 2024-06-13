@@ -74,13 +74,14 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         // poolToken.mint(address(this), 100_000_000 ether);
         deal(address(lpToken0), address(this), 100_000 ether);
         deal(address(lpToken1), address(this), 100_000 ether);
+
         lpToken0.transfer(address(poolToken), 100_000 ether);
         lpToken1.transfer(address(poolToken), 100_000 ether);
         IPool(address(poolToken)).mint(address(this));
 
         uint256 balance = IERC20Metadata(address(poolToken)).balanceOf(address(this));
         IERC20Metadata(address(poolToken)).approve(address(reliquary), type(uint256).max);
-        console.log(balance);
+        console.log("Pool Token Balance: %e", balance);
         
         reliquary.grantRole(keccak256("OPERATOR"), address(this));
         reliquary.addPool(
@@ -183,26 +184,47 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         reliquary.withdraw(1, relicId, address(0));
     }
 
-    function testHarvest() public {
-        poolToken.transfer(address(1), 1.25 ether);
+    function testHarvest(uint256 amount0, uint256 amount1) public {
+        amount0 = bound(amount0, 1 ether, poolToken.balanceOf(address(this)));
+        amount1 = bound(amount1, 1 ether, poolToken.balanceOf(address(this)));
+        vm.assume((amount0 + amount1) <= poolToken.balanceOf(address(this)));
+
+        poolToken.transfer(address(1), amount0);
 
         vm.startPrank(address(1));
         poolToken.approve(address(reliquary), type(uint256).max);
-        uint256 relicIdA = reliquary.createRelicAndDeposit(address(1), 0, 1 ether);
+        uint256 relicIdA = reliquary.createRelicAndDeposit(address(1), 0, amount0 / 2);
         skip(180 days);
-        reliquary.withdraw(0.75 ether, relicIdA, address(0));
-        reliquary.deposit(1 ether, relicIdA, address(0));
 
+        reliquary.withdraw((7500 * amount0 / 2) / 10_000, relicIdA, address(0));
+        reliquary.deposit(amount0 / 2, relicIdA, address(0));
+
+        
         vm.stopPrank();
-        uint256 relicIdB = reliquary.createRelicAndDeposit(address(this), 0, 100 ether);
+        uint256 relicIdB = reliquary.createRelicAndDeposit(address(this), 0, amount1);
         skip(180 days);
+
+        /* update reward credit only */
+        reliquary.update(relicIdB, address(0));
+        PositionInfo memory initPositionB = reliquary.getPositionForId(relicIdB);
+        /* harvest */
         reliquary.update(relicIdB, address(this));
+        PositionInfo memory finalPositionB = reliquary.getPositionForId(relicIdB);
 
         vm.startPrank(address(1));
+        reliquary.update(relicIdA, address(0));
+        
+        /* update reward credit only */
+        PositionInfo memory initPositionA = reliquary.getPositionForId(relicIdA);
         reliquary.update(relicIdA, address(this));
+        /* harvest */
+        PositionInfo memory finalPositionA = reliquary.getPositionForId(relicIdA);
         vm.stopPrank();
 
-        assertApproxEqAbs(oath.balanceOf(address(this)) / 1e18, 3110400, 1);
+        uint256 deltaA = initPositionA.rewardCredit - finalPositionA.rewardCredit ;
+        uint256 deltaB = initPositionB.rewardCredit - finalPositionB.rewardCredit ;
+
+        assertApproxEqAbs(oath.balanceOf(address(this)), deltaA + deltaB, 1);
     }
 
     function testRevertOnHarvestUnauthorized() public {
@@ -316,16 +338,20 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         assertApproxEqAbs(maturity1, maturity2, 1);
     }
 
-    function testMergeAfterSplit() public {
-        uint256 depositAmount1 = 100 ether;
-        uint256 depositAmount2 = 50 ether;
-        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
+    function testMergeAfterSplit(uint256 amount0, uint256 amount1, uint256 amountToSplit) public {
+        amount0 = bound(amount0, 1 ether, poolToken.balanceOf(address(this)));
+        amount1 = bound(amount1, 1 ether, poolToken.balanceOf(address(this)));
+        amountToSplit = bound(amountToSplit, 1 ether, amount0);
+        vm.assume((amount0 + amount1) <= poolToken.balanceOf(address(this)));
+        
+
+        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount0);
         skip(2 days);
         reliquary.update(relicId, address(this));
-        reliquary.split(relicId, 50 ether, address(this));
-        uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
+        reliquary.split(relicId, amountToSplit, address(this));
+        uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
         reliquary.merge(relicId, newRelicId);
-        assertEq(reliquary.getPositionForId(newRelicId).amount, 100 ether);
+        assertApproxEqAbs(reliquary.getPositionForId(newRelicId).amount, (amount0 - amountToSplit) + amount1, 1);
     }
 
     function testBurn() public {
@@ -343,13 +369,15 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         assertEq(reliquary.balanceOf(address(this)), 0);
     }
 
-    function testPocShiftVulnerability() public {
-        uint256 idParent = reliquary.createRelicAndDeposit(address(this), 0, 10000 ether);
+    function testPocShiftVulnerability(uint256 amount) public {
+        amount = bound(amount, 1 ether, poolToken.balanceOf(address(this)));
+        
+        uint256 idParent = reliquary.createRelicAndDeposit(address(this), 0, amount/2);
         skip(366 days);
         reliquary.update(idParent, address(0));
 
         for (uint256 i = 0; i < 10; i++) {
-            uint256 idChild = reliquary.createRelicAndDeposit(address(this), 0, 10 ether);
+            uint256 idChild = reliquary.createRelicAndDeposit(address(this), 0, amount/2000);
             reliquary.shift(idParent, idChild, 1);
             reliquary.update(idParent, address(0));
             uint256 levelChild = reliquary.getPositionForId(idChild).level;
