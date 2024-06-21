@@ -312,7 +312,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         _burn(_relicId);
         delete positionForId[_relicId];
 
-        withdrawFromGauge(poolId_, amount_);
+        _withdrawFromGauge(poolId_, amount_);
 
         IERC20(pool.poolToken).safeTransfer(to_, amount_);
 
@@ -614,6 +614,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     function _deposit(uint256 _amount, uint256 _relicId, address _harvestTo) internal {
         if (paused) revert Reliquary__PAUSED();
         if (_amount == 0) revert Reliquary__ZERO_INPUT();
+        if (!voter.isAlive(poolInfo[positionForId[_relicId].poolId].gauge)) revert Reliquary__GAUGE_NOT_ALIVE();
 
         uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.DEPOSIT, _harvestTo);
 
@@ -635,7 +636,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
         uint8 poolId_ = _updatePosition(_amount, _relicId, Kind.WITHDRAW, _harvestTo);
 
-        withdrawFromGauge(poolId_, _amount);
+        _withdrawFromGauge(poolId_, _amount);
 
         IERC20(poolInfo[poolId_].poolToken).safeTransfer(msg.sender, _amount);
 
@@ -799,7 +800,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         DoubleStakingLogic.updatePoolWithGaugeDeposit(poolInfo, _pid);
     }
 
-    function withdrawFromGauge(uint256 _pid, uint256 _amount) internal {
+    function _withdrawFromGauge(uint256 _pid, uint256 _amount) internal {
         DoubleStakingLogic.withdrawFromGauge(poolInfo, _pid, _amount);
     }
 
@@ -818,7 +819,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
 
     function claimGaugeRewards(uint256 _pid) public {
         if (paused) revert Reliquary__PAUSED();
-        DoubleStakingLogic.claimGaugeRewards(poolInfo, gaugeRewardReceiver, _pid);
+        DoubleStakingLogic.claimGaugeRewards(voter, poolInfo, gaugeRewardReceiver, _pid);
     }
 
     function pause() external onlyRole(GUARDIAN) {

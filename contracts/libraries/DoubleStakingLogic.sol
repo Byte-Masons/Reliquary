@@ -76,11 +76,15 @@ library DoubleStakingLogic {
                 rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
             }
 
+            // revoke allowance
+            IERC20(poolInfo[_pid].poolToken).approve(gauge, 0);
+
             poolInfo[_pid].gauge = address(0);
         }
     }
 
     function claimGaugeRewards(
+        IVoter voter,
         PoolInfo[] storage poolInfo,
         address rewardReceiver,
         uint256 _pid
@@ -88,7 +92,10 @@ library DoubleStakingLogic {
         IGauge gauge = IGauge(poolInfo[_pid].gauge);
         if (address(gauge) != address(0)) {
             // claim the rewards
-            gauge.getReward(address(this));
+            address[] memory gauges = new address[](1);
+            gauges[0] = poolInfo[_pid].gauge;
+            voter.claimRewards(gauges);
+
             IERC20 rewardToken = IERC20(gauge.rewardToken());
             rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
         }
