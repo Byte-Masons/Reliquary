@@ -6,8 +6,7 @@ import {Reliquary} from "contracts/Reliquary.sol";
 import {ICurves, LinearCurve} from "contracts/curves/LinearCurve.sol";
 import {LinearPlateauCurve} from "contracts/curves/LinearPlateauCurve.sol";
 import {DepositHelperERC4626} from "contracts/helpers/DepositHelperERC4626.sol";
-import {NFTDescriptor, NFTDescriptorPair} from "contracts/nft_descriptors/NFTDescriptorPair.sol";
-import {NFTDescriptorSingle4626} from "contracts/nft_descriptors/NFTDescriptorSingle4626.sol";
+import {NFTDescriptor} from "contracts/nft_descriptors/NFTDescriptor.sol";
 import {ParentRollingRewarder} from "contracts/rewarders/ParentRollingRewarder.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
@@ -58,9 +57,6 @@ contract Deploy is Script {
     mapping(uint256 => ParentRollingRewarder) parentForPoolId;
     LinearCurve[] linearCurves;
     LinearPlateauCurve[] linearPlateauCurves;
-    address nftDescriptorNormal;
-    address nftDescriptor4626;
-    address nftDescriptorPair;
     address depositHelper4626;
 
     function run() external {
@@ -98,7 +94,8 @@ contract Deploy is Script {
                 revert(string.concat("invalid curve type ", pool.curveType));
             }
 
-            address nftDescriptor = _deployHelpers(pool.tokenType);
+            _deployHelpers(pool.tokenType);
+            address nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
             ERC20(pool.poolToken).approve(address(reliquary), 1); // approve 1 wei to bootstrap the pool
             reliquary.addPool(
@@ -161,28 +158,14 @@ contract Deploy is Script {
         }
     }
 
-    function _deployHelpers(string memory poolTokenType) internal returns (address nftDescriptor) {
+    function _deployHelpers(string memory poolTokenType) internal {
         bytes32 typeHash = keccak256(bytes(poolTokenType));
-        if (typeHash == keccak256("normal")) {
-            if (nftDescriptorNormal == address(0)) {
-                nftDescriptorNormal = address(new NFTDescriptor(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptorNormal;
-        } else if (typeHash == keccak256("4626")) {
-            if (nftDescriptor4626 == address(0)) {
-                nftDescriptor4626 = address(new NFTDescriptorSingle4626(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptor4626;
+        if (typeHash == keccak256("4626")) {
             if (depositHelper4626 == address(0)) {
                 depositHelper4626 =
                     address(new DepositHelperERC4626(reliquary, config.readAddress(".weth")));
             }
-        } else if (typeHash == keccak256("pair")) {
-            if (nftDescriptorPair == address(0)) {
-                nftDescriptorPair = address(new NFTDescriptorPair(address(reliquary)));
-            }
-            nftDescriptor = nftDescriptorPair;
-        } else {
+        } else if (typeHash != keccak256("normal") && typeHash != keccak256("pair")) {
             revert(string.concat("invalid token type ", poolTokenType));
         }
     }

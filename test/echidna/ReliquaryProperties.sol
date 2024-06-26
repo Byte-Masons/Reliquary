@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import "contracts/Reliquary.sol";
 import "contracts/interfaces/IReliquary.sol";
 import "./mocks/ERC20Mock.sol";
-import "contracts/nft_descriptors/NFTDescriptorPair.sol";
+import "contracts/nft_descriptors/NFTDescriptor.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/ICurves.sol";
 import "contracts/curves/LinearCurve.sol";

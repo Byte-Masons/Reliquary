@@ -6,18 +6,9 @@ import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.s
 import "base64/base64.sol";
 import "../interfaces/INFTDescriptor.sol";
 import "../interfaces/IReliquary.sol";
-import "contracts/interfaces/ICurves.sol";
 
 contract NFTDescriptor is INFTDescriptor {
     using Strings for uint256;
-
-    /// @notice Constants for drawing graph.
-    uint256 private constant GRAPH_WIDTH = 180;
-    uint256 private constant GRAPH_HEIGHT = 150;
-
-    // TODO: testing account, not ipfs to be used in production
-    string private constant IPFS =
-        "https://gateway.pinata.cloud/ipfs/QmbYvNccKU3e2LFGnTDHa2asxQat2Ldw1G2wZ4iNzr59no/";
 
     address public immutable reliquary;
 
@@ -33,7 +24,6 @@ contract NFTDescriptor is INFTDescriptor {
         string rewardSymbol;
         string description;
         string attributes;
-        string image;
     }
 
     /// @notice Generate tokenURI as a base64 encoding from live on-chain values.
@@ -46,7 +36,6 @@ contract NFTDescriptor is INFTDescriptor {
         IReliquary _reliquary = IReliquary(reliquary);
         PositionInfo memory position = _reliquary.getPositionForId(relicId);
         PoolInfo memory pool = _reliquary.getPoolInfo(position.poolId);
-        // LevelInfo memory levelInfo = _reliquary.getLevelInfo(position.poolId);
         LocalVariables_constructTokenURI memory vars;
         vars.underlying = address(_reliquary.getPoolInfo(position.poolId).poolToken);
         vars.amount =
@@ -58,20 +47,6 @@ contract NFTDescriptor is INFTDescriptor {
         vars.description = generateDescription(pool.name);
         vars.attributes = generateAttributes(
             position, vars.amount, vars.pendingReward, vars.rewardSymbol, vars.maturity
-        );
-        vars.image = Base64.encode(
-            bytes(
-                string.concat(
-                    // generateSVGImage(position.level, pool.curve.getNbLevel()),
-                    generateImageText(
-                        relicId, pool.name, vars.pendingReward, vars.rewardSymbol, vars.maturity
-                    ),
-                    generateTextFromToken(vars.underlying, position.amount, vars.amount),
-                    "</text>",
-                    // generateBars(position.level, levelInfo),
-                    "</svg></svg>"
-                )
-            )
         );
 
         uri = string.concat(
@@ -85,10 +60,7 @@ contract NFTDescriptor is INFTDescriptor {
                         vars.description,
                         '", "attributes": [',
                         vars.attributes,
-                        '], "image": "',
-                        "data:image/svg+xml;base64,",
-                        vars.image,
-                        '"}'
+                        "]}"
                     )
                 )
             )
@@ -141,117 +113,6 @@ contract NFTDescriptor is INFTDescriptor {
             "}"
         );
     }
-
-    /**
-     * @notice Generate the first part of the SVG for this NFT.
-     * @param level Current maturity level of the position.
-     * @param numLevels Total number of levels in the pool.
-     */
-    function generateSVGImage(uint256 level, uint256 numLevels)
-        internal
-        pure
-        returns (string memory svg)
-    {
-        level = ((level + 1) * 5) / numLevels;
-        svg = string.concat(
-            '<svg width="290" height="450" viewBox="0 0 290 450" style="background-color:#131313" xmlns="http://www.w3.org/2000/svg">',
-            "<style>",
-            "@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');",
-            '.bit { text-anchor: middle; dominant-baseline: middle; font-family: "Press Start 2P", "Courier New", Courier, monospace; fill: white }',
-            ".art { image-rendering: pixelated }",
-            ".shape { shape-rendering: crispEdges }",
-            "</style>",
-            '<image href="',
-            IPFS,
-            "cup",
-            (level == 0) ? "1" : level.toString(),
-            ".png",
-            '" height="450" width="290" class="art"/>'
-        );
-    }
-
-    /**
-     * @notice Generate the first part of text labels for this NFT image.
-     * @param relicId ID of the NFT/position.
-     * @param poolName Name of pool as provided by operator.
-     * @param pendingReward Amount of reward token that can currently be harvested from this position.
-     * @param maturity Weighted average of the maturity deposits into this position.
-     */
-    function generateImageText(
-        uint256 relicId,
-        string memory poolName,
-        string memory pendingReward,
-        string memory rewardSymbol,
-        uint256 maturity
-    ) internal pure returns (string memory text) {
-        text = string.concat(
-            '<text x="50%" y="20" class="bit" style="font-size: 12">RELIC #',
-            relicId.toString(),
-            '</text><text x="50%" y="280" class="bit" style="font-size: 12">',
-            poolName,
-            '</text><text x="50%" y="330" class="bit" style="font-size: 8">PENDING:',
-            pendingReward,
-            " ",
-            rewardSymbol,
-            '</text><text x="50%" y="345" class="bit" style="font-size: 8">MATURITY:',
-            maturity.toString(),
-            " DAY",
-            (maturity == 1) ? "" : "S",
-            "</text>"
-        );
-    }
-
-    /// @notice Generate further text labels specific to the underlying token.
-    /// @param amountString Amount of underlying tokens deposited in this position.
-    function generateTextFromToken(
-        address, //underlying
-        uint256, //amount
-        string memory amountString
-    ) internal view virtual returns (string memory text) {
-        text = string.concat(
-            '<text x="50%" y="300" class="bit" style="font-size: 8">AMOUNT:', amountString
-        );
-    }
-
-    /**
-     * @notice Generate bar graph of this pool's bonding curve and indicator of the position's placement.
-     * @param level Current level of the position.
-     * @param levelInfo Level info for this pool.
-     */
-    // function generateBars(uint256 level, LevelInfo memory levelInfo) internal view returns (string memory bars) {
-    //     uint256 highestMultiplier = levelInfo.curve.getFunction(0);
-    //     for (uint256 i = 1; i < levelInfo.curve.getNbLevel(); i++) {
-    //         if (levelInfo.curve.getFunction(i) > highestMultiplier) {
-    //             highestMultiplier = levelInfo.curve.getFunction(i);
-    //         }
-    //     }
-
-    //     uint256 barWidth = GRAPH_WIDTH * 10 / levelInfo.curve.getNbLevel();
-    //     uint256 barWidthInt = barWidth / 10;
-    //     string memory barWidthString =
-    //         string.concat((barWidthInt > 5 ? barWidthInt - 5 : barWidthInt).toString(), ".", (barWidth % 10).toString());
-    //     bars = '<svg x="58" y="50" width="180" height="150">';
-    //     for (uint256 i; i < levelInfo.curve.getNbLevel(); i++) {
-    //         uint256 barHeight = levelInfo.curve.getFunction(i) * GRAPH_HEIGHT / highestMultiplier;
-    //         bars = string.concat(
-    //             bars,
-    //             '<rect x="',
-    //             (barWidth * i / 10).toString(),
-    //             ".",
-    //             (barWidth * i % 10).toString(),
-    //             '" y="',
-    //             (GRAPH_HEIGHT - barHeight).toString(),
-    //             '" class="shape',
-    //             '" width="',
-    //             barWidthString,
-    //             '" height="',
-    //             barHeight.toString(),
-    //             '" style="fill:#',
-    //             (i == level) ? "e6de59" : "fff",
-    //             '"/>'
-    //         );
-    //     }
-    // }
 
     /**
      * @notice Generate human-readable string from a number with given decimal places.
