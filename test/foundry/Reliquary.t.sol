@@ -42,14 +42,14 @@ contract GaugeRewardsTest is ERC721Holder, Test {
     int256[] public coeff = [int256(100e18), int256(1e18), int256(5e15), int256(-1e13), int256(5e9)];
 
     function setUp() public {
-        vm.createSelectFork("mode");
+        vm.createSelectFork("arbitrum");
         
-        lpToken0 = IERC20Metadata(0x4200000000000000000000000000000000000006); // weth
-        lpToken1 = IERC20Metadata(0xd988097fb8612cc24eeC14542bC03424c656005f); // usdc
+        lpToken0 = IERC20Metadata(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1); // weth
+        lpToken1 = IERC20Metadata(0x40301951Af3f80b8C1744ca77E55111dd3c1dba1); // neadram
 
-        voter = IVoter(0xD2F998a46e4d9Dd57aF1a28EBa8C34E7dD3851D7);
+        voter = IVoter(0xAAA2564DEb34763E3d05162ed3f5C2658691f499);
         vm.label(address(voter), "Voter");
-        rewardToken = IERC20Metadata(0xDfc7C877a950e49D2610114102175A06C2e3167a);
+        rewardToken = IERC20Metadata(0xAAA6C1E32C55A7Bfa8066A6FAE9b42650F262418);
         vm.label(address(rewardToken), "Reward Token");
 
         hoax(address(this));
@@ -68,7 +68,7 @@ contract GaugeRewardsTest is ERC721Holder, Test {
 
         oath.mint(address(reliquary), 100_000_000 ether);
 
-        poolToken = IERC20Metadata(0xCc16Bfda354353B2E03214d2715F514706Be044C);
+        poolToken = IERC20Metadata(0x1542D005D7b73c53a75D4Cd98a1a6bF3DC27842B);
         nftDescriptor = address(new NFTDescriptor(address(reliquary)));
 
         // poolToken.mint(address(this), 100_000_000 ether);
@@ -390,7 +390,9 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
         skip(1 days);
         reliquary.update(relicId, address(this));
-        reliquary.claimGaugeRewards(0);
+        address[] memory rewardTokens = new address[](1);
+        rewardTokens[0] = address(rewardToken);
+        reliquary.claimGaugeRewards(0, rewardTokens);
         console.log("reward: ", rewardToken.balanceOf(gaugeReceiver));
     }
 

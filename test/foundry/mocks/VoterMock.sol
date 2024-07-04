@@ -9,4 +9,8 @@ contract VoterMock {
     function setGauge(address poolToken, address gauge) public {
         gauges[poolToken] = gauge;
     }
+    
+    function isAlive(address) public pure returns (bool) {
+        return true;
+    }
 }

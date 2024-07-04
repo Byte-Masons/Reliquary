@@ -5,6 +5,7 @@ libs = ['lib']
 test = 'test/foundry'
 cache_path = 'forge-cache'
 script = 'scripts'
+evm_version = 'shanghai'
 
 solc_version = "0.8.23"
 optimizer = true
@@ -24,6 +25,7 @@ fs_permissions = [{ access = "read", path = "./"}]
 fantom = "https://rpcapi.fantom.network"
 optimism = "https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 mode = "https://mainnet.mode.network"
+arbitrum = "https://arb1.arbitrum.io/rpc"
 
 [profile.test.optimizer_details.yulDetails]
 # Reduces compile times but produces poorly optimized code
