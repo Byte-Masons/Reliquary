@@ -385,16 +385,6 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         }
     }
 
-    function testGaugeReward() public {
-        uint256 amount = 1 ether;
-        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
-        skip(1 days);
-        reliquary.update(relicId, address(this));
-        address[] memory rewardTokens = new address[](1);
-        rewardTokens[0] = address(rewardToken);
-        reliquary.claimGaugeRewards(0, rewardTokens);
-        console.log("reward: ", rewardToken.balanceOf(gaugeReceiver));
-    }
 
     // function testDepositBonusRewarder() public {
     //     DepositBonusRewarder rewarder = new DepositBonusRewarder(

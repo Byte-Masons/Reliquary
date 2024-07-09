@@ -10,7 +10,7 @@ import "../interfaces/IReliquary.sol";
 library DoubleStakingLogic {
     using SafeERC20 for IERC20;
 
-    // @dev Deposit LP tokens to earn THE.
+    // @dev Deposit LP tokens to earn gauge rewards.
     function updatePoolWithGaugeDeposit(
         PoolInfo[] storage poolInfo,
         uint256 _pid
@@ -99,11 +99,17 @@ library DoubleStakingLogic {
             gauges[0] = poolInfo[_pid].gauge;
             address[][] memory _rewardTokensArray = new address[][](1);
             _rewardTokensArray[0] = _rewardTokens;
+            
+            uint256[] memory balancesBefore = new uint256[](_rewardTokens.length);
+            for (uint256 i = 0; i < _rewardTokens.length; i++) {
+                balancesBefore[i] = IERC20(_rewardTokens[i]).balanceOf(address(this));
+            }
+            
             voter.claimRewards(gauges, _rewardTokensArray);
 
             for (uint256 i = 0; i < _rewardTokens.length; i++) {
                 IERC20 rewardToken = IERC20(_rewardTokens[i]);
-                rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
+                rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)) - balancesBefore[i]);
             }
         }
     }
