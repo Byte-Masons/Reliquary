@@ -11,6 +11,7 @@ contract GaugeMock {
     }
 
     mapping (address => uint256) public balanceOf;
+    mapping (address => uint256) public rewardOf;
     
     function deposit(uint256 amount, uint256) external {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
@@ -21,5 +22,16 @@ contract GaugeMock {
         require(balanceOf[msg.sender] >= amount, "GaugeMock: insufficient balance");
         IERC20(token).transfer(msg.sender, amount);
         balanceOf[msg.sender] -= amount;
+    }
+    
+    function getReward(address account, address[] memory tokens) external {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).transfer(account, rewardOf[account]);
+        }
+        rewardOf[account] = 0;
+    }
+    
+    function setReward(address account, uint256 amount) external {
+        rewardOf[account] = amount;
     }
 }

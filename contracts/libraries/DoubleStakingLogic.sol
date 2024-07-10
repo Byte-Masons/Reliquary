@@ -71,10 +71,15 @@ library DoubleStakingLogic {
 
             // claim rewards before disabling gauge 
             if (_claimRewardsTokens.length > 0) {
+                uint256[] memory balancesBefore = new uint256[](_claimRewardsTokens.length);
+                for (uint256 i = 0; i < _claimRewardsTokens.length; i++) {
+                    balancesBefore[i] = IERC20(_claimRewardsTokens[i]).balanceOf(address(this));
+                }
+
                 IGauge(gauge).getReward(address(this), _claimRewardsTokens);
                 for (uint256 i = 0; i < _claimRewardsTokens.length; i++) {
                     IERC20 rewardToken = IERC20(_claimRewardsTokens[i]);
-                    rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
+                    rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)) - balancesBefore[i]);
                 }
             }
 

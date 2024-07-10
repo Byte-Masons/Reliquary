@@ -14,7 +14,7 @@ import "./mocks/ERC20Mock.sol";
 import "./mocks/VoterMock.sol";
 import "./mocks/GaugeMock.sol";
 
-contract MultipleRollingRewarder is ERC721Holder, Test {
+contract GaugesTest is ERC721Holder, Test {
     using Strings for address;
     using Strings for uint256;
 
@@ -28,7 +28,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
     address voter;
     address gaugeReceiver;
 
-    uint256 public nbChildRewarder = 3;
+    uint256 public nbChildRewarder = 1;
     RollingRewarder[] public childRewarders;
     ERC20Mock[] public rewardTokens;
 
@@ -58,6 +58,7 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         oath.mint(address(reliquary), initialMint);
 
         suppliedToken = new ERC20Mock(6);
+        vm.label(address(suppliedToken), "Supplied Token");
         gauge = address(new GaugeMock(address(suppliedToken)));
         VoterMock(voter).setGauge(address(suppliedToken), gauge);
 
@@ -136,4 +137,28 @@ contract MultipleRollingRewarder is ERC721Holder, Test {
         assertEq(oath.balanceOf(address(reliquary)), balanceBefore);
     }
     
+    function testDisableGaugeClaimRewards(uint256 rewardAmount) public {
+        rewardAmount = bound(rewardAmount, 0, type(uint256).max / 2);
+        uint256 amount = 1 ether;
+        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount);
+        skip(1 days);
+        
+        address[] memory gaugeRewardTokens = new address[](1);
+        gaugeRewardTokens[0] = address(oath);
+        uint256[] memory gaugeRewardAmounts = new uint256[](1);
+        gaugeRewardAmounts[0] = rewardAmount;
+        GaugeMock(gauge).setReward(address(reliquary), rewardAmount);
+        oath.mint(address(gauge), rewardAmount);
+        
+        reliquary.update(relicId, address(this));
+        uint256 balanceBefore = oath.balanceOf(address(reliquary));
+
+        gaugeRewardTokens[0] = address(oath);
+        reliquary.disableGauge(0, gaugeRewardTokens);
+        
+        assertEq(oath.balanceOf(gaugeReceiver), rewardAmount);
+        assertEq(oath.balanceOf(address(reliquary)), balanceBefore);
+        
+        revert();
+    }
 }
