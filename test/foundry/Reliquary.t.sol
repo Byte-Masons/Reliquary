@@ -300,60 +300,6 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         reliquary.shift(relicId, newRelicId, shiftAmount);
     }
 
-    function testMerge(uint256 depositAmount1, uint256 depositAmount2) public {
-        depositAmount1 = bound(depositAmount1, 1, poolToken.balanceOf(address(this)) - 1);
-        depositAmount2 =
-            bound(depositAmount2, 1, poolToken.balanceOf(address(this)) - depositAmount1);
-
-        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount1);
-        uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, depositAmount2);
-        reliquary.merge(relicId, newRelicId);
-
-        assertEq(reliquary.getPositionForId(newRelicId).amount, depositAmount1 + depositAmount2);
-    }
-
-    function testCompareDepositAndMerge(uint256 amount1, uint256 amount2, uint256 time) public {
-        amount1 = bound(amount1, 1, poolToken.balanceOf(address(this)) - 1);
-        amount2 = bound(amount2, 1, poolToken.balanceOf(address(this)) - amount1);
-        time = bound(time, 1, 356 days * 1); // 100 years
-
-        console.log(amount1);
-        console.log(amount2);
-        console.log(time);
-
-        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
-        skip(time);
-        reliquary.deposit(amount2, relicId, address(0));
-        uint256 maturity1 = block.timestamp - reliquary.getPositionForId(relicId).entry;
-
-        //reset maturity
-        reliquary.withdraw(amount1 + amount2, relicId, address(0));
-        reliquary.deposit(amount1, relicId, address(0));
-
-        skip(time);
-        uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount2);
-        reliquary.merge(newRelicId, relicId);
-        uint256 maturity2 = block.timestamp - reliquary.getPositionForId(relicId).entry;
-
-        assertApproxEqAbs(maturity1, maturity2, 1);
-    }
-
-    function testMergeAfterSplit(uint256 amount0, uint256 amount1, uint256 amountToSplit) public {
-        amount0 = bound(amount0, 1 ether, poolToken.balanceOf(address(this)));
-        amount1 = bound(amount1, 1 ether, poolToken.balanceOf(address(this)));
-        amountToSplit = bound(amountToSplit, 1 ether, amount0);
-        vm.assume((amount0 + amount1) <= poolToken.balanceOf(address(this)));
-        
-
-        uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, amount0);
-        skip(2 days);
-        reliquary.update(relicId, address(this));
-        reliquary.split(relicId, amountToSplit, address(this));
-        uint256 newRelicId = reliquary.createRelicAndDeposit(address(this), 0, amount1);
-        reliquary.merge(relicId, newRelicId);
-        assertApproxEqAbs(reliquary.getPositionForId(newRelicId).amount, (amount0 - amountToSplit) + amount1, 1);
-    }
-
     function testBurn() public {
         uint256 relicId = reliquary.createRelicAndDeposit(address(this), 0, 1 ether);
         vm.expectRevert(IReliquary.Reliquary__BURNING_PRINCIPAL.selector);

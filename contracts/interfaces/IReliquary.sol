@@ -139,8 +139,6 @@ interface IReliquary is IERC721 {
 
     function shift(uint256 _fromId, uint256 _toId, uint256 _amount) external;
 
-    function merge(uint256 _fromId, uint256 _toId) external;
-
     function burn(uint256 _tokenId) external;
 
     function pendingReward(uint256 _relicId) external view returns (uint256 pending_);
