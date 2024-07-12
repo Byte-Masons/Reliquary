@@ -10,7 +10,7 @@ import "../interfaces/IReliquary.sol";
 library DoubleStakingLogic {
     using SafeERC20 for IERC20;
 
-    // @dev Deposit LP tokens to earn THE.
+    // @dev Deposit LP tokens to earn gauge rewards.
     function updatePoolWithGaugeDeposit(
         PoolInfo[] storage poolInfo,
         uint256 _pid
@@ -27,7 +27,7 @@ library DoubleStakingLogic {
                     poolToken.approve(pool.gauge, type(uint256).max);
                 }
                 // Deposit the LP in the gauge
-                IGauge(pool.gauge).deposit(balance);
+                IGauge(pool.gauge).deposit(balance, 0);
             }
         }
     }
@@ -62,7 +62,7 @@ library DoubleStakingLogic {
         PoolInfo[] storage poolInfo,
         uint256 _pid,
         address rewardReceiver,
-        bool _claimRewards
+        address[] calldata _claimRewardsTokens
     ) public {
         address gauge = voter.gauges(poolInfo[_pid].poolToken);
         if (gauge != address(0)) {
@@ -70,10 +70,17 @@ library DoubleStakingLogic {
             withdrawFromGauge(poolInfo, _pid, balance);
 
             // claim rewards before disabling gauge 
-            if (_claimRewards) {
-                IGauge(gauge).getReward(address(this));
-                IERC20 rewardToken = IERC20(IGauge(gauge).rewardToken());
-                rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
+            if (_claimRewardsTokens.length > 0) {
+                uint256[] memory balancesBefore = new uint256[](_claimRewardsTokens.length);
+                for (uint256 i = 0; i < _claimRewardsTokens.length; i++) {
+                    balancesBefore[i] = IERC20(_claimRewardsTokens[i]).balanceOf(address(this));
+                }
+
+                IGauge(gauge).getReward(address(this), _claimRewardsTokens);
+                for (uint256 i = 0; i < _claimRewardsTokens.length; i++) {
+                    IERC20 rewardToken = IERC20(_claimRewardsTokens[i]);
+                    rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)) - balancesBefore[i]);
+                }
             }
 
             // revoke allowance
@@ -87,17 +94,28 @@ library DoubleStakingLogic {
         IVoter voter,
         PoolInfo[] storage poolInfo,
         address rewardReceiver,
-        uint256 _pid
+        uint256 _pid,
+        address[] calldata _rewardTokens
     ) public {
         IGauge gauge = IGauge(poolInfo[_pid].gauge);
         if (address(gauge) != address(0)) {
             // claim the rewards
             address[] memory gauges = new address[](1);
             gauges[0] = poolInfo[_pid].gauge;
-            voter.claimRewards(gauges);
+            address[][] memory _rewardTokensArray = new address[][](1);
+            _rewardTokensArray[0] = _rewardTokens;
+            
+            uint256[] memory balancesBefore = new uint256[](_rewardTokens.length);
+            for (uint256 i = 0; i < _rewardTokens.length; i++) {
+                balancesBefore[i] = IERC20(_rewardTokens[i]).balanceOf(address(this));
+            }
+            
+            voter.claimRewards(gauges, _rewardTokensArray);
 
-            IERC20 rewardToken = IERC20(gauge.rewardToken());
-            rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)));
+            for (uint256 i = 0; i < _rewardTokens.length; i++) {
+                IERC20 rewardToken = IERC20(_rewardTokens[i]);
+                rewardToken.safeTransfer(rewardReceiver, rewardToken.balanceOf(address(this)) - balancesBefore[i]);
+            }
         }
     }
 }

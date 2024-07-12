@@ -794,7 +794,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         }
     }
 
-    // @dev Deposit LP tokens to earn THE.
+    // @dev Deposit LP tokens to earn gauge rewards.
     function updatePoolWithGaugeDeposit(uint256 _pid) public {
         if (paused) revert Reliquary__PAUSED();
         DoubleStakingLogic.updatePoolWithGaugeDeposit(poolInfo, _pid);
@@ -808,8 +808,8 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         DoubleStakingLogic.enableGauge(voter, poolInfo, _pid);
     }
 
-    function disableGauge(uint256 _pid, bool _claimRewards) public onlyRole(OPERATOR) {
-        DoubleStakingLogic.disableGauge(voter, poolInfo, _pid, gaugeRewardReceiver, _claimRewards);
+    function disableGauge(uint256 _pid, address[] calldata _claimRewardsTokens) public onlyRole(OPERATOR) {
+        DoubleStakingLogic.disableGauge(voter, poolInfo, _pid, gaugeRewardReceiver, _claimRewardsTokens);
     }
 
     function setGaugeReceiver(address _gaugeRewardReceiver) public onlyRole(OPERATOR) {
@@ -817,9 +817,9 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
         gaugeRewardReceiver = _gaugeRewardReceiver;
     }
 
-    function claimGaugeRewards(uint256 _pid) public {
+    function claimGaugeRewards(uint256 _pid, address[] calldata _rewardTokens) public {
         if (paused) revert Reliquary__PAUSED();
-        DoubleStakingLogic.claimGaugeRewards(voter, poolInfo, gaugeRewardReceiver, _pid);
+        DoubleStakingLogic.claimGaugeRewards(voter, poolInfo, gaugeRewardReceiver, _pid, _rewardTokens);
     }
 
     function pause() external onlyRole(GUARDIAN) {
