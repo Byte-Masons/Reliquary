@@ -385,6 +385,12 @@ contract GaugeRewardsTest is ERC721Holder, Test {
         }
     }
 
+    function testSupportInterface() public {
+        assertEq(reliquary.supportsInterface(type(IERC721Enumerable).interfaceId), true);
+        assertEq(reliquary.supportsInterface(type(IERC721).interfaceId), true);
+        assertEq(reliquary.supportsInterface(type(IAccessControlEnumerable).interfaceId), true);
+        assertEq(reliquary.supportsInterface(type(IReliquary).interfaceId), true);
+    }
 
     // function testDepositBonusRewarder() public {
     //     DepositBonusRewarder rewarder = new DepositBonusRewarder(

@@ -158,7 +158,5 @@ contract GaugesTest is ERC721Holder, Test {
         
         assertEq(oath.balanceOf(gaugeReceiver), rewardAmount);
         assertEq(oath.balanceOf(address(reliquary)), balanceBefore);
-        
-        revert();
     }
 }
