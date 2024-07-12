@@ -9,7 +9,7 @@ import "./libraries/ReliquaryLogic.sol";
 import "./libraries/DoubleStakingLogic.sol";
 import "./libraries/ReliquaryEvents.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/contracts/access/extensions/AccessControlEnumerable.sol";
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
@@ -29,7 +29,7 @@ import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
  * increased composability without affecting accounting logic too much, and users can
  * trade their Relics without withdrawing liquidity or affecting the position's maturity.
  */
-contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, ReentrancyGuard {
+contract Reliquary is IReliquary, Multicall, ERC721Enumerable, AccessControlEnumerable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -768,7 +768,7 @@ contract Reliquary is IReliquary, Multicall, ERC721, AccessControlEnumerable, Re
     function supportsInterface(bytes4 _interfaceId)
         public
         view
-        override(IERC165, ERC721, AccessControlEnumerable)
+        override(IERC165, ERC721Enumerable, AccessControlEnumerable)
         returns (bool)
     {
         return _interfaceId == type(IReliquary).interfaceId || super.supportsInterface(_interfaceId);
